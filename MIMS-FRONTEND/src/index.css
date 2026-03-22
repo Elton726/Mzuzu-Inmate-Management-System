@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+	.bg-malawiGold {
+		background-color: #FFD700;
+	}
+	.text-malawiBlack {
+		color: #000000;
+	}
+	.text-malawiRed {
+		color: #D71920;
+	}
+	.border-malawiGreen {
+		border-color: #00843D;
+	}
+	.border-malawiGold {
+		border-color: #FFD700;
+	}
+	.bg-malawiRed {
+		background-color: #D71920;
+	}
+	.bg-malawiGreen {
+		background-color: #00843D;
+	}
+}
+
+.modern-heading {
+	@apply text-3xl font-bold text-red-600 mb-4;
+	/* For custom color, use .text-malawiRed in JSX */
+}
+
+.modern-card {
+	@apply bg-white rounded-lg shadow-md p-6 border border-green-700;
+	/* For custom border, use .border-malawiGreen in JSX */
+}
+
+body {
+	@apply bg-yellow-400 text-black font-sans;
+	/* For custom background, use .bg-malawiGold in JSX */
+}
