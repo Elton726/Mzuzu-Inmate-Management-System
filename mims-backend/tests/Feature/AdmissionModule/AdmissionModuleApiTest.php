@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\AdmissionModule;
 
-use App\Models\Activity;
-use App\Models\Admission;
-use App\Models\Cell;
+use App\Modules\Admissions\Models\Activity;
+use App\Modules\Admissions\Models\Admission;
+use App\Modules\Admissions\Models\Cell;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -205,4 +205,3 @@ class AdmissionModuleApiTest extends TestCase
         $this->actingAs($nonAdmin, 'sanctum')->getJson('/api/audit-logs')->assertStatus(403);
     }
 }
-

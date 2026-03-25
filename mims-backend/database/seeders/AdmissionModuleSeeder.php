@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Activity;
-use App\Models\Cell;
+use App\Modules\Admissions\Models\Activity;
+use App\Modules\Admissions\Models\Cell;
 use Illuminate\Database\Seeder;
 
 class AdmissionModuleSeeder extends Seeder
@@ -50,4 +50,3 @@ class AdmissionModuleSeeder extends Seeder
         );
     }
 }
-

@@ -1,15 +1,15 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\ActivityController;
-use App\Http\Controllers\Api\AdmissionController;
 use App\Http\Controllers\Api\AuditLogController;
-use App\Http\Controllers\Api\CellController;
-use App\Http\Controllers\Api\DocumentController;
-use App\Http\Controllers\Api\InmateController;
 use App\Http\Controllers\Api\StatisticsController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Modules\Admissions\Controllers\Api\ActivityController;
+use App\Modules\Admissions\Controllers\Api\AdmissionController;
+use App\Modules\Admissions\Controllers\Api\CellController;
+use App\Modules\Admissions\Controllers\Api\DocumentController;
+use App\Modules\Admissions\Controllers\Api\InmateController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
