@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AuthContext } from './AuthContextCreate';
 import apiService from '../services/apiService';
+import { getRoleName } from '../utils/helpers';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -44,7 +45,7 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: data.user };
     } catch (err) {
       setError(err.message);
-      return { success: false, error: err.message };
+      return { success: false, error: err.message, rateLimit: err.rateLimit, status: err.status, data: err.data, apiError: err };
     } finally {
       setLoading(false);
     }
@@ -72,11 +73,11 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: data.user };
     } catch (err) {
       setError(err.message);
-      return { success: false, error: err.message };
+      return { success: false, error: err.message, rateLimit: err.rateLimit, status: err.status, data: err.data, apiError: err };
     }
   };
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = getRoleName(user) === 'admin';
   const isAuthenticated = !!user;
 
   return (

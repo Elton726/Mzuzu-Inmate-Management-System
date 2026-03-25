@@ -1,14 +1,26 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/useAuth';
+import { useToast } from '../../contexts/useToast';
+import { getRoleName } from '../../utils/helpers';
 
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const { login } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((s) => Math.max(0, s - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,10 +31,15 @@ export const LoginPage = () => {
     
     if (result.success) {
       // Redirect admins to dashboard, others to home
-      const redirectPath = result.user.role === 'admin' ? '/admin/dashboard' : '/';
+      const redirectPath = getRoleName(result.user) === 'admin' ? '/admin/dashboard' : '/';
       navigate(redirectPath);
     } else {
       setError(result.error);
+      if (result.apiError) toast.fromError(result.apiError);
+      const retryAfter = result?.rateLimit?.retryAfter;
+      if (result?.status === 429 && typeof retryAfter === 'number' && retryAfter > 0) {
+        setCooldown(retryAfter);
+      }
     }
 
     setLoading(false);
@@ -73,10 +90,10 @@ export const LoginPage = () => {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || cooldown > 0}
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-2 px-4 rounded-lg transition duration-200"
             >
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? 'Logging in...' : cooldown > 0 ? `Try again in ${cooldown}s` : 'Login'}
             </button>
           </form>
 

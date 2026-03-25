@@ -1,34 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { MdPeople, MdAdminPanelSettings, MdBarChart } from 'react-icons/md';
-import Toast from '../../components/Toast';
 import apiService from '../../services/apiService';
 import { getRoleDisplayName } from '../../utils/helpers';
+import { useToast } from '../../contexts/useToast';
 
 export default function AdminDashboard() {
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [showToast, setShowToast] = useState(false);
+  const toast = useToast();
 
-  useEffect(() => {
-    fetchStatistics();
-  }, []);
-
-  const fetchStatistics = async () => {
+  const fetchStatistics = useCallback(async () => {
     try {
       setLoading(true);
       const data = await apiService.getUserStatistics();
       setStatistics(data ?? {});
-      setError('');
     } catch (err) {
-      setError('Failed to load statistics');
-      setShowToast(true);
+      toast.fromError(err);
       console.error(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchStatistics();
+  }, [fetchStatistics]);
 
   if (loading) {
     return (
@@ -45,8 +42,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-malawiGold p-8">
-      {showToast && <Toast message={error} onClose={() => setShowToast(false)} />}
-
       <div className="max-w-7xl mx-auto">
         <h1 className="modern-heading text-center mb-8">Administrator Dashboard</h1>
 
@@ -109,7 +104,7 @@ export default function AdminDashboard() {
                       <td className="px-6 py-4 text-gray-600">{user.email}</td>
                       <td className="px-6 py-4">
                         <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
-                          {getRoleDisplayName(user.role)}
+                          {getRoleDisplayName(user)}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-gray-600 text-sm">

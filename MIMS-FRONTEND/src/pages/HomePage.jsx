@@ -32,7 +32,7 @@ export const HomePage = () => {
           <div>
             <p className="text-gray-600 text-sm font-semibold uppercase">Role</p>
             <p className="text-xl font-semibold text-blue-600 mt-1">
-              {getRoleDisplayName(user?.role)}
+              {getRoleDisplayName(user)}
             </p>
           </div>
           <div>

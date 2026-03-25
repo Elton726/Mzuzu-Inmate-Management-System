@@ -11,6 +11,7 @@ import UserManagementPage from './pages/admin/UserManagementPage';
 import Navigation from './components/Navigation';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
+import { ToastProvider } from './contexts/ToastContext';
 
 // Main App content with routing
 const AppContent = () => {
@@ -86,9 +87,11 @@ const AppContent = () => {
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </ToastProvider>
     </Router>
   );
 }

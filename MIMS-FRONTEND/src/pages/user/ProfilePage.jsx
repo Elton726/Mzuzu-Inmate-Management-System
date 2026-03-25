@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/useAuth';
-import { validatePassword, getErrorMessage, getFieldErrors } from '../../utils/helpers';
+import { validatePassword, getErrorMessage, getFieldErrors, getRoleDisplayName } from '../../utils/helpers';
 import apiService from '../../services/apiService';
+import { useToast } from '../../contexts/useToast';
 
 export const ProfilePage = () => {
   const { user, updateProfile } = useAuth();
+  const toast = useToast();
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || ''
@@ -62,6 +64,7 @@ export const ProfilePage = () => {
       });
     } else {
       setError(result.error);
+      if (result.apiError) toast.fromError(result.apiError);
     }
 
     setLoading(false);
@@ -104,6 +107,7 @@ export const ProfilePage = () => {
         setFieldErrors(getFieldErrors(err));
       }
       setError(getErrorMessage(err));
+      toast.fromError(err);
     } finally {
       setLoading(false);
     }
@@ -145,7 +149,7 @@ export const ProfilePage = () => {
               <span className="font-semibold">Email:</span> {user?.email}
             </p>
             <p className="text-gray-600">
-              <span className="font-semibold">Role:</span> {user?.role}
+              <span className="font-semibold">Role:</span> {getRoleDisplayName(user)}
             </p>
             <p className="text-gray-600">
               <span className="font-semibold">Member Since:</span> {new Date(user?.created_at).toLocaleDateString()}

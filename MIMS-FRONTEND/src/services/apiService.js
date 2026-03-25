@@ -1,8 +1,15 @@
 const API_BASE_URL = 'http://localhost:8000/api';
 
+const parseHeaderInt = (value) => {
+  if (value == null) return null;
+  const num = Number.parseInt(String(value), 10);
+  return Number.isFinite(num) ? num : null;
+};
+
 class ApiService {
   constructor() {
     this.token = localStorage.getItem('authToken');
+    this.lastRateLimit = new Map();
   }
 
   setToken(token) {
@@ -23,162 +30,159 @@ class ApiService {
     };
   }
 
+  getRateLimitStatus(key) {
+    return this.lastRateLimit.get(key) ?? null;
+  }
+
+  updateRateLimitFromResponse(key, response) {
+    if (!key) return;
+    const limit = parseHeaderInt(response.headers.get('X-RateLimit-Limit'));
+    const remaining = parseHeaderInt(response.headers.get('X-RateLimit-Remaining'));
+    const resetAt = parseHeaderInt(response.headers.get('X-RateLimit-Reset'));
+    const retryAfter = parseHeaderInt(response.headers.get('Retry-After'));
+    this.lastRateLimit.set(key, { limit, remaining, resetAt, retryAfter });
+  }
+
+  async safeParseJson(response) {
+    if (response.status === 204) return null;
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) return null;
+    try {
+      return await response.json();
+    } catch {
+      return null;
+    }
+  }
+
+  async request(rateLimitKey, path, options = {}) {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        ...this.getHeaders(),
+        ...(options.headers || {})
+      }
+    });
+
+    this.updateRateLimitFromResponse(rateLimitKey, response);
+    return this.handleResponse(response);
+  }
+
   async handleResponse(response) {
-    const data = await response.json();
+    const data = await this.safeParseJson(response);
     
     if (!response.ok) {
-      const error = new Error(data.message || 'API Error');
+      const serverMessage = data?.message;
+      const error = new Error(serverMessage || 'API Error');
       error.status = response.status;
-      error.data = data;
+      error.data = data ?? {};
+
+      const limit = parseHeaderInt(response.headers.get('X-RateLimit-Limit'));
+      const remaining = parseHeaderInt(response.headers.get('X-RateLimit-Remaining'));
+      const resetAt = parseHeaderInt(response.headers.get('X-RateLimit-Reset'));
+      const retryAfterHeader = parseHeaderInt(response.headers.get('Retry-After'));
+      const retryAfterBody = parseHeaderInt(data?.retry_after);
+      const retryAfter = retryAfterBody ?? retryAfterHeader;
+      error.rateLimit = { limit, remaining, resetAt, retryAfter };
+
+      if (response.status === 429 && retryAfter != null) {
+        error.message = `${serverMessage || 'Rate limit exceeded'}. Retry in ${retryAfter}s.`;
+      }
       throw error;
     }
     
-    return data;
+    return data ?? {};
   }
 
   // Auth endpoints
   async login(email, password) {
-    const response = await fetch(`${API_BASE_URL}/login`, {
+    return this.request('auth_login', '/login', {
       method: 'POST',
-      headers: this.getHeaders(),
       body: JSON.stringify({ email, password })
     });
-    return this.handleResponse(response);
   }
 
   async logout() {
-    const response = await fetch(`${API_BASE_URL}/logout`, {
-      method: 'POST',
-      headers: this.getHeaders()
-    });
-    return this.handleResponse(response);
+    return this.request(null, '/logout', { method: 'POST' });
   }
 
   // User endpoints
   async getProfile() {
-    const response = await fetch(`${API_BASE_URL}/user/profile`, {
-      method: 'GET',
-      headers: this.getHeaders()
-    });
-    return this.handleResponse(response);
+    return this.request('user_profile', '/user/profile', { method: 'GET' });
   }
 
   async getUserById(userId) {
-    const response = await fetch(`${API_BASE_URL}/user/${userId}`, {
-      method: 'GET',
-      headers: this.getHeaders()
-    });
-    return this.handleResponse(response);
+    return this.request('user_profile', `/user/${userId}`, { method: 'GET' });
   }
 
   async updateProfile(updates) {
-    const response = await fetch(`${API_BASE_URL}/user/profile`, {
+    return this.request('user_profile', '/user/profile', {
       method: 'PUT',
-      headers: this.getHeaders(),
       body: JSON.stringify(updates)
     });
-    return this.handleResponse(response);
   }
 
   async changePassword(currentPassword, newPassword, passwordConfirmation) {
-    const response = await fetch(`${API_BASE_URL}/user/change-password`, {
+    return this.request('user_change_password', '/user/change-password', {
       method: 'POST',
-      headers: this.getHeaders(),
       body: JSON.stringify({
         current_password: currentPassword,
         password: newPassword,
         password_confirmation: passwordConfirmation
       })
     });
-    return this.handleResponse(response);
   }
 
   // Admin endpoints
   async listUsers(params = {}) {
     const queryString = new URLSearchParams(params).toString();
-    const response = await fetch(`${API_BASE_URL}/admin/users?${queryString}`, {
-      method: 'GET',
-      headers: this.getHeaders()
-    });
-    return this.handleResponse(response);
+    return this.request('admin_ops', `/admin/users?${queryString}`, { method: 'GET' });
   }
 
   async getUserStatistics() {
-    const response = await fetch(`${API_BASE_URL}/admin/users/statistics`, {
-      method: 'GET',
-      headers: this.getHeaders()
-    });
-    return this.handleResponse(response);
+    return this.request('admin_ops', '/admin/users/statistics', { method: 'GET' });
   }
 
   async createUser(userData) {
-    const response = await fetch(`${API_BASE_URL}/admin/users`, {
+    return this.request('admin_ops', '/admin/users', {
       method: 'POST',
-      headers: this.getHeaders(),
       body: JSON.stringify(userData)
     });
-    return this.handleResponse(response);
   }
 
   async getUser(userId) {
-    const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
-      method: 'GET',
-      headers: this.getHeaders()
-    });
-    return this.handleResponse(response);
+    return this.request('admin_ops', `/admin/users/${userId}`, { method: 'GET' });
   }
 
   async updateUser(userId, userData) {
-    const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+    return this.request('admin_ops', `/admin/users/${userId}`, {
       method: 'PUT',
-      headers: this.getHeaders(),
       body: JSON.stringify(userData)
     });
-    return this.handleResponse(response);
   }
 
   async deleteUser(userId) {
-    const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
-      method: 'DELETE',
-      headers: this.getHeaders()
-    });
-    
-    if (!response.ok) {
-      const data = await response.json();
-      const error = new Error(data.message || 'Delete failed');
-      error.status = response.status;
-      error.data = data;
-      throw error;
-    }
-    
-    return response.status === 204 ? { message: 'User deleted successfully' } : response.json();
+    return this.request('admin_ops', `/admin/users/${userId}`, { method: 'DELETE' });
   }
 
   async bulkDeleteUsers(userIds) {
-    const response = await fetch(`${API_BASE_URL}/admin/users/bulk-delete`, {
+    return this.request('admin_ops', '/admin/users/bulk-delete', {
       method: 'POST',
-      headers: this.getHeaders(),
       body: JSON.stringify({ user_ids: userIds })
     });
-    return this.handleResponse(response);
   }
 
   async bulkUpdateRoles(userIds, role) {
-    const response = await fetch(`${API_BASE_URL}/admin/users/bulk-update-role`, {
+    return this.request('admin_ops', '/admin/users/bulk-update-role', {
       method: 'POST',
-      headers: this.getHeaders(),
       body: JSON.stringify({ user_ids: userIds, role })
     });
-    return this.handleResponse(response);
   }
 
   async registerUser(userData) {
-    const response = await fetch(`${API_BASE_URL}/register`, {
+    return this.request('auth_register', '/register', {
       method: 'POST',
-      headers: this.getHeaders(),
       body: JSON.stringify(userData)
     });
-    return this.handleResponse(response);
   }
 }
 

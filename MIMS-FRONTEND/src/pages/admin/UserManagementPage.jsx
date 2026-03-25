@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import apiService from '../../services/apiService';
 import { getRoleDisplayName, ROLE_OPTIONS, validatePassword, getErrorMessage, getFieldErrors } from '../../utils/helpers';
+import { useDebouncedValue } from '../../utils/useDebouncedValue';
+import { useToast } from '../../contexts/useToast';
 
 export const UserManagementPage = () => {
+  const { fromError } = useToast();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -20,6 +23,7 @@ export const UserManagementPage = () => {
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState('desc');
   const [perPage, setPerPage] = useState(20);
+  const debouncedSearch = useDebouncedValue(search, 350);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -41,18 +45,19 @@ export const UserManagementPage = () => {
         sort_by: sortBy,
         sort_order: sortOrder
       };
-      if (search) params.search = search;
+      if (debouncedSearch) params.search = debouncedSearch;
       if (roleFilter) params.role = roleFilter;
 
       const data = await apiService.listUsers(params);
       setUsers(data.data || []);
     } catch (err) {
       setError(getErrorMessage(err));
+      fromError(err);
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [search, roleFilter, sortBy, sortOrder, perPage]);
+  }, [debouncedSearch, roleFilter, sortBy, sortOrder, perPage, fromError]);
 
   useEffect(() => {
     fetchUsers();
@@ -136,6 +141,7 @@ export const UserManagementPage = () => {
         setFormErrors(getFieldErrors(err));
       }
       setError(getErrorMessage(err));
+      fromError(err);
     } finally {
       setLoading(false);
     }
@@ -186,6 +192,7 @@ export const UserManagementPage = () => {
         setFormErrors(getFieldErrors(err));
       }
       setError(getErrorMessage(err));
+      fromError(err);
     } finally {
       setLoading(false);
     }
@@ -200,6 +207,7 @@ export const UserManagementPage = () => {
       fetchUsers();
     } catch (err) {
       setError(getErrorMessage(err));
+      fromError(err);
     }
   };
 
@@ -214,6 +222,7 @@ export const UserManagementPage = () => {
       fetchUsers();
     } catch (err) {
       setError(getErrorMessage(err));
+      fromError(err);
     }
   };
 
@@ -230,6 +239,7 @@ export const UserManagementPage = () => {
       fetchUsers();
     } catch (err) {
       setError(getErrorMessage(err));
+      fromError(err);
     }
   };
 
@@ -411,9 +421,9 @@ export const UserManagementPage = () => {
                     <td className="px-6 py-4 font-semibold text-gray-800">{user.name}</td>
                     <td className="px-6 py-4 text-gray-600">{user.email}</td>
                     <td className="px-6 py-4">
-                      <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
-                        {getRoleDisplayName(user.role)}
-                      </span>
+                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
+                          {getRoleDisplayName(user)}
+                        </span>
                     </td>
                     <td className="px-6 py-4 text-gray-600">
                       {new Date(user.created_at).toLocaleDateString()}

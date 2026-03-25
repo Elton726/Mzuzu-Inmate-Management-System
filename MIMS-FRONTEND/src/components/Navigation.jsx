@@ -39,7 +39,7 @@ export const Navigation = () => {
             </Link>
 
             <span className="text-blue-100 text-sm">
-              {getRoleDisplayName(user.role)}
+              {getRoleDisplayName(user)}
             </span>
 
             <button

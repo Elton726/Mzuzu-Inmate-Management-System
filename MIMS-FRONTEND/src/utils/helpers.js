@@ -49,8 +49,14 @@ export const formatDateTime = (dateString) => {
 // Get error message from API response
 export const getErrorMessage = (error) => {
   if (typeof error === 'string') return error;
-  if (error.data?.message) return error.data.message;
-  if (error.message) return error.message;
+  const retryAfter = error?.rateLimit?.retryAfter ?? error?.data?.retry_after;
+  const baseMessage = error?.data?.message || error?.message;
+  if (error?.status === 429 && typeof retryAfter === 'number' && retryAfter > 0) {
+    const msg = baseMessage || 'Rate limit exceeded';
+    if (/retry in\s+\d+s/i.test(msg)) return msg;
+    return `${msg}. Retry in ${retryAfter}s.`;
+  }
+  if (baseMessage) return baseMessage;
   return 'An unexpected error occurred';
 };
 
@@ -66,8 +72,29 @@ export const getFieldErrors = (error) => {
   return {};
 };
 
+// Normalize role values coming from backend (string or relationship object)
+export const getRoleName = (userOrRole) => {
+  if (!userOrRole) return null;
+  if (typeof userOrRole === 'string') return userOrRole;
+
+  if (typeof userOrRole === 'object') {
+    if ('role_name' in userOrRole && typeof userOrRole.role_name === 'string') return userOrRole.role_name;
+
+    if ('role' in userOrRole) {
+      const r = userOrRole.role;
+      if (typeof r === 'string') return r;
+      if (r && typeof r === 'object' && typeof r.name === 'string') return r.name;
+    }
+
+    if (!('email' in userOrRole) && typeof userOrRole.name === 'string') return userOrRole.name;
+  }
+
+  return null;
+};
+
 // Role display name
-export const getRoleDisplayName = (role) => {
+export const getRoleDisplayName = (userOrRole) => {
+  const role = getRoleName(userOrRole);
   const roleMap = {
     admin: 'Administrator',
     reception_officer: 'Reception Officer',
