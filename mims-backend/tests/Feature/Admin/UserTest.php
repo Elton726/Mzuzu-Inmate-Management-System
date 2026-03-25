@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -12,7 +13,8 @@ class UserTest extends TestCase
 
     public function test_admin_can_list_all_users()
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin'], ['description' => null]);
+        $admin = User::factory()->create(['role_id' => $adminRole->id]);
         User::factory(5)->create();
 
         $response = $this->actingAs($admin, 'sanctum')->getJson('/api/admin/users');
@@ -23,7 +25,8 @@ class UserTest extends TestCase
 
     public function test_non_admin_cannot_list_users()
     {
-        $user = User::factory()->create(['role' => 'reception_officer']);
+        $role = Role::firstOrCreate(['name' => 'reception_officer'], ['description' => null]);
+        $user = User::factory()->create(['role_id' => $role->id]);
 
         $response = $this->actingAs($user, 'sanctum')->getJson('/api/admin/users');
 
@@ -32,7 +35,8 @@ class UserTest extends TestCase
 
     public function test_admin_can_search_users()
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin'], ['description' => null]);
+        $admin = User::factory()->create(['role_id' => $adminRole->id]);
         User::factory()->create(['name' => 'John Doe', 'email' => 'john@example.com']);
         User::factory()->create(['name' => 'Jane Smith', 'email' => 'jane@example.com']);
 
@@ -44,9 +48,12 @@ class UserTest extends TestCase
 
     public function test_admin_can_filter_users_by_role()
     {
-        $admin = User::factory()->create(['role' => 'admin']);
-        User::factory(3)->create(['role' => 'reception_officer']);
-        User::factory(2)->create(['role' => 'station_officer']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin'], ['description' => null]);
+        $admin = User::factory()->create(['role_id' => $adminRole->id]);
+        $reception = Role::firstOrCreate(['name' => 'reception_officer'], ['description' => null]);
+        $station = Role::firstOrCreate(['name' => 'station_officer'], ['description' => null]);
+        User::factory(3)->create(['role_id' => $reception->id]);
+        User::factory(2)->create(['role_id' => $station->id]);
 
         $response = $this->actingAs($admin, 'sanctum')->getJson('/api/admin/users?role=reception_officer');
 
@@ -55,7 +62,8 @@ class UserTest extends TestCase
 
     public function test_admin_can_create_user()
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin'], ['description' => null]);
+        $admin = User::factory()->create(['role_id' => $adminRole->id]);
 
         $response = $this->actingAs($admin, 'sanctum')->postJson('/api/admin/users', [
             'name' => 'New User',
@@ -72,7 +80,8 @@ class UserTest extends TestCase
 
     public function test_admin_can_view_user_details()
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin'], ['description' => null]);
+        $admin = User::factory()->create(['role_id' => $adminRole->id]);
         $user = User::factory()->create();
 
         $response = $this->actingAs($admin, 'sanctum')->getJson("/api/admin/users/{$user->id}");
@@ -83,8 +92,10 @@ class UserTest extends TestCase
 
     public function test_admin_can_update_user()
     {
-        $admin = User::factory()->create(['role' => 'admin']);
-        $user = User::factory()->create(['role' => 'reception_officer']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin'], ['description' => null]);
+        $admin = User::factory()->create(['role_id' => $adminRole->id]);
+        $reception = Role::firstOrCreate(['name' => 'reception_officer'], ['description' => null]);
+        $user = User::factory()->create(['role_id' => $reception->id]);
 
         $response = $this->actingAs($admin, 'sanctum')->putJson("/api/admin/users/{$user->id}", [
             'name' => 'Updated Name',
@@ -94,12 +105,13 @@ class UserTest extends TestCase
         $response->assertStatus(200);
         $user->refresh();
         $this->assertEquals('Updated Name', $user->name);
-        $this->assertEquals('station_officer', $user->role);
+        $this->assertEquals('station_officer', $user->role_name);
     }
 
     public function test_admin_can_delete_user()
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin'], ['description' => null]);
+        $admin = User::factory()->create(['role_id' => $adminRole->id]);
         $user = User::factory()->create();
 
         $response = $this->actingAs($admin, 'sanctum')->deleteJson("/api/admin/users/{$user->id}");
@@ -110,7 +122,8 @@ class UserTest extends TestCase
 
     public function test_admin_cannot_delete_self()
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin'], ['description' => null]);
+        $admin = User::factory()->create(['role_id' => $adminRole->id]);
 
         $response = $this->actingAs($admin, 'sanctum')->deleteJson("/api/admin/users/{$admin->id}");
 
@@ -120,9 +133,12 @@ class UserTest extends TestCase
 
     public function test_admin_can_get_statistics()
     {
-        $admin = User::factory()->create(['role' => 'admin']);
-        User::factory(5)->create(['role' => 'reception_officer']);
-        User::factory(3)->create(['role' => 'station_officer']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin'], ['description' => null]);
+        $admin = User::factory()->create(['role_id' => $adminRole->id]);
+        $reception = Role::firstOrCreate(['name' => 'reception_officer'], ['description' => null]);
+        $station = Role::firstOrCreate(['name' => 'station_officer'], ['description' => null]);
+        User::factory(5)->create(['role_id' => $reception->id]);
+        User::factory(3)->create(['role_id' => $station->id]);
 
         $response = $this->actingAs($admin, 'sanctum')->getJson('/api/admin/users/statistics');
 
@@ -132,7 +148,8 @@ class UserTest extends TestCase
 
     public function test_admin_can_bulk_delete_users()
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin'], ['description' => null]);
+        $admin = User::factory()->create(['role_id' => $adminRole->id]);
         $user1 = User::factory()->create();
         $user2 = User::factory()->create();
 
@@ -147,7 +164,8 @@ class UserTest extends TestCase
 
     public function test_admin_cannot_bulk_delete_including_self()
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin'], ['description' => null]);
+        $admin = User::factory()->create(['role_id' => $adminRole->id]);
         $user = User::factory()->create();
 
         $response = $this->actingAs($admin, 'sanctum')->postJson('/api/admin/users/bulk-delete', [
@@ -160,9 +178,11 @@ class UserTest extends TestCase
 
     public function test_admin_can_bulk_update_role()
     {
-        $admin = User::factory()->create(['role' => 'admin']);
-        $user1 = User::factory()->create(['role' => 'reception_officer']);
-        $user2 = User::factory()->create(['role' => 'reception_officer']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin'], ['description' => null]);
+        $admin = User::factory()->create(['role_id' => $adminRole->id]);
+        $reception = Role::firstOrCreate(['name' => 'reception_officer'], ['description' => null]);
+        $user1 = User::factory()->create(['role_id' => $reception->id]);
+        $user2 = User::factory()->create(['role_id' => $reception->id]);
 
         $response = $this->actingAs($admin, 'sanctum')->postJson('/api/admin/users/bulk-update-role', [
             'user_ids' => [$user1->id, $user2->id],
@@ -172,13 +192,14 @@ class UserTest extends TestCase
         $response->assertStatus(200);
         $user1->refresh();
         $user2->refresh();
-        $this->assertEquals('station_officer', $user1->role);
-        $this->assertEquals('station_officer', $user2->role);
+        $this->assertEquals('station_officer', $user1->role_name);
+        $this->assertEquals('station_officer', $user2->role_name);
     }
 
     public function test_admin_cannot_bulk_update_including_self()
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin'], ['description' => null]);
+        $admin = User::factory()->create(['role_id' => $adminRole->id]);
         $user = User::factory()->create();
 
         $response = $this->actingAs($admin, 'sanctum')->postJson('/api/admin/users/bulk-update-role', [

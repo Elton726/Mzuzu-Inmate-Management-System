@@ -2,9 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,13 +17,25 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Core reference data
+        $this->call(RoleSeeder::class);
+
         // Create a default admin user (credentials in AdminUserSeeder).
         $this->call(AdminUserSeeder::class);
 
+        // Seed sample data for the admission module (cells/activities).
+        $this->call(AdmissionModuleSeeder::class);
+
         // Create a regular user you can use for smoke testing.
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        $defaultRole = Role::firstOrCreate(['name' => 'officer_on_duty'], ['description' => null]);
+        User::updateOrCreate(
+            ['email' => 'test@example.com'],
+            [
+                'name' => 'Test User',
+                'password' => Hash::make('password'),
+                'role_id' => $defaultRole->id,
+                'is_active' => true,
+            ]
+        );
     }
 }

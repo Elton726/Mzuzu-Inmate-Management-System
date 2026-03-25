@@ -19,7 +19,11 @@ class RoleMiddleware
             return response()->json(['message' => 'Unauthorized.'], 401);
         }
 
-        if (!in_array($request->user()->role, $roles)) {
+        if ($request->user()->is_active === false) {
+            return response()->json(['message' => 'Forbidden. Account is inactive.'], 403);
+        }
+
+        if (!in_array($request->user()->role_name, $roles, true)) {
             return response()->json(['message' => 'Forbidden. You do not have access to this resource.'], 403);
         }
 
