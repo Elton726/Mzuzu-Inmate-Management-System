@@ -1,6 +1,13 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ActivityController;
+use App\Http\Controllers\Api\AdmissionController;
+use App\Http\Controllers\Api\AuditLogController;
+use App\Http\Controllers\Api\CellController;
+use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\InmateController;
+use App\Http\Controllers\Api\StatisticsController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use Illuminate\Http\Request;
@@ -38,4 +45,29 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // Resource routes
         Route::apiResource('users', AdminUserController::class)->middleware('throttle:100,60,user');
     });
+
+    // Inmate Admission Module
+    Route::middleware(['role:reception_officer,station_officer'])->group(function () {
+        Route::post('/inmates/check-duplicate', [InmateController::class, 'checkDuplicate'])->middleware('throttle:30,60,user');
+        Route::get('/inmates/search', [InmateController::class, 'search'])->middleware('throttle:60,60,user');
+        Route::get('/inmates/{inmate}', [InmateController::class, 'show'])->middleware('throttle:60,60,user');
+    });
+
+    Route::middleware(['role:reception_officer'])->group(function () {
+        Route::post('/inmates', [InmateController::class, 'store'])->middleware('throttle:30,60,user');
+        Route::put('/inmates/{inmate}', [InmateController::class, 'update'])->middleware('throttle:30,60,user');
+
+        Route::post('/admissions', [AdmissionController::class, 'store'])->middleware('throttle:30,60,user');
+
+        Route::get('/cells/available', [CellController::class, 'available'])->middleware('throttle:60,60,user');
+        Route::get('/activities', [ActivityController::class, 'index'])->middleware('throttle:60,60,user');
+        Route::post('/documents', [DocumentController::class, 'store'])->middleware('throttle:30,60,user');
+    });
+
+    Route::middleware(['role:reception_officer,station_officer'])->group(function () {
+        Route::get('/admissions/{admission}', [AdmissionController::class, 'show'])->middleware('throttle:60,60,user');
+    });
+
+    Route::get('/statistics/population', [StatisticsController::class, 'population'])->middleware('throttle:60,60,user');
+    Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware(['role:admin', 'throttle:60,60,user']);
 });

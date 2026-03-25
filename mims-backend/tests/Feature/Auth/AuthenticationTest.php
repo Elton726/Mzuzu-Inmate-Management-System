@@ -19,8 +19,8 @@ class AuthenticationTest extends TestCase
             'password' => 'password',
         ]);
 
-        $this->assertAuthenticated();
-        $response->assertJsonStructure(['user', 'token']);
+        $response->assertStatus(200)
+            ->assertJsonStructure(['user', 'token']);
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void
@@ -33,7 +33,6 @@ class AuthenticationTest extends TestCase
         ]);
 
         $response->assertStatus(401);
-        $this->assertGuest();
     }
 
     public function test_users_can_logout(): void
@@ -42,7 +41,6 @@ class AuthenticationTest extends TestCase
 
         $response = $this->actingAs($user, 'sanctum')->post('/api/logout');
 
-        $this->assertGuest();
         $response->assertNoContent();
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,7 +18,7 @@ class UserController extends Controller
     public function index(Request $request)
     {
         // Admin-only access is enforced by middleware
-        $query = User::query();
+        $query = User::query()->with('role');
 
         // Search by name or email
         if ($request->has('search')) {
@@ -28,7 +29,8 @@ class UserController extends Controller
 
         // Filter by role
         if ($request->has('role')) {
-            $query->where('role', $request->input('role'));
+            $roleName = $request->input('role');
+            $query->whereHas('role', fn ($q) => $q->where('name', $roleName));
         }
 
         // Sorting
@@ -56,16 +58,18 @@ class UserController extends Controller
             'role' => ['required', 'in:admin,reception_officer,station_officer,officer_on_duty,gatekeeper'],
         ]);
 
+        $role = Role::firstOrCreate(['name' => $request->role], ['description' => null]);
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => $request->role,
+            'role_id' => $role->id,
         ]);
 
         return response()->json([
             'message' => 'User created successfully',
-            'user' => $user,
+            'user' => $user->load('role'),
         ], 201);
     }
 
@@ -75,7 +79,7 @@ class UserController extends Controller
     public function show(User $user)
     {
         // Admin-only access is enforced by middleware
-        return response()->json($user);
+        return response()->json($user->load('role'));
     }
 
     /**
@@ -100,11 +104,17 @@ class UserController extends Controller
             $validated['password'] = Hash::make($validated['password']);
         }
 
+        if (isset($validated['role'])) {
+            $role = Role::firstOrCreate(['name' => $validated['role']], ['description' => null]);
+            unset($validated['role']);
+            $validated['role_id'] = $role->id;
+        }
+
         $user->update($validated);
 
         return response()->json([
             'message' => 'User updated successfully',
-            'user' => $user,
+            'user' => $user->fresh()->load('role'),
         ]);
     }
 
@@ -138,11 +148,13 @@ class UserController extends Controller
         // Admin-only access is enforced by middleware
         $stats = [
             'total_users' => User::count(),
-            'by_role' => User::selectRaw('role, COUNT(*) as count')
-                ->groupBy('role')
+            'by_role' => User::query()
+                ->join('roles', 'users.role_id', '=', 'roles.id')
+                ->selectRaw('roles.name as role, COUNT(*) as count')
+                ->groupBy('roles.name')
                 ->get()
                 ->pluck('count', 'role'),
-            'recent_users' => User::latest()->limit(10)->get(['id', 'name', 'email', 'role', 'created_at']),
+            'recent_users' => User::with('role')->latest()->limit(10)->get(['id', 'name', 'email', 'role_id', 'created_at']),
         ];
 
         return response()->json($stats);
@@ -199,7 +211,8 @@ class UserController extends Controller
             ], 400);
         }
 
-        $updatedCount = User::whereIn('id', $userIds)->update(['role' => $request->role]);
+        $role = Role::firstOrCreate(['name' => $request->role], ['description' => null]);
+        $updatedCount = User::whereIn('id', $userIds)->update(['role_id' => $role->id]);
 
         return response()->json([
             'message' => "{$updatedCount} user(s) updated successfully",

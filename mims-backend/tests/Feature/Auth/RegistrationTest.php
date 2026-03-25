@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -11,7 +13,8 @@ class RegistrationTest extends TestCase
 
     public function test_new_users_can_register(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin'], ['description' => null]);
+        $admin = User::factory()->create(['role_id' => $adminRole->id]);
 
         $response = $this->actingAs($admin, 'sanctum')->post('/api/register', [
             'name' => 'Test User',

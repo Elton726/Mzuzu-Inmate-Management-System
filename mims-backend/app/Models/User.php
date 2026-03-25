@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class User extends Authenticatable
 {
@@ -21,7 +22,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',
+        'role_id',
+        'is_active',
+        'last_login',
     ];
 
     /**
@@ -44,18 +47,30 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
+            'last_login' => 'datetime',
         ];
     }
 
 
-    // Helper method to check roles
-    public function hasRole($role): bool
+    public function role(): BelongsTo
     {
-        return $this->role === $role;
+        return $this->belongsTo(Role::class);
+    }
+
+    public function getRoleNameAttribute(): ?string
+    {
+        return $this->role?->name ?? $this->getAttribute('role');
+    }
+
+    // Helper method to check roles (supports role_id->role->name and legacy string role)
+    public function hasRole(string $role): bool
+    {
+        return $this->role_name === $role;
     }
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->role_name === 'admin';
     }
 }

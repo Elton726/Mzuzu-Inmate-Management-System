@@ -9,19 +9,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('roles')) {
-            Schema::create('roles', function (Blueprint $table) {
-                $table->id();
-                $table->string('name', 50)->unique();
-                $table->text('description')->nullable();
-                $table->timestamps();
-            });
-        }
-
-        // This project previously used a string `role` column on `users`.
-        // Later migrations introduced `role_id` and related fields. Since there
-        // are multiple historical migrations with the same intent, keep this
-        // migration idempotent for `migrate:fresh` and CI (sqlite).
+        // Keep idempotent: this migration was created after an earlier
+        // `add_role_to_users_table` migration and may run in the same project
+        // during `migrate:fresh` (sqlite) even if the columns already exist.
         if (Schema::hasColumn('users', 'role_id')) {
             return;
         }
@@ -42,11 +32,10 @@ return new class extends Migration
         }
 
         Schema::table('users', function (Blueprint $table) {
-            // Drop FK first (if it exists), then drop columns.
             try {
                 $table->dropForeign(['role_id']);
             } catch (\Throwable $e) {
-                // Ignore: allows rollback on sqlite/tests where FK names differ.
+                // Ignore for portability (sqlite/tests).
             }
 
             $table->dropColumn(['role_id', 'is_active', 'last_login']);
