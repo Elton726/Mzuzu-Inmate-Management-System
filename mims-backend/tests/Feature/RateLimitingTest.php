@@ -3,11 +3,14 @@
 namespace Tests\Feature;
 
 use Tests\TestCase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use App\Services\RateLimitService;
 
 class RateLimitingTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected RateLimitService $rateLimitService;
 
     protected function setUp(): void
