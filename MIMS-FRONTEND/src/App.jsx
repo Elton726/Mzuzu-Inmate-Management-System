@@ -10,6 +10,8 @@ import AdminDashboard from './modules/admin/pages/AdminDashboard';
 import UserManagementPage from './modules/admin/pages/UserManagementPage';
 import AdmissionFormPage from './modules/admissions/pages/AdmissionFormPage';
 import AdmissionShowPage from './modules/admissions/pages/AdmissionShowPage';
+import AdmissionsIndexPage from './modules/admissions/pages/AdmissionsIndexPage';
+import InmateDetailPage from './modules/admissions/pages/InmateDetailPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import { ToastProvider } from './contexts/ToastContext';
@@ -64,6 +66,14 @@ const AppContent = () => {
             }
           />
           <Route
+            path="/admissions"
+            element={
+              <ProtectedRoute allowedRoles={['reception_officer']}>
+                <AdmissionsIndexPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admissions/new"
             element={
               <ProtectedRoute allowedRoles={['reception_officer']}>
@@ -76,6 +86,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute allowedRoles={['reception_officer', 'station_officer']}>
                 <AdmissionShowPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/inmates/:inmateId"
+            element={
+              <ProtectedRoute allowedRoles={['reception_officer', 'station_officer']}>
+                <InmateDetailPage />
               </ProtectedRoute>
             }
           />

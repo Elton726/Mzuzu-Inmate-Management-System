@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import AdmissionStepper from '../components/AdmissionStepper';
 import StepInmateSelect from '../components/steps/StepInmateSelect';
 import StepAdmissionDetails from '../components/steps/StepAdmissionDetails';
@@ -7,6 +7,7 @@ import StepDocuments from '../components/steps/StepDocuments';
 import { toast } from 'react-toastify';
 import { uploadDocument } from '../services/documentService';
 import { createAdmission } from '../services/admissionService';
+import { getInmate } from '../services/inmateService';
 
 const toIso = (val) => (val ? new Date(val).toISOString().slice(0, 10) : null);
 
@@ -44,6 +45,7 @@ const buildAdmissionPayload = ({ inmateId, admission, warrantDocId }) => {
 
 export default function AdmissionFormPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const steps = useMemo(
     () => ([
       { key: 'inmate', label: 'Inmate' },
@@ -61,6 +63,31 @@ export default function AdmissionFormPage() {
   const [admissionDraft, setAdmissionDraft] = useState(null);
   const [documentsDraft, setDocumentsDraft] = useState(null);
 
+  useEffect(() => {
+    const inmateId = searchParams.get('inmateId');
+    if (!inmateId) return;
+    if (selectedInmate?.id) return;
+
+    const loadInmate = async () => {
+      try {
+        const inmate = await getInmate(inmateId);
+        const activeAdmission = inmate?.current_admission || inmate?.currentAdmission || null;
+        if (activeAdmission?.id) {
+          toast.error('This inmate already has an active admission. Finish it before creating a new one.');
+          navigate(`/admissions/${activeAdmission.id}`);
+          return;
+        }
+        setSelectedInmate(inmate);
+        setCurrent(1);
+        toast.success('Inmate loaded for admission');
+      } catch (err) {
+        toast.error(err?.response?.data?.message || err.message || 'Failed to load inmate');
+      }
+    };
+
+    loadInmate();
+  }, [searchParams, selectedInmate, navigate]);
+
   const onInmateSelected = ({ inmate, inmateDraft: draft }) => {
     setSelectedInmate(inmate);
     if (draft) setInmateDraft(draft);
@@ -77,6 +104,12 @@ export default function AdmissionFormPage() {
     if (!selectedInmate?.id) {
       toast.error('Select or create an inmate first.');
       setCurrent(0);
+      return;
+    }
+    const activeAdmission = selectedInmate?.current_admission || selectedInmate?.currentAdmission || null;
+    if (activeAdmission?.id) {
+      toast.error('This inmate already has an active admission. Finish it before creating a new one.');
+      navigate(`/admissions/${activeAdmission.id}`);
       return;
     }
     if (!admissionDraft) {
@@ -183,4 +216,3 @@ export default function AdmissionFormPage() {
     </div>
   );
 }
-

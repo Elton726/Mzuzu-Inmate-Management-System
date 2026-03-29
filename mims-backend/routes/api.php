@@ -48,6 +48,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Inmate Admission Module
     Route::middleware(['role:reception_officer,station_officer'])->group(function () {
+        Route::get('/inmates', [InmateController::class, 'index'])->middleware('throttle:60,60,user');
         Route::post('/inmates/check-duplicate', [InmateController::class, 'checkDuplicate'])->middleware('throttle:30,60,user');
         Route::get('/inmates/search', [InmateController::class, 'search'])->middleware('throttle:60,60,user');
         Route::get('/inmates/{inmate}', [InmateController::class, 'show'])->middleware('throttle:60,60,user');
@@ -55,7 +56,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::middleware(['role:reception_officer'])->group(function () {
         Route::post('/inmates', [InmateController::class, 'store'])->middleware('throttle:30,60,user');
-        Route::put('/inmates/{inmate}', [InmateController::class, 'update'])->middleware('throttle:30,60,user');
 
         Route::post('/admissions', [AdmissionController::class, 'store'])->middleware('throttle:30,60,user');
 

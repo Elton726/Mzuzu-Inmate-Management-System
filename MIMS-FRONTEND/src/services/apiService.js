@@ -231,11 +231,8 @@ class ApiService {
     });
   }
 
-  async updateInmate(inmateId, payload) {
-    return this.request('admissions_ops', `/inmates/${inmateId}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload)
-    });
+  async updateInmate() {
+    throw new Error('Inmate profile editing is disabled.');
   }
 
   async getAvailableCells(params = {}) {

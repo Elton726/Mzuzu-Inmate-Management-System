@@ -51,7 +51,7 @@ const Sidebar = ({ onClose }) => {
           )}
           {role === ROLES.RECEPTION_OFFICER && (
             <li>
-              <Link to="/admissions/new" className="hover:text-malawiGold transition flex items-center">
+              <Link to="/admissions" className="hover:text-malawiGold transition flex items-center">
                 <MdAssignment className="mr-2 text-xl" /> Admissions
               </Link>
             </li>

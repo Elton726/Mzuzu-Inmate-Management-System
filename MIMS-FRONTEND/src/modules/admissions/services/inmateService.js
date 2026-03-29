@@ -1,5 +1,10 @@
 import apiClient from '../../../services/apiClient';
 
+export const listInmates = async (params) => {
+  const res = await apiClient.get('/inmates', { params });
+  return res.data;
+};
+
 export const checkDuplicate = async (payload) => {
   const res = await apiClient.post('/inmates/check-duplicate', payload);
   return res.data;

@@ -23,7 +23,7 @@ class AdmissionModuleApiTest extends TestCase
         return User::factory()->create(['role_id' => $role->id]);
     }
 
-    public function test_reception_officer_can_create_search_show_and_update_inmate(): void
+    public function test_reception_officer_can_create_search_and_show_inmate(): void
     {
         $user = $this->userWithRole('reception_officer');
 
@@ -48,12 +48,6 @@ class AdmissionModuleApiTest extends TestCase
 
         $show = $this->actingAs($user, 'sanctum')->getJson("/api/inmates/{$inmateId}");
         $show->assertStatus(200)->assertJsonFragment(['id' => $inmateId]);
-
-        $update = $this->actingAs($user, 'sanctum')->putJson("/api/inmates/{$inmateId}", [
-            'next_of_kin_name' => 'Jane Doe',
-            'next_of_kin_contact' => '0999-000-111',
-        ]);
-        $update->assertStatus(200)->assertJsonFragment(['message' => 'Inmate updated successfully.']);
     }
 
     public function test_reception_officer_can_upload_document(): void
@@ -135,6 +129,18 @@ class AdmissionModuleApiTest extends TestCase
         ]);
         $admission->assertStatus(201)->assertJsonFragment(['case_number' => 'CR-123/2026']);
         $admissionId = $admission->json('id');
+
+        $second = $this->actingAs($user, 'sanctum')->postJson('/api/admissions', [
+            'inmate_id' => $inmate['id'],
+            'admission_date' => now()->toDateString(),
+            'admission_type' => 'repeat',
+            'inmate_type' => 'convict',
+            'case_number' => 'CR-SECOND',
+            'sentence_years' => 1,
+            'sentence_months' => 0,
+            'sentence_start_date' => now()->toDateString(),
+        ]);
+        $second->assertStatus(422);
 
         $show = $this->actingAs($user, 'sanctum')->getJson("/api/admissions/{$admissionId}");
         $show->assertStatus(200)->assertJsonFragment(['id' => $admissionId]);

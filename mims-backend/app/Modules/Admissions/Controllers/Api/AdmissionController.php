@@ -35,6 +35,10 @@ class AdmissionController extends Controller
 
         $inmate = Inmate::findOrFail($validated['inmate_id']);
 
+        if ($inmate->currentAdmission()->exists()) {
+            abort(422, 'Inmate already has an active admission. Complete the current admission before creating a new one.');
+        }
+
         $admission = DB::transaction(function () use ($validated, $inmate, $user, $request) {
             if ($validated['admission_type'] === 'repeat') {
                 Admission::where('inmate_id', $inmate->id)->where('is_current', true)->update(['is_current' => false]);

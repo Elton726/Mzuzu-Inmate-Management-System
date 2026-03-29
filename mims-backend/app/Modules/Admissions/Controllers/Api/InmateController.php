@@ -28,6 +28,25 @@ class InmateController extends Controller
         ]);
     }
 
+    public function index(Request $request)
+    {
+        $request->validate([
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'sort_by' => ['nullable', 'string', 'in:id,prison_number,first_name,last_name,date_of_birth,status'],
+            'sort_order' => ['nullable', 'string', 'in:asc,desc'],
+        ]);
+
+        $perPage = $request->integer('per_page', 25);
+        $sortBy = $request->string('sort_by', 'id')->toString();
+        $sortOrder = $request->string('sort_order', 'desc')->toString();
+
+        $query = Inmate::query()
+            ->withCount('admissions')
+            ->with(['currentAdmission:id,inmate_id,is_current,admission_date,inmate_type,case_number']);
+
+        return response()->json($query->orderBy($sortBy, $sortOrder)->paginate($perPage));
+    }
+
     public function search(Request $request)
     {
         $request->validate([
@@ -37,10 +56,15 @@ class InmateController extends Controller
         $q = $request->string('q')->toString();
 
         $query = Inmate::query()
-            ->where('prison_number', 'like', "%{$q}%")
-            ->orWhere('first_name', 'like', "%{$q}%")
-            ->orWhere('last_name', 'like', "%{$q}%")
-            ->orWhere('national_id', 'like', "%{$q}%");
+            ->withCount('admissions')
+            ->with(['currentAdmission:id,inmate_id,is_current,admission_date,inmate_type,case_number'])
+            ->where(function ($builder) use ($q) {
+                $builder
+                    ->where('prison_number', 'like', "%{$q}%")
+                    ->orWhere('first_name', 'like', "%{$q}%")
+                    ->orWhere('last_name', 'like', "%{$q}%")
+                    ->orWhere('national_id', 'like', "%{$q}%");
+            });
 
         return response()->json($query->orderBy('id', 'desc')->paginate(25));
     }

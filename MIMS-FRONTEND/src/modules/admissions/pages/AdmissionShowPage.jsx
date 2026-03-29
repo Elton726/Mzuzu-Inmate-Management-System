@@ -59,6 +59,11 @@ export default function AdmissionShowPage() {
           <p className="text-gray-600">
             {inmate.prison_number ? `${inmate.prison_number} — ` : ''}{inmate.first_name} {inmate.last_name}
           </p>
+          {typeof inmate.is_young_offender === 'boolean' && (
+            <p className="text-sm text-gray-600 mt-1">
+              Young offender: <span className={`font-semibold ${inmate.is_young_offender ? 'text-malawiRed' : 'text-gray-800'}`}>{inmate.is_young_offender ? 'Yes' : 'No'}</span>
+            </p>
+          )}
         </div>
         <div className="flex gap-3">
           <button
@@ -68,6 +73,14 @@ export default function AdmissionShowPage() {
           >
             Refresh
           </button>
+          {inmate?.id && (
+            <Link
+              className="bg-malawiGold text-malawiBlack px-4 py-2 rounded hover:bg-malawiRed hover:text-malawiGold transition"
+              to={`/inmates/${inmate.id}`}
+            >
+              View inmate profile
+            </Link>
+          )}
           <Link
             className="bg-malawiBlack text-malawiGold px-4 py-2 rounded hover:opacity-90 transition"
             to="/admissions/new"
@@ -199,4 +212,3 @@ export default function AdmissionShowPage() {
     </div>
   );
 }
-
