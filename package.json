@@ -1,0 +1,6 @@
+{
+  "devDependencies": {
+    "@storybook/addon-docs": "^10.3.3",
+    "@storybook/react": "^10.3.3"
+  }
+}

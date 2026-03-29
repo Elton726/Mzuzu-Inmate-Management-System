@@ -1,7 +1,29 @@
-// Password validation
+/**
+ * Utility Functions for MIMS Frontend
+ *
+ * This module contains various utility functions for:
+ * - Input validation (password, email)
+ * - Date/time formatting
+ * - Error handling and normalization
+ * - Role management and display
+ * - API response processing
+ */
+
+/**
+ * Validate password strength
+ *
+ * Checks password against security requirements:
+ * - Minimum 8 characters
+ * - At least one uppercase letter
+ * - At least one number
+ * - At least one special character
+ *
+ * @param {string} password - Password to validate
+ * @returns {string[]} Array of validation error messages (empty if valid)
+ */
 export const validatePassword = (password) => {
   const errors = [];
-  
+
   if (password.length < 8) {
     errors.push('Password must be at least 8 characters');
   }
@@ -14,17 +36,31 @@ export const validatePassword = (password) => {
   if (!/[!@#$%^&*()_+\-={}[\];:'"\\|,.<>/?]/.test(password)) {
     errors.push('Password must contain at least one special character');
   }
-  
+
   return errors;
 };
 
-// Email validation
+/**
+ * Validate email format
+ *
+ * Uses basic regex pattern for email validation
+ *
+ * @param {string} email - Email address to validate
+ * @returns {boolean} True if email format is valid
+ */
 export const validateEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 };
 
-// Format date
+/**
+ * Format date string for display
+ *
+ * Converts ISO date string to localized date format (MM/DD/YYYY)
+ *
+ * @param {string} dateString - ISO date string
+ * @returns {string} Formatted date string
+ */
 export const formatDate = (dateString) => {
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', {
@@ -34,7 +70,14 @@ export const formatDate = (dateString) => {
   });
 };
 
-// Format datetime
+/**
+ * Format datetime string for display
+ *
+ * Converts ISO datetime string to localized format with time
+ *
+ * @param {string} dateString - ISO datetime string
+ * @returns {string} Formatted datetime string
+ */
 export const formatDateTime = (dateString) => {
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', {
@@ -46,7 +89,14 @@ export const formatDateTime = (dateString) => {
   });
 };
 
-// Get error message from API response
+/**
+ * Extract user-friendly error message from API error
+ *
+ * Handles different error formats and rate limiting messages
+ *
+ * @param {Error|Object|string} error - Error object from API call
+ * @returns {string} User-friendly error message
+ */
 export const getErrorMessage = (error) => {
   if (typeof error === 'string') return error;
   const retryAfter = error?.rateLimit?.retryAfter ?? error?.data?.retry_after;
@@ -60,7 +110,14 @@ export const getErrorMessage = (error) => {
   return 'An unexpected error occurred';
 };
 
-// Get field errors from validation response
+/**
+ * Extract field-specific validation errors from API response
+ *
+ * Converts Laravel-style validation errors to field-error mapping
+ *
+ * @param {Error|Object} error - Error object from API validation failure
+ * @returns {Object} Object mapping field names to error messages
+ */
 export const getFieldErrors = (error) => {
   if (error.data?.errors) {
     const fieldErrors = {};
@@ -72,7 +129,17 @@ export const getFieldErrors = (error) => {
   return {};
 };
 
-// Normalize role values coming from backend (string or relationship object)
+/**
+ * Extract role name from user object or role data
+ *
+ * Handles different formats of role data from backend:
+ * - String role name
+ * - User object with role relationship
+ * - Role object with name property
+ *
+ * @param {Object|string} userOrRole - User object, role object, or role string
+ * @returns {string|null} Normalized role name or null if not found
+ */
 export const getRoleName = (userOrRole) => {
   if (!userOrRole) return null;
   if (typeof userOrRole === 'string') return userOrRole;
@@ -92,7 +159,14 @@ export const getRoleName = (userOrRole) => {
   return null;
 };
 
-// Role display name
+/**
+ * Get human-readable role display name
+ *
+ * Converts role slugs to proper display names for UI
+ *
+ * @param {Object|string} userOrRole - User object, role object, or role string
+ * @returns {string} Display name for the role
+ */
 export const getRoleDisplayName = (userOrRole) => {
   const role = getRoleName(userOrRole);
   const roleMap = {
@@ -105,6 +179,11 @@ export const getRoleDisplayName = (userOrRole) => {
   return roleMap[role] || role;
 };
 
+/**
+ * Role Constants
+ *
+ * Centralized role definitions for consistency across the application
+ */
 export const ROLES = {
   ADMIN: 'admin',
   RECEPTION_OFFICER: 'reception_officer',
@@ -113,6 +192,11 @@ export const ROLES = {
   GATEKEEPER: 'gatekeeper'
 };
 
+/**
+ * Role Options for Select Components
+ *
+ * Pre-formatted options array for role selection dropdowns
+ */
 export const ROLE_OPTIONS = [
   { value: 'admin', label: 'Administrator' },
   { value: 'reception_officer', label: 'Reception Officer' },

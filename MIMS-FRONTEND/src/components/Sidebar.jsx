@@ -5,28 +5,61 @@ import { MdHome, MdPerson, MdDashboard, MdPeople, MdLogout, MdAssignment } from 
 import { getRoleName, ROLES } from '../utils/helpers';
 import logo from '/government-logo.png';
 
+/**
+ * Sidebar Navigation Component
+ *
+ * Main navigation sidebar for authenticated users with role-based menu items.
+ * Features Malawi government branding, responsive design, and logout confirmation.
+ *
+ * Features:
+ * - Role-based navigation (admin, reception officer, regular users)
+ * - Malawi government logo and branding
+ * - Collapsible/closeable design
+ * - Logout confirmation modal
+ * - Responsive layout with fixed positioning
+ *
+ * Navigation Items by Role:
+ * - All users: Profile
+ * - Non-admin: Home
+ * - Reception Officer: Admissions
+ * - Admin: Admin Dashboard, User Management
+ *
+ * @param {Object} props - Component props
+ * @param {Function} props.onClose - Callback to close/hide the sidebar
+ */
 const Sidebar = ({ onClose }) => {
   const { logout, isAdmin, user } = useAuth();
   const navigate = useNavigate();
   const [showConfirmation, setShowConfirmation] = useState(false);
   const role = getRoleName(user);
 
+  /**
+   * Handle logout button click - show confirmation modal
+   */
   const handleLogoutClick = () => {
     setShowConfirmation(true);
   };
 
+  /**
+   * Confirm and execute logout
+   * Calls auth logout and redirects to login page
+   */
   const handleConfirmLogout = async () => {
     setShowConfirmation(false);
     await logout();
     navigate('/login');
   };
 
+  /**
+   * Cancel logout - hide confirmation modal
+   */
   const handleCancelLogout = () => {
     setShowConfirmation(false);
   };
 
   return (
     <aside className="w-64 h-screen bg-malawiBlack text-malawiGold flex flex-col shadow-lg fixed top-0 left-0 z-50 transition-transform duration-300">
+      {/* Header with government logo and close button */}
       <div className="flex items-center justify-between h-24 border-b border-malawiGold px-4">
         <div className="flex items-center">
           <img src={logo} alt="Malawi Government Logo" className="h-16 w-16 rounded-full border-4 border-malawiRed" />
@@ -40,8 +73,11 @@ const Sidebar = ({ onClose }) => {
           ✕
         </button>
       </div>
+
+      {/* Main navigation menu */}
       <nav className="flex-1 mt-8">
         <ul className="space-y-4 px-6">
+          {/* Home link for non-admin users */}
           {!isAdmin && (
             <li>
               <Link to="/" className="hover:text-malawiRed transition flex items-center">
@@ -49,6 +85,8 @@ const Sidebar = ({ onClose }) => {
               </Link>
             </li>
           )}
+
+          {/* Admissions link for reception officers */}
           {role === ROLES.RECEPTION_OFFICER && (
             <li>
               <Link to="/admissions" className="hover:text-malawiGold transition flex items-center">
@@ -56,11 +94,15 @@ const Sidebar = ({ onClose }) => {
               </Link>
             </li>
           )}
+
+          {/* Profile link for all users */}
           <li>
             <Link to="/profile" className="hover:text-malawiGreen transition flex items-center">
               <MdPerson className="mr-2 text-xl" /> Profile
             </Link>
           </li>
+
+          {/* Admin-only navigation items */}
           {isAdmin && (
             <>
               <li>
@@ -77,12 +119,15 @@ const Sidebar = ({ onClose }) => {
           )}
         </ul>
       </nav>
+
+      {/* Logout button at bottom */}
       <div className="mt-auto px-6 py-4 border-t border-malawiGold">
         <button onClick={handleLogoutClick} className="w-full bg-malawiRed text-malawiGold py-2 rounded hover:bg-malawiGold hover:text-malawiBlack transition font-semibold flex items-center justify-center gap-2">
           <MdLogout /> Logout
         </button>
       </div>
 
+      {/* Logout confirmation modal */}
       {showConfirmation && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
           <div className="bg-malawiGold text-malawiBlack rounded-lg shadow-lg p-6 max-w-sm mx-4">

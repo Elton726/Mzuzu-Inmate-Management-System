@@ -1,4 +1,28 @@
 
+/**
+ * Main Application Component - MIMS (Mzuzu Inmate Management System)
+ *
+ * This component serves as the root of the application, managing:
+ * - Client-side routing with React Router
+ * - Authentication state and protected routes
+ * - Global layout with sidebar navigation
+ * - Toast notifications
+ * - Role-based access control
+ *
+ * Architecture:
+ * - Uses BrowserRouter for clean URLs
+ * - Context providers wrap the entire app for global state
+ * - Protected routes enforce authentication and role permissions
+ * - Modular structure with feature-based routing
+ *
+ * Route Structure:
+ * - Public: /login
+ * - Protected (all users): /, /profile
+ * - Reception Officer: /admissions/*
+ * - Station Officer: /inmates/:id, /admissions/:id
+ * - Admin: /admin/*
+ */
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
@@ -17,11 +41,19 @@ import Sidebar from './components/Sidebar';
 import { ToastProvider } from './contexts/ToastContext';
 import { ToastContainer } from 'react-toastify';
 
-// Main App content with routing
+/**
+ * AppContent Component - Handles authenticated user interface
+ *
+ * Manages the main application layout including:
+ * - Loading state during authentication checks
+ * - Sidebar navigation toggle
+ * - Route rendering based on authentication status
+ */
 const AppContent = () => {
   const { isAuthenticated, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
 
+  // Show loading spinner during authentication verification
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-100">
@@ -35,10 +67,14 @@ const AppContent = () => {
 
   return (
     <div className="flex">
+      {/* Sidebar - only shown for authenticated users when open */}
       {isAuthenticated && sidebarOpen && (
         <Sidebar onClose={() => setSidebarOpen(false)} />
       )}
+
+      {/* Main content area - adjusts margin based on sidebar state */}
       <div className={isAuthenticated && sidebarOpen ? "ml-64 flex-1" : "flex-1"}>
+        {/* Sidebar toggle button - shown when sidebar is closed */}
         {isAuthenticated && !sidebarOpen && (
           <button
             className="fixed top-4 left-4 z-50 bg-malawiGold text-malawiBlack p-2 rounded shadow hover:bg-malawiRed hover:text-malawiGold transition"
@@ -47,8 +83,13 @@ const AppContent = () => {
             ☰ Open Sidebar
           </button>
         )}
+
+        {/* Application Routes */}
         <Routes>
+          {/* Public route - accessible without authentication */}
           <Route path="/login" element={<LoginPage />} />
+
+          {/* Protected routes - require authentication */}
           <Route
             path="/"
             element={
@@ -65,6 +106,8 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
+
+          {/* Reception Officer routes - inmate admissions management */}
           <Route
             path="/admissions"
             element={
@@ -89,6 +132,8 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
+
+          {/* Inmate detail routes - accessible by reception and station officers */}
           <Route
             path="/inmates/:inmateId"
             element={
@@ -97,6 +142,8 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
+
+          {/* Admin routes - system administration */}
           <Route
             path="/admin/dashboard"
             element={
@@ -113,6 +160,8 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
+
+          {/* Catch-all route - redirects to home for authenticated users, login for others */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
@@ -120,6 +169,20 @@ const AppContent = () => {
   );
 };
 
+/**
+ * Main App Function - Root component with provider setup
+ *
+ * Provider Hierarchy (outer to inner):
+ * 1. Router - Client-side routing
+ * 2. ToastProvider - Global toast notification state
+ * 3. AuthProvider - Authentication state and user management
+ * 4. AppContent - Main application UI with routes
+ *
+ * The ToastContainer is configured with:
+ * - Position: top-right
+ * - Auto-close: 7 seconds
+ * - Custom styling via ToastContext
+ */
 function App() {
   return (
     <Router>

@@ -1,42 +1,85 @@
+/**
+ * Global Styles for MIMS Frontend Application
+ *
+ * This file contains:
+ * - Tailwind CSS directives for base styles, components, and utilities
+ * - Custom utility classes for Malawi-themed colors
+ * - Component-specific styles for consistent UI elements
+ * - Global body styling with Malawi gold background
+ */
+
+/* Import Tailwind CSS layers */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Custom Utility Classes for Malawi National Colors
+ *
+ * These classes provide consistent access to the official Malawi color scheme:
+ * - Black (#000000) - Primary text and borders
+ * - Red (#D71920) - Error states and important actions
+ * - Gold (#FFD700) - Primary brand color, backgrounds, accents
+ * - Green (#00843D) - Success states and positive actions
+ */
 @layer utilities {
-	.bg-malawiGold {
-		background-color: #FFD700;
-	}
-	.text-malawiBlack {
-		color: #000000;
-	}
-	.text-malawiRed {
-		color: #D71920;
-	}
-	.border-malawiGreen {
-		border-color: #00843D;
-	}
-	.border-malawiGold {
-		border-color: #FFD700;
-	}
-	.bg-malawiRed {
-		background-color: #D71920;
-	}
-	.bg-malawiGreen {
-		background-color: #00843D;
-	}
+  /* Gold color utilities */
+  .bg-malawiGold {
+    background-color: #FFD700;
+  }
+  .text-malawiBlack {
+    color: #000000;
+  }
+  .text-malawiRed {
+    color: #D71920;
+  }
+  .border-malawiGreen {
+    border-color: #00843D;
+  }
+  .border-malawiGold {
+    border-color: #FFD700;
+  }
+
+  /* Red color utilities */
+  .bg-malawiRed {
+    background-color: #D71920;
+  }
+
+  /* Green color utilities */
+  .bg-malawiGreen {
+    background-color: #00843D;
+  }
 }
 
+/**
+ * Modern Heading Component Style
+ *
+ * Consistent heading styling used throughout the application
+ * Features large text, red color, and proper spacing
+ */
 .modern-heading {
-	@apply text-3xl font-bold text-red-600 mb-4;
-	/* For custom color, use .text-malawiRed in JSX */
+  @apply text-3xl font-bold text-red-600 mb-4;
+  /* For custom color, use .text-malawiRed in JSX */
 }
 
+/**
+ * Modern Card Component Style
+ *
+ * Standard card styling for content containers
+ * White background with shadow and green border accent
+ */
 .modern-card {
-	@apply bg-white rounded-lg shadow-md p-6 border border-green-700;
-	/* For custom border, use .border-malawiGreen in JSX */
+  @apply bg-white rounded-lg shadow-md p-6 border border-green-700;
+  /* For custom border, use .border-malawiGreen in JSX */
 }
 
+/**
+ * Global Body Styling
+ *
+ * Sets the default page background to Malawi gold
+ * Ensures consistent base styling across all pages
+ */
 body {
-	@apply bg-yellow-400 text-black font-sans;
-	/* For custom background, use .bg-malawiGold in JSX */
+  @apply bg-yellow-400 text-black font-sans;
+  /* For custom background, use .bg-malawiGold in JSX */
 }
