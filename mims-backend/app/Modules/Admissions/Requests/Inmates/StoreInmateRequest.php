@@ -25,6 +25,7 @@ class StoreInmateRequest extends FormRequest
             'marital_status' => ['nullable', 'string', 'max:20'],
             'next_of_kin_name' => ['nullable', 'string', 'max:100'],
             'next_of_kin_contact' => ['nullable', 'string', 'max:50'],
+            'personal_belongings' => ['nullable', 'string', 'max:500'],
         ];
     }
 }

@@ -24,6 +24,7 @@ class Inmate extends Model
         'marital_status',
         'next_of_kin_name',
         'next_of_kin_contact',
+        'personal_belongings',
         'photo_path',
         'status',
     ];

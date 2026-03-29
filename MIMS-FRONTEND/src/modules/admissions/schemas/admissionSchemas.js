@@ -23,6 +23,7 @@ export const inmateSchema = z.object({
   maritalStatus: z.string().optional().or(z.literal('')),
   nextOfKinName: z.string().optional().or(z.literal('')),
   nextOfKinContact: z.string().optional().or(z.literal('')),
+  personalBelongings: z.string().max(500, 'Personal belongings must be at most 500 characters').optional().or(z.literal('')),
   isYoungOffender: z.boolean().optional()
 });
 

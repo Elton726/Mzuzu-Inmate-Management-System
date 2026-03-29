@@ -16,6 +16,52 @@ const mapInmateTypeToSecurityClassification = (inmateType) => {
   return 'minimum';
 };
 
+const COURTS = [
+  'Mzuzu High Court',
+  'Chief Resident Magistrate Court (Mzuzu)',
+  'Mzimba Magistrate Court',
+  'Ezondweni Magistrate Court',
+  'Encisweni Magistrate Court',
+  'Luzi Magistrate Court',
+  'Euthini Magistrate Court',
+  'Enchakachakeni Magistrate Court',
+  'Emfeni Magistrate Court',
+  'Ephangweni Magistrate Court',
+  'Edingeni Magistrate Court',
+  'Eswazini Magistrate Court',
+  'Karonga Magistrate Court',
+  'Ngerenge Magistrate Court',
+  'Mbande Magistrate Court',
+  'Uliwa Magistrate Court',
+  'Nyungwe Magistrate Court',
+  'Ngana Magistrate Court',
+  'Nkhata Bay Magistrate Court',
+  'Kalambwe Magistrate Court',
+  'Mpamba Magistrate Court',
+  'Mzenga Magistrate Court',
+  'Sanga Magistrate Court',
+  'Chintheche Magistrate Court',
+  'Tukombo Magistrate Court',
+  'Likoma Magistrate Court',
+  'Ruarwe Magistrate Court',
+  'Usiska Magistrate Court',
+  'Rumphi Magistrate Court',
+  'Bolero Magistrate Court',
+  'Katowo Magistrate Court',
+  'Henga Magistrate Court',
+  'Chinyolo Magistrate Court',
+  'Tchalo Magistrate Court',
+  'Phoka Magistrate Court',
+  'Lura Magistrate Court',
+  'Mlowe Magistrate Court',
+  'Chitipa Magistrate Court',
+  'Wilindi Magistrate Court',
+  'Chinunkha Magistrate Court',
+  'Ilongo Magistrate Court',
+  'Nthalire Magistrate Court',
+  'Wenya Magistrate Court'
+];
+
 const flattenErrors = (errs) => {
   const out = [];
   const walk = (node, path = []) => {
@@ -156,7 +202,14 @@ export default function StepAdmissionDetails({ defaultValues, onBack, onNext }) 
             <input className={`w-full border rounded px-3 py-2 ${errors.caseNumber ? 'border-red-500' : ''}`} {...register('caseNumber')} />
           </FormField>
           <FormField label="Court name" error={errors.courtName?.message}>
-            <input className={`w-full border rounded px-3 py-2 ${errors.courtName ? 'border-red-500' : ''}`} {...register('courtName')} />
+            <select className={`w-full border rounded px-3 py-2 ${errors.courtName ? 'border-red-500' : ''}`} {...register('courtName')}>
+              <option value="">Select a court</option>
+              {COURTS.map((court) => (
+                <option key={court} value={court}>
+                  {court}
+                </option>
+              ))}
+            </select>
           </FormField>
           <FormField label="Offence description" error={errors.offenceDescription?.message}>
             <input className={`w-full border rounded px-3 py-2 ${errors.offenceDescription ? 'border-red-500' : ''}`} {...register('offenceDescription')} />

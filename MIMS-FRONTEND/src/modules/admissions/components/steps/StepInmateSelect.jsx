@@ -100,7 +100,8 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
         marital_status: form.maritalStatus || null,
         next_of_kin_name: form.nextOfKinName || null,
         next_of_kin_contact: form.nextOfKinContact || null,
-        is_young_offender: Boolean(form.isYoungOffender)
+        is_young_offender: Boolean(form.isYoungOffender),
+        personal_belongings: form.personalBelongings || null
       };
       const created = await createInmate(payload);
       toast.success(`Inmate created (${created?.prison_number || created?.id})`);
@@ -144,6 +145,9 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
             </FormField>
             <FormField label="Next of kin contact" error={errors.nextOfKinContact?.message}>
               <input className="w-full border rounded px-3 py-2" {...register('nextOfKinContact')} />
+            </FormField>
+            <FormField label="Personal belongings" error={errors.personalBelongings?.message}>
+              <textarea className="w-full border rounded px-3 py-2" {...register('personalBelongings')} rows={3} />
             </FormField>
           </div>
 

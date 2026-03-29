@@ -27,6 +27,7 @@ class UpdateInmateRequest extends FormRequest
             'marital_status' => ['sometimes', 'nullable', 'string', 'max:20'],
             'next_of_kin_name' => ['sometimes', 'nullable', 'string', 'max:100'],
             'next_of_kin_contact' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'personal_belongings' => ['sometimes', 'nullable', 'string', 'max:500'],
             'status' => ['sometimes', 'in:active,released,deceased,transferred'],
         ];
     }
