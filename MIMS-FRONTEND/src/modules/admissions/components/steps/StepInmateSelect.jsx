@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import FormField from '../../../../components/common/FormField';
 import { inmateSchema } from '../../schemas/admissionSchemas';
-import { checkDuplicate, createInmate, searchInmates } from '../../services/inmateService';
+import { checkDuplicate, createInmate } from '../../services/inmateService';
 import { toast } from 'react-toastify';
 import { useDebouncedValue } from '../../../../utils/useDebouncedValue';
 
@@ -23,17 +23,7 @@ const computeAgeYears = (dobIso) => {
   return age;
 };
 
-const getAdmissionsCount = (inmate) => {
-  const n = inmate?.admissions_count ?? inmate?.admissionsCount;
-  return typeof n === 'number' ? n : null;
-};
-
-const getCurrentAdmission = (inmate) => inmate?.current_admission || inmate?.currentAdmission || null;
-
 export default function StepInmateSelect({ defaultValues, onSelected }) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState([]);
   const [checking, setChecking] = useState(false);
   const [dupes, setDupes] = useState(null);
   const [creating, setCreating] = useState(false);
@@ -67,7 +57,6 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
   }, [watchFirst, watchLast, watchDob]);
 
   const debouncedFormValues = useDebouncedValue({ firstName: watchFirst, lastName: watchLast, dateOfBirth: watchDob, nationalId: watch('nationalId') }, 500);
-  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
 
   // Auto check duplicates when form fields change
   useEffect(() => {
@@ -96,38 +85,6 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
 
     checkDupesImplicitly();
   }, [debouncedFormValues, canCheckDupes, getValues]);
-
-  const runSearch = useCallback(async (q) => {
-    const trimmed = (q || '').trim();
-    if (trimmed.length < 2) {
-      setResults([]);
-      return;
-    }
-    try {
-      setSearching(true);
-      const data = await searchInmates({ q: trimmed });
-      const items = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
-      setResults(items);
-    } catch (err) {
-      toast.error(err?.response?.data?.message || err.message || 'Search failed');
-    } finally {
-      setSearching(false);
-    }
-  }, []);
-
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    const q = searchQuery.trim();
-    if (q.length < 2) {
-      toast.error('Enter at least 2 characters to search.');
-      return;
-    }
-    await runSearch(q);
-  };
-
-  useEffect(() => {
-    runSearch(debouncedSearchQuery);
-  }, [debouncedSearchQuery, runSearch]);
 
   const onCreate = async (form) => {
     try {
@@ -158,74 +115,6 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-3">Search existing inmate</h2>
-        <form onSubmit={handleSearch} className="flex gap-3">
-          <input
-            className="flex-1 border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-malawiGold"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by prison number, name, or national ID"
-          />
-          <button
-            type="submit"
-            className="bg-malawiGold text-malawiBlack px-4 py-2 rounded hover:bg-malawiRed hover:text-malawiGold transition disabled:opacity-60"
-            disabled={searching}
-          >
-            {searching ? 'Searching…' : 'Search'}
-          </button>
-        </form>
-        <p className="text-xs text-gray-500 mt-2">
-          Search results are read-only. Open an inmate profile to start an admission for that inmate.
-        </p>
-
-        <div className="mt-4">
-          {searchQuery.trim().length < 2 ? (
-            <p className="text-gray-500 text-sm">Type at least 2 characters to search.</p>
-          ) : results.length === 0 ? (
-            <p className="text-gray-500 text-sm">{searching ? 'Searching…' : 'No results.'}</p>
-          ) : (
-            <div className="border rounded divide-y">
-              {results.map((r) => {
-                const admissionsCount = getAdmissionsCount(r);
-                const currentAdmission = getCurrentAdmission(r);
-                const neverAdmitted = admissionsCount === 0 && !currentAdmission?.id;
-                return (
-                  <div
-                    key={r.id}
-                    className={[
-                      'px-4 py-3 transition flex items-start justify-between gap-4',
-                      neverAdmitted ? 'outline outline-2 outline-malawiGreen outline-offset-[-2px] bg-green-50' : 'hover:bg-gray-50'
-                    ].join(' ')}
-                  >
-                  <div className="text-left flex-1">
-                    <div className="font-semibold text-gray-800">
-                      {r.prison_number ? `${r.prison_number} — ` : ''}{r.first_name} {r.last_name}
-                    </div>
-                    <div className="text-sm text-gray-600">DOB: {r.date_of_birth || '--'} · National ID: {r.national_id || '--'}</div>
-                  </div>
-                  <div className="flex flex-col gap-2 shrink-0">
-                    {neverAdmitted && (
-                      <span className="inline-flex items-center self-end text-xs font-semibold px-2 py-1 rounded bg-malawiGreen text-white">
-                        Not admitted yet
-                      </span>
-                    )}
-                    <Link
-                      to={`/inmates/${r.id}`}
-                      className="text-sm font-semibold text-malawiRed hover:underline"
-                      title="View inmate profile"
-                    >
-                      View profile
-                    </Link>
-                  </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-semibold text-gray-800 mb-3">Create new inmate</h2>
 

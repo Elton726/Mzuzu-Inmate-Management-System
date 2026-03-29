@@ -196,12 +196,14 @@ export default function AdmissionsIndexPage() {
                     >
                       View profile
                     </Link>
-                    <Link
-                      to={`/admissions/new?inmateId=${inmate.id}`}
-                      className="text-sm font-semibold text-malawiGold hover:underline"
-                    >
-                      Start admission
-                    </Link>
+                    {!getCurrentAdmission(inmate)?.id && (
+                      <Link
+                        to={`/admissions/new?inmateId=${inmate.id}`}
+                        className="text-sm font-semibold text-malawiGold hover:underline"
+                      >
+                        Start admission
+                      </Link>
+                    )}
                   </div>
                 </div>
               ))}
