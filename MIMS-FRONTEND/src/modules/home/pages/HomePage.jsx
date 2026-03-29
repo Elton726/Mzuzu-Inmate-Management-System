@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../contexts/useAuth';
-import { getRoleDisplayName } from '../utils/helpers';
+import { useAuth } from '../../../contexts/useAuth';
+import { getRoleDisplayName } from '../../../utils/helpers';
 
 export const HomePage = () => {
   const { user, isAdmin } = useAuth();

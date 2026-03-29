@@ -17,6 +17,7 @@ class Inmate extends Model
         'last_name',
         'other_names',
         'date_of_birth',
+        'is_young_offender',
         'place_of_birth',
         'nationality',
         'national_id',
@@ -29,6 +30,7 @@ class Inmate extends Model
 
     protected $casts = [
         'date_of_birth' => 'date',
+        'is_young_offender' => 'boolean',
     ];
 
     public function admissions(): HasMany

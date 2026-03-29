@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/useAuth';
-import { useToast } from '../../contexts/useToast';
-import { getRoleName } from '../../utils/helpers';
+import { useAuth } from '../../../contexts/useAuth';
+import { useToast } from '../../../contexts/useToast';
+import { getRoleName } from '../../../utils/helpers';
 
 export const LoginPage = () => {
   const [email, setEmail] = useState('');

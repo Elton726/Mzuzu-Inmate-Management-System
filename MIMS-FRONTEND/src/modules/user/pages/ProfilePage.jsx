@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/useAuth';
-import { validatePassword, getErrorMessage, getFieldErrors, getRoleDisplayName } from '../../utils/helpers';
-import apiService from '../../services/apiService';
-import { useToast } from '../../contexts/useToast';
+import { useAuth } from '../../../contexts/useAuth';
+import { validatePassword, getErrorMessage, getFieldErrors, getRoleDisplayName } from '../../../utils/helpers';
+import apiService from '../../../services/apiService';
+import { useToast } from '../../../contexts/useToast';
 
 export const ProfilePage = () => {
   const { user, updateProfile } = useAuth();

@@ -30,6 +30,13 @@ class ApiService {
     };
   }
 
+  getFormHeaders() {
+    return {
+      'Accept': 'application/json',
+      ...(this.token && { 'Authorization': `Bearer ${this.token}` })
+    };
+  }
+
   getRateLimitStatus(key) {
     return this.lastRateLimit.get(key) ?? null;
   }
@@ -59,6 +66,21 @@ class ApiService {
       ...options,
       headers: {
         ...this.getHeaders(),
+        ...(options.headers || {})
+      }
+    });
+
+    this.updateRateLimitFromResponse(rateLimitKey, response);
+    return this.handleResponse(response);
+  }
+
+  async requestForm(rateLimitKey, path, formData, options = {}) {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      method: options.method || 'POST',
+      ...options,
+      body: formData,
+      headers: {
+        ...this.getFormHeaders(),
         ...(options.headers || {})
       }
     });
@@ -183,6 +205,68 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(userData)
     });
+  }
+
+  // Admissions module endpoints
+  async checkInmateDuplicate(payload) {
+    return this.request('admissions_ops', '/inmates/check-duplicate', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  async searchInmates(query) {
+    const queryString = new URLSearchParams({ q: query }).toString();
+    return this.request('admissions_ops', `/inmates/search?${queryString}`, { method: 'GET' });
+  }
+
+  async getInmate(inmateId) {
+    return this.request('admissions_ops', `/inmates/${inmateId}`, { method: 'GET' });
+  }
+
+  async createInmate(payload) {
+    return this.request('admissions_ops', '/inmates', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  async updateInmate(inmateId, payload) {
+    return this.request('admissions_ops', `/inmates/${inmateId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  async getAvailableCells(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request('admissions_ops', `/cells/available${queryString ? `?${queryString}` : ''}`, { method: 'GET' });
+  }
+
+  async listActivities() {
+    return this.request('admissions_ops', '/activities', { method: 'GET' });
+  }
+
+  async createAdmission(payload) {
+    return this.request('admissions_ops', '/admissions', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  async getAdmission(admissionId) {
+    return this.request('admissions_ops', `/admissions/${admissionId}`, { method: 'GET' });
+  }
+
+  async uploadDocument({ inmateId, admissionId = null, documentType, description = null, file }) {
+    const formData = new FormData();
+    formData.append('inmate_id', String(inmateId));
+    if (admissionId != null) formData.append('admission_id', String(admissionId));
+    formData.append('document_type', documentType);
+    if (description) formData.append('description', description);
+    formData.append('file', file);
+
+    return this.requestForm('admissions_ops', '/documents', formData, { method: 'POST' });
   }
 }
 

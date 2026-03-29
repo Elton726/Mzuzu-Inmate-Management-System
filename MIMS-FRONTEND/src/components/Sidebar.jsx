@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
-import { MdHome, MdPerson, MdDashboard, MdPeople, MdLogout } from 'react-icons/md';
+import { MdHome, MdPerson, MdDashboard, MdPeople, MdLogout, MdAssignment } from 'react-icons/md';
+import { getRoleName, ROLES } from '../utils/helpers';
 import logo from '/government-logo.png';
 
 const Sidebar = ({ onClose }) => {
-  const { logout, isAdmin } = useAuth();
+  const { logout, isAdmin, user } = useAuth();
   const navigate = useNavigate();
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const role = getRoleName(user);
 
   const handleLogoutClick = () => {
     setShowConfirmation(true);
@@ -44,6 +46,13 @@ const Sidebar = ({ onClose }) => {
             <li>
               <Link to="/" className="hover:text-malawiRed transition flex items-center">
                 <MdHome className="mr-2 text-xl" /> Home
+              </Link>
+            </li>
+          )}
+          {role === ROLES.RECEPTION_OFFICER && (
+            <li>
+              <Link to="/admissions/new" className="hover:text-malawiGold transition flex items-center">
+                <MdAssignment className="mr-2 text-xl" /> Admissions
               </Link>
             </li>
           )}

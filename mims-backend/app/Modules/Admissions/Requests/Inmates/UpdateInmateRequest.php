@@ -20,6 +20,7 @@ class UpdateInmateRequest extends FormRequest
             'last_name' => ['sometimes', 'string', 'max:50'],
             'other_names' => ['sometimes', 'nullable', 'string', 'max:100'],
             'date_of_birth' => ['sometimes', 'date', 'before:today'],
+            'is_young_offender' => ['sometimes', 'boolean'],
             'place_of_birth' => ['sometimes', 'nullable', 'string', 'max:100'],
             'nationality' => ['sometimes', 'nullable', 'string', 'max:50'],
             'national_id' => ['sometimes', 'nullable', 'string', 'max:20', 'unique:inmates,national_id,'.$inmateId],

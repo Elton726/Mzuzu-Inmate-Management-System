@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { MdPeople, MdAdminPanelSettings, MdBarChart } from 'react-icons/md';
-import apiService from '../../services/apiService';
-import { getRoleDisplayName } from '../../utils/helpers';
-import { useToast } from '../../contexts/useToast';
+import apiService from '../../../services/apiService';
+import { getRoleDisplayName } from '../../../utils/helpers';
+import { useToast } from '../../../contexts/useToast';
 
 export default function AdminDashboard() {
   const [statistics, setStatistics] = useState(null);

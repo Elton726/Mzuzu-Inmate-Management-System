@@ -3,15 +3,17 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/useAuth';
-import LoginPage from './pages/public/LoginPage';
-import HomePage from './pages/HomePage';
-import ProfilePage from './pages/user/ProfilePage';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import UserManagementPage from './pages/admin/UserManagementPage';
-import Navigation from './components/Navigation';
+import LoginPage from './modules/auth/pages/LoginPage';
+import HomePage from './modules/home/pages/HomePage';
+import ProfilePage from './modules/user/pages/ProfilePage';
+import AdminDashboard from './modules/admin/pages/AdminDashboard';
+import UserManagementPage from './modules/admin/pages/UserManagementPage';
+import AdmissionFormPage from './modules/admissions/pages/AdmissionFormPage';
+import AdmissionShowPage from './modules/admissions/pages/AdmissionShowPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import { ToastProvider } from './contexts/ToastContext';
+import { ToastContainer } from 'react-toastify';
 
 // Main App content with routing
 const AppContent = () => {
@@ -62,6 +64,22 @@ const AppContent = () => {
             }
           />
           <Route
+            path="/admissions/new"
+            element={
+              <ProtectedRoute allowedRoles={['reception_officer']}>
+                <AdmissionFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admissions/:admissionId"
+            element={
+              <ProtectedRoute allowedRoles={['reception_officer', 'station_officer']}>
+                <AdmissionShowPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/dashboard"
             element={
               <ProtectedRoute requireAdmin={true}>
@@ -88,6 +106,7 @@ function App() {
   return (
     <Router>
       <ToastProvider>
+        <ToastContainer position="top-right" autoClose={7000} />
         <AuthProvider>
           <AppContent />
         </AuthProvider>
