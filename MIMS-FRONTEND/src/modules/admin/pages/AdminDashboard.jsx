@@ -1,20 +1,25 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { MdPeople, MdAdminPanelSettings, MdBarChart } from 'react-icons/md';
+import { MdPeople, MdAdminPanelSettings, MdBarChart, MdPerson, MdGavel, MdSchedule } from 'react-icons/md';
 import apiService from '../../../services/apiService';
 import { getRoleDisplayName } from '../../../utils/helpers';
 import { useToast } from '../../../contexts/useToast';
 
 export default function AdminDashboard() {
   const [statistics, setStatistics] = useState(null);
+  const [populationStats, setPopulationStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const toast = useToast();
 
   const fetchStatistics = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await apiService.getUserStatistics();
-      setStatistics(data ?? {});
+      const [userStats, popStats] = await Promise.all([
+        apiService.getUserStatistics(),
+        apiService.getPopulationStatistics()
+      ]);
+      setStatistics(userStats ?? {});
+      setPopulationStats(popStats ?? {});
     } catch (err) {
       toast.fromError(err);
       console.error(err);
@@ -65,6 +70,57 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        <h2 className="text-2xl font-semibold mb-6">Prison Population Statistics</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
+          <div className="modern-card flex flex-col items-center">
+            <MdPeople className="text-malawiRed text-4xl mb-2" />
+            <span className="text-lg font-semibold">Total Inmates</span>
+            <span className="text-2xl mt-2">{populationStats?.total_inmates ?? '--'}</span>
+          </div>
+
+          <div className="modern-card flex flex-col items-center">
+            <MdPerson className="text-malawiGreen text-4xl mb-2" />
+            <span className="text-lg font-semibold">Active Inmates</span>
+            <span className="text-2xl mt-2">{populationStats?.active_inmates ?? '--'}</span>
+          </div>
+
+          <div className="modern-card flex flex-col items-center">
+            <MdGavel className="text-malawiGold text-4xl mb-2" />
+            <span className="text-lg font-semibold">Convicts</span>
+            <span className="text-2xl mt-2">{populationStats?.convict_count ?? '--'}</span>
+          </div>
+
+          <div className="modern-card flex flex-col items-center">
+            <MdSchedule className="text-malawiRed text-4xl mb-2" />
+            <span className="text-lg font-semibold">Remandees</span>
+            <span className="text-2xl mt-2">{populationStats?.remandee_count ?? '--'}</span>
+          </div>
+
+          <div className="modern-card flex flex-col items-center">
+            <MdPerson className="text-malawiGreen text-4xl mb-2" />
+            <span className="text-lg font-semibold">Murder Remandees</span>
+            <span className="text-2xl mt-2">{populationStats?.murder_remandee_count ?? '--'}</span>
+          </div>
+
+          <div className="modern-card flex flex-col items-center">
+            <MdBarChart className="text-malawiGold text-4xl mb-2" />
+            <span className="text-lg font-semibold">Released</span>
+            <span className="text-2xl mt-2">{populationStats?.released_inmates ?? '--'}</span>
+          </div>
+
+          <div className="modern-card flex flex-col items-center">
+            <MdBarChart className="text-malawiRed text-4xl mb-2" />
+            <span className="text-lg font-semibold">Deceased</span>
+            <span className="text-2xl mt-2">{populationStats?.deceased_inmates ?? '--'}</span>
+          </div>
+
+          <div className="modern-card flex flex-col items-center">
+            <MdBarChart className="text-malawiGreen text-4xl mb-2" />
+            <span className="text-lg font-semibold">Transferred</span>
+            <span className="text-2xl mt-2">{populationStats?.transferred_inmates ?? '--'}</span>
+          </div>
+        </div>
+
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-semibold">Recent Activity</h2>
           <div className="space-x-3">
@@ -76,6 +132,9 @@ export default function AdminDashboard() {
             </button>
             <Link to="/admin/users" className="bg-malawiRed text-malawiGold px-4 py-2 rounded shadow hover:opacity-90 transition">
               Manage Users
+            </Link>
+            <Link to="/admin/audit-logs" className="bg-malawiGreen text-white px-4 py-2 rounded shadow hover:opacity-90 transition">
+              View Audit Logs
             </Link>
           </div>
         </div>

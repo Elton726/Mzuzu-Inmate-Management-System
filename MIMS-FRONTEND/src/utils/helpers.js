@@ -204,3 +204,31 @@ export const ROLE_OPTIONS = [
   { value: 'officer_on_duty', label: 'Officer on Duty' },
   { value: 'gatekeeper', label: 'Gatekeeper' }
 ];
+
+/**
+ * Calculate projected release date with remission
+ *
+ * Calculates sentence end date and applies 1/3 remission on total days
+ * Matches the backend SentenceCalculationService logic
+ *
+ * @param {string} sentenceStartDate - ISO date string for sentence start
+ * @param {number} years - Sentence years
+ * @param {number} months - Sentence months (optional, default 0)
+ * @returns {string} ISO date string for projected release date
+ */
+export const calculateProjectedReleaseDate = (sentenceStartDate, years, months = 0) => {
+  const startDate = new Date(sentenceStartDate);
+  const endDate = new Date(startDate);
+  endDate.setFullYear(endDate.getFullYear() + years);
+  endDate.setMonth(endDate.getMonth() + months);
+
+  // Calculate total days
+  const totalDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
+
+  // Apply 1/3 remission
+  const remissionDays = Math.floor(totalDays / 3);
+  const releaseDate = new Date(endDate);
+  releaseDate.setDate(releaseDate.getDate() - remissionDays);
+
+  return releaseDate.toISOString().slice(0, 10);
+};

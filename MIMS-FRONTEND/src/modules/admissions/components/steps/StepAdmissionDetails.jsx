@@ -7,6 +7,7 @@ import FormField from '../../../../components/common/FormField';
 import { listActivities } from '../../services/activityService';
 import { getAvailableCells } from '../../services/cellService';
 import { toast } from 'react-toastify';
+import { calculateProjectedReleaseDate } from '../../../../utils/helpers';
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -104,7 +105,9 @@ export default function StepAdmissionDetails({ defaultValues, onBack, onNext }) 
     register,
     handleSubmit,
     watch,
-    formState: { errors }
+    formState: { errors },
+    setValue,
+    trigger
   } = useForm({
     resolver: zodResolver(admissionSchema),
     defaultValues: {
@@ -126,6 +129,33 @@ export default function StepAdmissionDetails({ defaultValues, onBack, onNext }) 
 
   const inmateType = watch('inmateType');
   const security = useMemo(() => mapInmateTypeToSecurityClassification(inmateType), [inmateType]);
+
+  const sentenceYears = watch('sentenceYears');
+  const sentenceMonths = watch('sentenceMonths');
+  const sentenceStartDate = watch('sentenceStartDate');
+
+  // Clear sentence fields when inmate type changes from convict to remandee
+  useEffect(() => {
+    if (inmateType !== 'convict') {
+      setValue('sentenceYears', '', { shouldValidate: false });
+      setValue('sentenceMonths', '', { shouldValidate: false });
+      setValue('sentenceStartDate', '', { shouldValidate: false });
+      // Trigger validation to clear errors
+      setTimeout(() => trigger(['sentenceYears', 'sentenceMonths', 'sentenceStartDate']), 0);
+    }
+  }, [inmateType, setValue, trigger]);
+
+  const projectedReleaseDate = useMemo(() => {
+    if (inmateType === 'convict' && sentenceStartDate && sentenceYears !== undefined && sentenceYears !== '') {
+      try {
+        return calculateProjectedReleaseDate(sentenceStartDate, Number(sentenceYears), Number(sentenceMonths || 0));
+      } catch (error) {
+        console.error('Error calculating projected release date:', error);
+        return null;
+      }
+    }
+    return null;
+  }, [inmateType, sentenceStartDate, sentenceYears, sentenceMonths]);
 
   const [loadingLookups, setLoadingLookups] = useState(true);
   const [cells, setCells] = useState([]);
@@ -217,44 +247,57 @@ export default function StepAdmissionDetails({ defaultValues, onBack, onNext }) 
         </div>
 
         {inmateType === 'convict' ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <FormField label="Sentence years *" error={errors.sentenceYears?.message}>
-              <input
-                type="number"
-                min={0}
-                className={`w-full border rounded px-3 py-2 ${errors.sentenceYears ? 'border-red-500' : ''}`}
-                {...register('sentenceYears', {
-                  setValueAs: (v) => {
-                    if (v === '' || v == null) return undefined;
-                    const n = Number(v);
-                    return Number.isFinite(n) ? n : undefined;
-                  }
-                })}
-              />
-            </FormField>
-            <FormField label="Sentence months" error={errors.sentenceMonths?.message}>
-              <input
-                type="number"
-                min={0}
-                max={11}
-                className={`w-full border rounded px-3 py-2 ${errors.sentenceMonths ? 'border-red-500' : ''}`}
-                {...register('sentenceMonths', {
-                  setValueAs: (v) => {
-                    if (v === '' || v == null) return undefined;
-                    const n = Number(v);
-                    return Number.isFinite(n) ? n : undefined;
-                  }
-                })}
-              />
-            </FormField>
-            <FormField label="Sentence start date *" error={errors.sentenceStartDate?.message}>
-              <input
-                type="date"
-                className={`w-full border rounded px-3 py-2 ${errors.sentenceStartDate ? 'border-red-500' : ''}`}
-                {...register('sentenceStartDate')}
-              />
-            </FormField>
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField label="Sentence years *" error={errors.sentenceYears?.message}>
+                <input
+                  type="number"
+                  min={0}
+                  className={`w-full border rounded px-3 py-2 ${errors.sentenceYears ? 'border-red-500' : ''}`}
+                  {...register('sentenceYears', {
+                    setValueAs: (v) => {
+                      if (v === '' || v == null) return undefined;
+                      const n = Number(v);
+                      return Number.isFinite(n) ? n : undefined;
+                    }
+                  })}
+                />
+              </FormField>
+              <FormField label="Sentence months" error={errors.sentenceMonths?.message}>
+                <input
+                  type="number"
+                  min={0}
+                  max={11}
+                  className={`w-full border rounded px-3 py-2 ${errors.sentenceMonths ? 'border-red-500' : ''}`}
+                  {...register('sentenceMonths', {
+                    setValueAs: (v) => {
+                      if (v === '' || v == null) return undefined;
+                      const n = Number(v);
+                      return Number.isFinite(n) ? n : undefined;
+                    }
+                  })}
+                />
+              </FormField>
+              <FormField label="Sentence start date *" error={errors.sentenceStartDate?.message}>
+                <input
+                  type="date"
+                  className={`w-full border rounded px-3 py-2 ${errors.sentenceStartDate ? 'border-red-500' : ''}`}
+                  {...register('sentenceStartDate')}
+                />
+              </FormField>
+            </div>
+            {projectedReleaseDate && (
+              <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                <p className="text-sm text-blue-800">
+                  <span className="font-semibold">Projected release date (with 1/3 remission):</span> {new Date(projectedReleaseDate).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+            )}
+          </>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
             <FormField label="Next court date *" error={errors.remandNextCourtDate?.message}>
@@ -270,7 +313,7 @@ export default function StepAdmissionDetails({ defaultValues, onBack, onNext }) 
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className={inmateType === 'convict' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : ''}>
           <FormField label="Cell (optional)" error={errors.cellId?.message}>
             <select
               className={`w-full border rounded px-3 py-2 ${errors.cellId ? 'border-red-500' : ''}`}
@@ -285,18 +328,20 @@ export default function StepAdmissionDetails({ defaultValues, onBack, onNext }) 
               ))}
             </select>
           </FormField>
-          <FormField label="Activity (optional)" error={errors.activityId?.message}>
-            <select
-              className={`w-full border rounded px-3 py-2 ${errors.activityId ? 'border-red-500' : ''}`}
-              disabled={loadingLookups}
-              {...register('activityId')}
-            >
-              <option value="">Auto-assign</option>
-              {activities.map((a) => (
-                <option key={a.id} value={String(a.id)}>{a.name}</option>
-              ))}
-            </select>
-          </FormField>
+          {inmateType === 'convict' && (
+            <FormField label="Activity (optional)" error={errors.activityId?.message}>
+              <select
+                className={`w-full border rounded px-3 py-2 ${errors.activityId ? 'border-red-500' : ''}`}
+                disabled={loadingLookups}
+                {...register('activityId')}
+              >
+                <option value="">Auto-assign</option>
+                {activities.map((a) => (
+                  <option key={a.id} value={String(a.id)}>{a.name}</option>
+                ))}
+              </select>
+            </FormField>
+          )}
         </div>
 
         <div className="flex items-center gap-3">

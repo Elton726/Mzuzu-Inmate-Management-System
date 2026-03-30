@@ -5,13 +5,6 @@ const isoDate = z
   .min(1, 'Date is required')
   .refine((val) => !Number.isNaN(Date.parse(val)), 'Invalid date');
 
-const optionalFiniteNumber = (schema) =>
-  z.preprocess((v) => {
-    if (v === '' || v == null) return undefined;
-    const n = typeof v === 'number' ? v : Number(String(v));
-    return Number.isFinite(n) ? n : undefined;
-  }, schema).optional();
-
 export const inmateSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
@@ -36,8 +29,8 @@ export const admissionSchema = z
     courtName: z.string().max(100, 'Court name must be at most 100 characters').optional().or(z.literal('')),
     offenceDescription: z.string().optional().or(z.literal('')),
 
-    sentenceYears: optionalFiniteNumber(z.number().int().min(0)),
-    sentenceMonths: optionalFiniteNumber(z.number().int().min(0).max(11)),
+    sentenceYears: z.any().optional(),
+    sentenceMonths: z.any().optional(),
     sentenceStartDate: z.string().optional().or(z.literal('')),
 
     remandNextCourtDate: z.string().optional().or(z.literal('')),
@@ -47,9 +40,16 @@ export const admissionSchema = z
   })
   .superRefine((data, ctx) => {
     if (data.inmateType === 'convict') {
-      if (data.sentenceYears == null || Number.isNaN(Number(data.sentenceYears))) {
+      const years = data.sentenceYears;
+      if (years === '' || years == null) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Sentence years is required for convicts', path: ['sentenceYears'] });
+      } else {
+        const n = typeof years === 'number' ? years : Number(String(years));
+        if (!Number.isFinite(n) || n < 0) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Sentence years must be a valid number', path: ['sentenceYears'] });
+        }
       }
+
       if (!data.sentenceStartDate) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Sentence start date is required for convicts', path: ['sentenceStartDate'] });
       } else if (Number.isNaN(Date.parse(data.sentenceStartDate))) {

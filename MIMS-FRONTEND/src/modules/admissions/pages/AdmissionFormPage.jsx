@@ -124,27 +124,50 @@ export default function AdmissionFormPage() {
 
       // Upload optional photo
       if (docs?.photo) {
-        await uploadDocument({
-          inmateId: selectedInmate.id,
-          admissionId: null,
-          documentType: 'inmate_photo',
-          description: 'Inmate photo',
-          file: docs.photo
-        });
+        try {
+          const photoRes = await uploadDocument({
+            inmateId: selectedInmate.id,
+            admissionId: null,
+            documentType: 'inmate_photo',
+            description: 'Inmate photo',
+            file: docs.photo
+          });
+          console.log('Photo uploaded successfully:', {
+            document: photoRes,
+            file_name: photoRes?.file_name,
+            file_path: photoRes?.file_path,
+            inmate_photo_path: photoRes?.inmate?.photo_path
+          });
+          if (photoRes?.inmate?.photo_path) {
+            toast.success(`✓ Photo uploaded: ${photoRes.file_name}`);
+          } else {
+            toast.success('Photo uploaded');
+          }
+        } catch (photoErr) {
+          console.error('Photo upload failed:', photoErr);
+          toast.warning('Photo upload failed, continuing with admission');
+        }
       }
 
       // Upload optional warrant (committal/remand)
       let warrantDocId = null;
       if (docs?.warrant) {
-        const warrantType = admissionDraft.inmateType === 'convict' ? 'committal_warrant' : 'remand_warrant';
-        const warrantRes = await uploadDocument({
-          inmateId: selectedInmate.id,
-          admissionId: null,
-          documentType: warrantType,
-          description: docs.warrantDescription || null,
-          file: docs.warrant
-        });
-        warrantDocId = warrantRes?.id || null;
+        try {
+          const warrantType = admissionDraft.inmateType === 'convict' ? 'committal_warrant' : 'remand_warrant';
+          const warrantRes = await uploadDocument({
+            inmateId: selectedInmate.id,
+            admissionId: null,
+            documentType: warrantType,
+            description: docs.warrantDescription || null,
+            file: docs.warrant
+          });
+          warrantDocId = warrantRes?.id || null;
+          console.log('Warrant uploaded successfully:', warrantRes);
+          toast.success('Warrant uploaded');
+        } catch (warrantErr) {
+          console.error('Warrant upload failed:', warrantErr);
+          toast.warning('Warrant upload failed, continuing with admission');
+        }
       }
 
       // Create admission and link warrant doc id

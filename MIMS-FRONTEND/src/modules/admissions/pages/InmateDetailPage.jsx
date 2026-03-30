@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getInmate } from '../services/inmateService';
+import { SERVER_BASE_URL } from '../../../services/apiService';
 import { formatDate } from '../../../utils/helpers';
 
 export default function InmateDetailPage() {
@@ -52,11 +53,35 @@ export default function InmateDetailPage() {
   return (
     <div className="max-w-6xl mx-auto py-8 px-4">
       <div className="flex items-start justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Inmate Profile</h1>
-          <p className="text-gray-600">
-            {inmate.prison_number ? `${inmate.prison_number} — ` : ''}{inmate.first_name} {inmate.last_name}
-          </p>
+        <div className="flex items-start gap-4">
+          {inmate.photo_path ? (
+            <div className="shrink-0">
+              <img
+                src={`${SERVER_BASE_URL}/storage/${inmate.photo_path}`}
+                alt={`${inmate.first_name} ${inmate.last_name}`}
+                className="w-32 h-40 object-cover rounded border border-gray-300"
+                onError={(e) => {
+                  console.error('Photo loading error:', { src: e.target.src, inmate });
+                  e.target.replaceWith(
+                    Object.assign(document.createElement('div'), {
+                      className: 'w-32 h-40 rounded border border-gray-300 bg-gray-200 flex items-center justify-center text-xs text-gray-600',
+                      textContent: 'Photo unavailable'
+                    })
+                  );
+                }}
+              />
+            </div>
+          ) : (
+            <div className="w-32 h-40 rounded border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center shrink-0">
+              <p className="text-xs text-gray-500 text-center px-2">No photo</p>
+            </div>
+          )}
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">Inmate Profile</h1>
+            <p className="text-gray-600">
+              {inmate.prison_number ? `${inmate.prison_number} — ` : ''}{inmate.first_name} {inmate.last_name}
+            </p>
+          </div>
         </div>
         <div className="flex gap-3">
           <button

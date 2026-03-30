@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -7,7 +7,6 @@ import FormField from '../../../../components/common/FormField';
 import { inmateSchema } from '../../schemas/admissionSchemas';
 import { checkDuplicate, createInmate } from '../../services/inmateService';
 import { toast } from 'react-toastify';
-import { useDebouncedValue } from '../../../../utils/useDebouncedValue';
 
 const toIsoDate = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '');
 const YOUNG_OFFENDER_AGE_YEARS = 18;
@@ -52,43 +51,34 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
     setValue('isYoungOffender', isYoung, { shouldDirty: true, shouldValidate: true });
   }, [watchDob, setValue]);
 
-  const canCheckDupes = useMemo(() => {
-    return Boolean(watchFirst && watchLast && watchDob);
-  }, [watchFirst, watchLast, watchDob]);
-
-  const debouncedFormValues = useDebouncedValue({ firstName: watchFirst, lastName: watchLast, dateOfBirth: watchDob, nationalId: watch('nationalId') }, 500);
-
-  // Auto check duplicates when form fields change
-  useEffect(() => {
-    const checkDupesImplicitly = async () => {
-      if (!canCheckDupes) {
-        setDupes(null);
-        return;
-      }
-
-      try {
-        setChecking(true);
-        const v = getValues();
-        const res = await checkDuplicate({
-          first_name: v.firstName,
-          last_name: v.lastName,
-          date_of_birth: toIsoDate(v.dateOfBirth),
-          national_id: v.nationalId || null
-        });
-        setDupes(res);
-      } catch (err) {
-        // Silently fail for implicit check - don't show toast
-      } finally {
-        setChecking(false);
-      }
-    };
-
-    checkDupesImplicitly();
-  }, [debouncedFormValues, canCheckDupes, getValues]);
-
   const onCreate = async (form) => {
     try {
       setCreating(true);
+
+      // Check for duplicates once before creating
+      try {
+        setChecking(true);
+        const res = await checkDuplicate({
+          first_name: form.firstName,
+          last_name: form.lastName,
+          date_of_birth: toIsoDate(form.dateOfBirth),
+          national_id: form.nationalId || null
+        });
+        setDupes(res);
+
+        // If duplicates found, don't create - let user review
+        if (res?.has_duplicates) {
+          setCreating(false);
+          toast.warning('Please review the potential matches above before creating a new record.');
+          return;
+        }
+      } catch (err) {
+        console.error('Duplicate check failed:', err);
+        // Continue with creation if check fails
+      } finally {
+        setChecking(false);
+      }
+
       const payload = {
         first_name: form.firstName,
         last_name: form.lastName,

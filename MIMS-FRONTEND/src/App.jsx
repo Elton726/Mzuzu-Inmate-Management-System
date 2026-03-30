@@ -32,6 +32,7 @@ import HomePage from './modules/home/pages/HomePage';
 import ProfilePage from './modules/user/pages/ProfilePage';
 import AdminDashboard from './modules/admin/pages/AdminDashboard';
 import UserManagementPage from './modules/admin/pages/UserManagementPage';
+import AuditLogsPage from './modules/admin/pages/AuditLogsPage';
 import AdmissionFormPage from './modules/admissions/pages/AdmissionFormPage';
 import AdmissionShowPage from './modules/admissions/pages/AdmissionShowPage';
 import AdmissionsIndexPage from './modules/admissions/pages/AdmissionsIndexPage';
@@ -157,6 +158,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute requireAdmin={true}>
                 <UserManagementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/audit-logs"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <AuditLogsPage />
               </ProtectedRoute>
             }
           />

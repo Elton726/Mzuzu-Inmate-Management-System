@@ -27,6 +27,7 @@
  */
 
 const API_BASE_URL = 'http://localhost:8000/api';
+export const SERVER_BASE_URL = 'http://localhost:8000';
 
 /**
  * Safely parse integer from header value
@@ -489,6 +490,30 @@ class ApiService {
     formData.append('file', file);
 
     return this.requestForm('admissions_ops', '/documents', formData, { method: 'POST' });
+  }
+
+  // ============ STATISTICS ENDPOINTS ============
+
+  /**
+   * Get population statistics
+   * @returns {Promise<Object>} Population statistics data
+   */
+  async getPopulationStatistics() {
+    return this.request('general', '/statistics/population', { method: 'GET' });
+  }
+
+  // ============ AUDIT LOGS ENDPOINTS ============
+
+  /**
+   * Get audit logs
+   * @param {Object} params - Query parameters
+   * @param {string} params.table_name - Filter by table name
+   * @param {number} params.user_id - Filter by user ID
+   * @returns {Promise<Object>} Paginated audit logs
+   */
+  async getAuditLogs(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request('admin_ops', `/audit-logs?${queryString}`, { method: 'GET' });
   }
 }
 
