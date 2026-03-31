@@ -46,22 +46,25 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-malawiBlack to-malawiRed flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-lg shadow-2xl p-8">
-          <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
-            MIMS System
-          </h1>
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-malawiBlack mb-2">
+              MIMS System
+            </h1>
+            <p className="text-malawiGold font-semibold">Malawi Prison Service</p>
+          </div>
 
           {error && (
-            <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
-              <p className="text-red-700">{error}</p>
+            <div className="bg-malawiRed/10 border-l-4 border-malawiRed p-4 mb-6">
+              <p className="text-malawiRed font-semibold">{error}</p>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-gray-700 font-semibold mb-2">
+              <label className="block text-malawiBlack font-semibold mb-2">
                 Email Address
               </label>
               <input
@@ -70,12 +73,12 @@ export const LoginPage = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                className="w-full px-4 py-2 border-2 border-malawiGold rounded-lg focus:outline-none focus:ring-2 focus:ring-malawiRed focus:border-transparent"
               />
             </div>
 
             <div>
-              <label className="block text-gray-700 font-semibold mb-2">
+              <label className="block text-malawiBlack font-semibold mb-2">
                 Password
               </label>
               <input
@@ -84,22 +87,22 @@ export const LoginPage = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                className="w-full px-4 py-2 border-2 border-malawiGold rounded-lg focus:outline-none focus:ring-2 focus:ring-malawiRed focus:border-transparent"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading || cooldown > 0}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-2 px-4 rounded-lg transition duration-200"
+              className="w-full bg-malawiRed hover:bg-malawiGreen disabled:bg-gray-400 text-malawiGold font-bold py-2 px-4 rounded-lg transition duration-200"
             >
               {loading ? 'Logging in...' : cooldown > 0 ? `Try again in ${cooldown}s` : 'Login'}
             </button>
           </form>
 
-          <div className="mt-4 text-center text-gray-600 text-sm">
+          <div className="mt-4 text-center text-malawiBlack text-sm">
             <p>Demo Credentials:</p>
-            <p className="font-mono text-xs mt-2">admin@example.com</p>
+            <p className="font-mono text-xs mt-2 text-malawiRed font-semibold">admin@example.com</p>
           </div>
         </div>
       </div>
