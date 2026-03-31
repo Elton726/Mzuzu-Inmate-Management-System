@@ -46,63 +46,80 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-malawiBlack to-malawiRed flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-lg shadow-2xl p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-malawiBlack mb-2">
-              MIMS System
-            </h1>
-            <p className="text-malawiGold font-semibold">Malawi Prison Service</p>
+    <div className="min-h-screen bg-gradient-to-br from-yellow-300 to-yellow-500 flex items-center justify-center p-4">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-yellow-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+        <div className="absolute bottom-20 right-10 w-72 h-72 bg-yellow-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+      </div>
+
+      {/* Main login container */}
+      <div className="w-full max-w-md relative z-10">
+        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+          {/* Header section with accent bar */}
+          <div className="bg-white px-8 py-6">
+            <div className="text-center">
+              <h1 className="text-4xl font-bold text-malawiBlack mb-1">
+                MIMS
+              </h1>
+              <p className="text-gray-600 text-sm font-semibold tracking-wide">
+                Malawi Inmate Management System
+              </p>
+            </div>
           </div>
 
-          {error && (
-            <div className="bg-malawiRed/10 border-l-4 border-malawiRed p-4 mb-6">
-              <p className="text-malawiRed font-semibold">{error}</p>
+          {/* Form section */}
+          <div className="p-8">
+            {error && (
+              <div className="bg-malawiRed/10 border-l-4 border-malawiRed p-4 mb-6 rounded-r">
+                <p className="text-malawiRed font-semibold text-sm">{error}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-malawiBlack font-semibold mb-3 text-sm">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  required
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-malawiBlack focus:border-transparent hover:border-gray-400 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-malawiBlack font-semibold mb-3 text-sm">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  required
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-malawiBlack focus:border-transparent hover:border-gray-400 transition-colors"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || cooldown > 0}
+                className="w-full bg-malawiBlack hover:bg-gray-800 disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-lg transition duration-200 text-base mt-6"
+              >
+                {loading ? 'Signing in...' : cooldown > 0 ? `Try again in ${cooldown}s` : 'Sign In'}
+              </button>
+            </form>
+
+            {/* Footer */}
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <p className="text-center text-gray-500 text-xs">
+                © 2026 Malawi Prison Service. All rights reserved.
+              </p>
             </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-malawiBlack font-semibold mb-2">
-                Email Address
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-                className="w-full px-4 py-2 border-2 border-malawiGold rounded-lg focus:outline-none focus:ring-2 focus:ring-malawiRed focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-malawiBlack font-semibold mb-2">
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                className="w-full px-4 py-2 border-2 border-malawiGold rounded-lg focus:outline-none focus:ring-2 focus:ring-malawiRed focus:border-transparent"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading || cooldown > 0}
-              className="w-full bg-malawiRed hover:bg-malawiGreen disabled:bg-gray-400 text-malawiGold font-bold py-2 px-4 rounded-lg transition duration-200"
-            >
-              {loading ? 'Logging in...' : cooldown > 0 ? `Try again in ${cooldown}s` : 'Login'}
-            </button>
-          </form>
-
-          <div className="mt-4 text-center text-malawiBlack text-sm">
-            <p>Demo Credentials:</p>
-            <p className="font-mono text-xs mt-2 text-malawiRed font-semibold">admin@example.com</p>
           </div>
         </div>
       </div>
