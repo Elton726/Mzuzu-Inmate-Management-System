@@ -33,6 +33,9 @@ import ProfilePage from './modules/user/pages/ProfilePage';
 import AdminDashboard from './modules/admin/pages/AdminDashboard';
 import UserManagementPage from './modules/admin/pages/UserManagementPage';
 import AuditLogsPage from './modules/admin/pages/AuditLogsPage';
+import DutyRosterPage from './modules/activityAllocation/admin/pages/DutyRosterPage';
+import ActivityListPage from './modules/activityAllocation/admin/pages/ActivityListPage';
+import ActivityFormPage from './modules/activityAllocation/admin/pages/ActivityFormPage';
 import AdmissionFormPage from './modules/admissions/pages/AdmissionFormPage';
 import AdmissionShowPage from './modules/admissions/pages/AdmissionShowPage';
 import AdmissionsIndexPage from './modules/admissions/pages/AdmissionsIndexPage';
@@ -166,6 +169,38 @@ const AppContent = () => {
             element={
               <ProtectedRoute requireAdmin={true}>
                 <AuditLogsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/duty-rosters"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <DutyRosterPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/activities"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <ActivityListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/activities/new"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <ActivityFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/activities/:id/edit"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <ActivityFormPage />
               </ProtectedRoute>
             }
           />

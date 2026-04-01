@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
-import { MdHome, MdPerson, MdDashboard, MdPeople, MdLogout, MdAssignment, MdHistory } from 'react-icons/md';
+import { MdHome, MdPerson, MdDashboard, MdPeople, MdLogout, MdAssignment, MdHistory, MdSchedule, MdLocalActivity } from 'react-icons/md';
 import { getRoleName, ROLES } from '../utils/helpers';
 import logo from '/government-logo.png';
 
@@ -118,6 +118,16 @@ const Sidebar = ({ onClose }) => {
               <li>
                 <Link to="/admin/audit-logs" className="hover:text-malawiGreen transition flex items-center">
                   <MdHistory className="mr-2 text-xl" /> Audit Logs
+                </Link>
+              </li>
+              <li>
+                <Link to="/admin/duty-rosters" className="hover:text-malawiGold transition flex items-center">
+                  <MdSchedule className="mr-2 text-xl" /> Duty Rosters
+                </Link>
+              </li>
+              <li>
+                <Link to="/admin/activities" className="hover:text-malawiRed transition flex items-center">
+                  <MdLocalActivity className="mr-2 text-xl" /> Activities
                 </Link>
               </li>
             </>

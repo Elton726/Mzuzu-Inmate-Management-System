@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\StatisticsController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Modules\ActivityAllocation\Controllers\Admin\ActivityManagementController;
+use App\Modules\ActivityAllocation\Controllers\Admin\OfficerDutyRosterController;
 use App\Modules\Admissions\Controllers\Api\ActivityController;
 use App\Modules\Admissions\Controllers\Api\AdmissionController;
 use App\Modules\Admissions\Controllers\Api\CellController;
@@ -44,6 +46,36 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         // Resource routes
         Route::apiResource('users', AdminUserController::class)->middleware('throttle:100,60,user');
+
+        // Activity Allocation - Officer Duty Roster Management
+        Route::prefix('duty-rosters')->group(function () {
+            Route::get('/', [OfficerDutyRosterController::class, 'index']);
+            Route::post('/', [OfficerDutyRosterController::class, 'store']);
+            Route::post('/auto-assign', [OfficerDutyRosterController::class, 'autoAssign']);
+            Route::get('/weekly-summary', [OfficerDutyRosterController::class, 'weeklySummary']);
+            Route::get('/current', [OfficerDutyRosterController::class, 'currentOfficer']);
+            // Backwards compatible route (shiftType is ignored).
+            Route::get('/current/{shiftType}', [OfficerDutyRosterController::class, 'currentOfficer']);
+            Route::get('/{id}', [OfficerDutyRosterController::class, 'show']);
+            Route::put('/{id}', [OfficerDutyRosterController::class, 'update']);
+            Route::patch('/{id}/deactivate', [OfficerDutyRosterController::class, 'deactivate']);
+            Route::delete('/{id}', [OfficerDutyRosterController::class, 'destroy']);
+        });
+
+        // Activity Allocation - Activity Management
+        Route::prefix('activities')->group(function () {
+            Route::get('/', [ActivityManagementController::class, 'index']);
+            Route::get('/categories', [ActivityManagementController::class, 'categories']);
+            Route::get('/predefined', [ActivityManagementController::class, 'predefined']);
+            Route::post('/internal', [ActivityManagementController::class, 'storeInternal']);
+            Route::post('/external', [ActivityManagementController::class, 'storeExternal']);
+            Route::get('/{id}', [ActivityManagementController::class, 'show']);
+            Route::put('/{id}', [ActivityManagementController::class, 'update']);
+            Route::put('/{id}/external', [ActivityManagementController::class, 'updateExternal']);
+            Route::patch('/{id}/activate', [ActivityManagementController::class, 'activate']);
+            Route::patch('/{id}/deactivate', [ActivityManagementController::class, 'deactivate']);
+            Route::delete('/{id}', [ActivityManagementController::class, 'destroy']);
+        });
     });
 
     // Inmate Admission Module

@@ -14,14 +14,18 @@
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { Provider } from 'react-redux'
 import './index.css'
 import 'react-toastify/dist/ReactToastify.css'
 import App from './App.jsx'
+import { store } from './store/store'
 
 // Mount the React application to the DOM element with id 'root'
 // StrictMode enables additional development checks and warnings
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <Provider store={store}>
+      <App />
+    </Provider>
   </StrictMode>,
 )

@@ -25,6 +25,8 @@ class User extends Authenticatable
         'role_id',
         'is_active',
         'last_login',
+        'is_eligible_for_duty',
+        'duty_preferences',
     ];
 
     /**
@@ -49,6 +51,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'last_login' => 'datetime',
+            'is_eligible_for_duty' => 'boolean',
+            'duty_preferences' => 'array',
         ];
     }
 
