@@ -7,6 +7,10 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Modules\ActivityAllocation\Controllers\Admin\ActivityManagementController;
 use App\Modules\ActivityAllocation\Controllers\Admin\OfficerDutyRosterController;
+use App\Modules\ActivityAllocation\Controllers\Officer\AvailableActivitiesController;
+use App\Modules\ActivityAllocation\Controllers\Officer\ActivitySessionController;
+use App\Modules\ActivityAllocation\Controllers\Officer\ExternalActivityAllocationController;
+use App\Modules\ActivityAllocation\Controllers\Officer\SessionAttendanceController;
 use App\Modules\Admissions\Controllers\Api\ActivityController;
 use App\Modules\Admissions\Controllers\Api\AdmissionController;
 use App\Modules\Admissions\Controllers\Api\CellController;
@@ -79,7 +83,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
 
     // Inmate Admission Module
-    Route::middleware(['role:reception_officer,station_officer'])->group(function () {
+    Route::middleware(['role:reception_officer'])->group(function () {
         Route::get('/inmates', [InmateController::class, 'index'])->middleware('throttle:60,60,user');
         Route::post('/inmates/check-duplicate', [InmateController::class, 'checkDuplicate'])->middleware('throttle:30,60,user');
         Route::get('/inmates/search', [InmateController::class, 'search'])->middleware('throttle:60,60,user');
@@ -96,8 +100,29 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/documents', [DocumentController::class, 'store'])->middleware('throttle:30,60,user');
     });
 
-    Route::middleware(['role:reception_officer,station_officer'])->group(function () {
+    Route::middleware(['role:reception_officer'])->group(function () {
         Route::get('/admissions/{admission}', [AdmissionController::class, 'show'])->middleware('throttle:60,60,user');
+    });
+
+    // Activity Allocation - Officer endpoints
+    Route::middleware(['role:officer_on_duty', 'throttle:100,60,user'])->prefix('officer')->group(function () {
+        Route::get('/activities/available', [AvailableActivitiesController::class, 'index']);
+        Route::get('/activities/{activity}/eligible-inmates', [ExternalActivityAllocationController::class, 'eligible']);
+        Route::post('/activities/{activity}/allocations/manual', [ExternalActivityAllocationController::class, 'manual']);
+        Route::post('/activities/{activity}/allocations/auto', [ExternalActivityAllocationController::class, 'auto']);
+
+        Route::get('/activity-sessions', [ActivitySessionController::class, 'index']);
+        Route::post('/activity-sessions', [ActivitySessionController::class, 'store']);
+        Route::post('/activity-sessions/daily', [ActivitySessionController::class, 'daily']);
+        Route::post('/activity-sessions/external-once', [ActivitySessionController::class, 'externalOnce']);
+        Route::get('/activity-sessions/{id}', [ActivitySessionController::class, 'show']);
+        Route::put('/activity-sessions/{id}', [ActivitySessionController::class, 'update']);
+        Route::delete('/activity-sessions/{id}', [ActivitySessionController::class, 'destroy']);
+
+        Route::post('/activity-sessions/{session}/attendance', [SessionAttendanceController::class, 'store']);
+        Route::get('/activity-sessions/{session}/attendance/report', [SessionAttendanceController::class, 'report']);
+        Route::get('/activity-sessions/{session}/attendance/summary', [SessionAttendanceController::class, 'summary']);
+        Route::put('/attendance/{attendanceId}', [SessionAttendanceController::class, 'update']);
     });
 
     Route::get('/statistics/population', [StatisticsController::class, 'population'])->middleware('throttle:60,60,user');

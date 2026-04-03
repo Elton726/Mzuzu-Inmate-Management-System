@@ -4,6 +4,26 @@ import apiService, { SERVER_BASE_URL } from '../../../services/apiService';
 import { useToast } from '../../../contexts/useToast';
 import { formatDate } from '../../../utils/helpers';
 
+const formatStatusLabel = (status) =>
+  String(status || '')
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+
+const statusBadgeClass = (status) => {
+  switch (status) {
+    case 'completed':
+      return 'bg-green-100 text-green-800';
+    case 'in_progress':
+      return 'bg-blue-100 text-blue-800';
+    case 'cancelled':
+      return 'bg-red-100 text-red-800';
+    default:
+      return 'bg-yellow-100 text-yellow-800';
+  }
+};
+
 export default function AdmissionShowPage() {
   const { admissionId } = useParams();
   const toast = useToast();
@@ -209,6 +229,45 @@ export default function AdmissionShowPage() {
                         <div className="font-semibold text-gray-800">{ia.activity?.name || '—'}</div>
                         <div className="text-sm text-gray-600">
                           Assigned: {ia.assigned_date ? formatDate(ia.assigned_date) : '—'}
+                        </div>
+                        <div className="mt-3 border-t pt-3">
+                          <p className="text-xs font-semibold text-gray-600 uppercase">Session handoff</p>
+                          {ia.activity?.latest_session || ia.activity?.latestSession ? (
+                            <div className="mt-2 space-y-1 text-sm text-gray-700">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium">Latest session</span>
+                                <span
+                                  className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${
+                                    statusBadgeClass((ia.activity?.latest_session || ia.activity?.latestSession)?.status)
+                                  }`}
+                                >
+                                  {formatStatusLabel((ia.activity?.latest_session || ia.activity?.latestSession)?.status)}
+                                </span>
+                              </div>
+                              <div>
+                                Date: {(() => {
+                                  const latest = ia.activity?.latest_session || ia.activity?.latestSession;
+                                  return latest?.session_date ? formatDate(latest.session_date) : '—';
+                                })()}
+                              </div>
+                              <div>
+                                Time: {(() => {
+                                  const latest = ia.activity?.latest_session || ia.activity?.latestSession;
+                                  return latest?.session_time || '—';
+                                })()}
+                              </div>
+                              <div>
+                                Supervising officer: {(() => {
+                                  const latest = ia.activity?.latest_session || ia.activity?.latestSession;
+                                  return latest?.supervising_officer?.name || latest?.supervisingOfficer?.name || '—';
+                                })()}
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="mt-2 text-sm text-gray-600">
+                              No activity session has been created for this assigned activity yet.
+                            </p>
+                          )}
                         </div>
                       </li>
                     ))}

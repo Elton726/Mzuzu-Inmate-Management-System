@@ -120,12 +120,23 @@ class AdmissionController extends Controller
             return $admission;
         });
 
-        return response()->json($admission->load('inmate', 'cellAllocations.cell', 'inmateActivities.activity', 'documents'), 201);
+        return response()->json($admission->load(
+            'inmate',
+            'cellAllocations.cell',
+            'inmateActivities.activity.latestSession.supervisingOfficer',
+            'documents'
+        ), 201);
     }
 
     public function show(Admission $admission)
     {
-        return response()->json($admission->load('inmate', 'cellAllocations.cell', 'inmateActivities.activity', 'documents', 'admittedBy'));
+        return response()->json($admission->load(
+            'inmate',
+            'cellAllocations.cell',
+            'inmateActivities.activity.latestSession.supervisingOfficer',
+            'documents',
+            'admittedBy'
+        ));
     }
 
     private function mapInmateTypeToSecurityClassification(string $inmateType): string

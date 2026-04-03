@@ -36,6 +36,11 @@ import AuditLogsPage from './modules/admin/pages/AuditLogsPage';
 import DutyRosterPage from './modules/activityAllocation/admin/pages/DutyRosterPage';
 import ActivityListPage from './modules/activityAllocation/admin/pages/ActivityListPage';
 import ActivityFormPage from './modules/activityAllocation/admin/pages/ActivityFormPage';
+import OfficerAvailableActivitiesPage from './modules/activityAllocation/officer/pages/OfficerAvailableActivitiesPage';
+import OfficerExternalActivityAllocationPage from './modules/activityAllocation/officer/pages/OfficerExternalActivityAllocationPage';
+import OfficerSessionsPage from './modules/activityAllocation/officer/pages/OfficerSessionsPage';
+import OfficerSessionFormPage from './modules/activityAllocation/officer/pages/OfficerSessionFormPage';
+import OfficerSessionDetailPage from './modules/activityAllocation/officer/pages/OfficerSessionDetailPage';
 import AdmissionFormPage from './modules/admissions/pages/AdmissionFormPage';
 import AdmissionShowPage from './modules/admissions/pages/AdmissionShowPage';
 import AdmissionsIndexPage from './modules/admissions/pages/AdmissionsIndexPage';
@@ -131,17 +136,17 @@ const AppContent = () => {
           <Route
             path="/admissions/:admissionId"
             element={
-              <ProtectedRoute allowedRoles={['reception_officer', 'station_officer']}>
+              <ProtectedRoute allowedRoles={['reception_officer']}>
                 <AdmissionShowPage />
               </ProtectedRoute>
             }
           />
 
-          {/* Inmate detail routes - accessible by reception and station officers */}
+          {/* Inmate detail routes - admissions module stays with reception officers */}
           <Route
             path="/inmates/:inmateId"
             element={
-              <ProtectedRoute allowedRoles={['reception_officer', 'station_officer']}>
+              <ProtectedRoute allowedRoles={['reception_officer']}>
                 <InmateDetailPage />
               </ProtectedRoute>
             }
@@ -201,6 +206,56 @@ const AppContent = () => {
             element={
               <ProtectedRoute requireAdmin={true}>
                 <ActivityFormPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Officer on duty routes - Activity sessions & attendance */}
+          <Route
+            path="/officer/activities"
+            element={
+              <ProtectedRoute allowedRoles={['officer_on_duty']}>
+                <OfficerAvailableActivitiesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/officer/activities/:activityId/allocations"
+            element={
+              <ProtectedRoute allowedRoles={['officer_on_duty']}>
+                <OfficerExternalActivityAllocationPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/officer/activity-sessions"
+            element={
+              <ProtectedRoute allowedRoles={['officer_on_duty']}>
+                <OfficerSessionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/officer/activity-sessions/new"
+            element={
+              <ProtectedRoute allowedRoles={['officer_on_duty']}>
+                <OfficerSessionFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/officer/activity-sessions/:id/edit"
+            element={
+              <ProtectedRoute allowedRoles={['officer_on_duty']}>
+                <OfficerSessionFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/officer/activity-sessions/:id"
+            element={
+              <ProtectedRoute allowedRoles={['officer_on_duty']}>
+                <OfficerSessionDetailPage />
               </ProtectedRoute>
             }
           />

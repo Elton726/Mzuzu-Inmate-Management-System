@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import Card from '../../../../../components/common/Card';
 import Checkbox from '../../../../../components/common/Checkbox';
 import Input from '../../../../../components/common/Input';
@@ -19,17 +19,7 @@ const normalizeSkills = (csv) =>
 
 export default function EligibilityCriteriaForm({ value, onChange }) {
   const criteria = value || {};
-
-  // Activity allocation is only for convicts.
-  const allowedSet = useMemo(() => new Set(['convict']), []);
-
-  const [skillsCsv, setSkillsCsv] = useState(() =>
-    Array.isArray(criteria.skills_required) ? criteria.skills_required.join(', ') : ''
-  );
-
-  useEffect(() => {
-    setSkillsCsv(Array.isArray(criteria.skills_required) ? criteria.skills_required.join(', ') : '');
-  }, [criteria.skills_required]);
+  const skillsCsv = Array.isArray(criteria.skills_required) ? criteria.skills_required.join(', ') : '';
 
   const update = (patch) => {
     onChange?.({ allowed_inmate_types: ['convict'], ...criteria, ...patch });
@@ -90,7 +80,6 @@ export default function EligibilityCriteriaForm({ value, onChange }) {
             value={skillsCsv}
             onChange={(e) => {
               const next = e.target.value;
-              setSkillsCsv(next);
               update({ skills_required: normalizeSkills(next) });
             }}
           />

@@ -7,6 +7,7 @@ use App\Modules\Admissions\Models\Admission;
 use App\Modules\Admissions\Models\Cell;
 use App\Models\Role;
 use App\Models\User;
+use App\Modules\ActivityAllocation\Models\ActivitySession;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -80,6 +81,7 @@ class AdmissionModuleApiTest extends TestCase
         Storage::fake('public');
 
         $user = $this->userWithRole('reception_officer');
+        $officer = $this->userWithRole('officer_on_duty');
 
         // Seed minimal cells/activities for list endpoints and allocations.
         Cell::create([
@@ -147,9 +149,27 @@ class AdmissionModuleApiTest extends TestCase
 
         $stats = $this->actingAs($user, 'sanctum')->getJson('/api/statistics/population');
         $stats->assertStatus(200)->assertJsonStructure(['total_inmates']);
+
+        $assignedActivityId = data_get($show->json(), 'inmate_activities.0.activity.id')
+            ?? data_get($show->json(), 'inmateActivities.0.activity.id');
+
+        $session = ActivitySession::query()->create([
+            'activity_id' => $assignedActivityId,
+            'session_date' => now()->toDateString(),
+            'session_time' => 'Morning',
+            'supervising_officer_id' => $officer->id,
+            'status' => 'scheduled',
+            'created_by' => $officer->id,
+        ]);
+
+        $showWithSession = $this->actingAs($user, 'sanctum')->getJson("/api/admissions/{$admissionId}");
+        $showWithSession->assertStatus(200)->assertJsonFragment([
+            'id' => $session->id,
+            'status' => 'scheduled',
+        ]);
     }
 
-    public function test_station_officer_can_view_but_cannot_create_inmate_or_admission(): void
+    public function test_station_officer_cannot_access_admissions_module(): void
     {
         $station = $this->userWithRole('station_officer');
         $reception = $this->userWithRole('reception_officer');
@@ -160,13 +180,13 @@ class AdmissionModuleApiTest extends TestCase
             'date_of_birth' => '1999-01-01',
         ])->assertStatus(201)->json();
 
-        $this->actingAs($station, 'sanctum')->getJson("/api/inmates/{$inmate['id']}")->assertStatus(200);
-        $this->actingAs($station, 'sanctum')->getJson('/api/inmates/search?q=View')->assertStatus(200);
+        $this->actingAs($station, 'sanctum')->getJson("/api/inmates/{$inmate['id']}")->assertStatus(403);
+        $this->actingAs($station, 'sanctum')->getJson('/api/inmates/search?q=View')->assertStatus(403);
         $this->actingAs($station, 'sanctum')->postJson('/api/inmates/check-duplicate', [
             'first_name' => 'View',
             'last_name' => 'Only',
             'date_of_birth' => '1999-01-01',
-        ])->assertStatus(200);
+        ])->assertStatus(403);
 
         $this->actingAs($station, 'sanctum')->postJson('/api/inmates', [
             'first_name' => 'No',
@@ -183,6 +203,18 @@ class AdmissionModuleApiTest extends TestCase
             'sentence_years' => 1,
             'sentence_start_date' => now()->toDateString(),
         ])->assertStatus(403);
+
+        $admission = Admission::query()->create([
+            'inmate_id' => $inmate['id'],
+            'admission_date' => now()->toDateString(),
+            'admission_type' => 'first_time',
+            'inmate_type' => 'remandee',
+            'case_number' => 'CR-VIEW',
+            'admitted_by' => $reception->id,
+            'is_current' => true,
+        ]);
+
+        $this->actingAs($station, 'sanctum')->getJson("/api/admissions/{$admission->id}")->assertStatus(403);
     }
 
     public function test_admin_can_view_audit_logs_but_non_admin_cannot(): void

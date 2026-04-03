@@ -95,6 +95,22 @@ const Sidebar = ({ onClose }) => {
             </li>
           )}
 
+          {/* Officer on duty - activity sessions */}
+          {role === ROLES.OFFICER_ON_DUTY && (
+            <>
+              <li>
+                <Link to="/officer/activities" className="hover:text-malawiGold transition flex items-center">
+                  <MdLocalActivity className="mr-2 text-xl" /> Available Activities
+                </Link>
+              </li>
+              <li>
+                <Link to="/officer/activity-sessions" className="hover:text-malawiGold transition flex items-center">
+                  <MdLocalActivity className="mr-2 text-xl" /> Activity Sessions
+                </Link>
+              </li>
+            </>
+          )}
+
           {/* Profile link for all users */}
           <li>
             <Link to="/profile" className="hover:text-malawiGreen transition flex items-center">

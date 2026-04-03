@@ -30,7 +30,6 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
   const {
     register,
     handleSubmit,
-    getValues,
     watch,
     setValue,
     formState: { errors }
@@ -39,8 +38,6 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
     defaultValues: { isYoungOffender: false, ...(defaultValues || {}) }
   });
 
-  const watchFirst = watch('firstName');
-  const watchLast = watch('lastName');
   const watchDob = watch('dateOfBirth');
   const watchYoungOffender = watch('isYoungOffender');
   const watchAge = useMemo(() => computeAgeYears(watchDob), [watchDob]);

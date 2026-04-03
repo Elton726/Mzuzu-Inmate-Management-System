@@ -4,6 +4,7 @@ namespace App\Modules\Admissions\Models;
 
 use App\Models\User;
 use App\Modules\ActivityAllocation\Models\ActivityCategory;
+use App\Modules\ActivityAllocation\Models\ActivitySession;
 use App\Modules\ActivityAllocation\Models\ExternalActivityDetail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -57,5 +58,10 @@ class Activity extends Model
     public function externalDetails(): HasOne
     {
         return $this->hasOne(ExternalActivityDetail::class, 'activity_id');
+    }
+
+    public function latestSession(): HasOne
+    {
+        return $this->hasOne(ActivitySession::class, 'activity_id')->latestOfMany('session_date');
     }
 }

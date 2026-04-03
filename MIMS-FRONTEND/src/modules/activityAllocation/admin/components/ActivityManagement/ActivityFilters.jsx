@@ -15,10 +15,6 @@ export default function ActivityFilters({ filters, onFilterChange }) {
     dispatch(fetchCategories());
   }, [dispatch]);
 
-  useEffect(() => {
-    setLocal(filters || {});
-  }, [filters]);
-
   const categoryOptions = useMemo(
     () => (categories || []).map((c) => ({ value: c.id, label: c.name })),
     [categories]
