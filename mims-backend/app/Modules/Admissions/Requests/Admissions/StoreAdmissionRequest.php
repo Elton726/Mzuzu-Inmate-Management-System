@@ -3,6 +3,7 @@
 namespace App\Modules\Admissions\Requests\Admissions;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreAdmissionRequest extends FormRequest
 {
@@ -29,7 +30,15 @@ class StoreAdmissionRequest extends FormRequest
             'remand_next_court_date' => ['nullable', 'date', 'required_if:inmate_type,remandee,murder_remandee'],
 
             'cell_id' => ['nullable', 'exists:cells,id'],
-            'activity_id' => ['nullable', 'exists:activities,id'],
+            'activity_id' => [
+                'nullable',
+                Rule::exists('activities', 'id')->where(function ($query) {
+                    $query
+                        ->where('is_active', true)
+                        ->where('activity_type', 'internal')
+                        ->where('source_type', 'predefined');
+                }),
+            ],
 
             'committal_warrant_id' => ['nullable', 'exists:documents,id'],
             'remand_warrant_id' => ['nullable', 'exists:documents,id'],

@@ -1,13 +1,24 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/useAuth';
-import { getRoleDisplayName } from '../../../utils/helpers';
+import { getRoleDisplayName, getRoleName, ROLES } from '../../../utils/helpers';
+import OfficerAvailableActivitiesPage from '../../activityAllocation/officer/pages/OfficerAvailableActivitiesPage';
+import AdmissionsDashboardPage from '../../admissions/pages/AdmissionsDashboardPage';
 
 export const HomePage = () => {
   const { user, isAdmin } = useAuth();
+  const role = getRoleName(user);
 
   // Redirect admins to dashboard
   if (isAdmin) {
     return <Navigate to="/admin/dashboard" replace />;
+  }
+
+  if (role === ROLES.OFFICER_ON_DUTY) {
+    return <OfficerAvailableActivitiesPage />;
+  }
+
+  if (role === ROLES.RECEPTION_OFFICER) {
+    return <AdmissionsDashboardPage />;
   }
 
   return (

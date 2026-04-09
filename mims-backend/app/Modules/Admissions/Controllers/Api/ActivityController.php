@@ -14,6 +14,13 @@ class ActivityController extends Controller
 
     public function index()
     {
-        return response()->json(Activity::query()->where('is_active', true)->orderBy('name')->get());
+        return response()->json(
+            Activity::query()
+                ->where('is_active', true)
+                ->where('activity_type', 'internal')
+                ->where('source_type', 'predefined')
+                ->orderBy('name')
+                ->get()
+        );
     }
 }

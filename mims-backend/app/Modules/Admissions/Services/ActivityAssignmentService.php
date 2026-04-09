@@ -12,7 +12,12 @@ class ActivityAssignmentService
      */
     public function autoAssign(int $inmateId, int $admissionId, int $assignedByUserId, array $context = []): ?InmateActivity
     {
-        $activities = Activity::query()->where('is_active', true)->orderBy('name')->get();
+        $activities = Activity::query()
+            ->where('is_active', true)
+            ->where('activity_type', 'internal')
+            ->where('source_type', 'predefined')
+            ->orderBy('name')
+            ->get();
 
         foreach ($activities as $activity) {
             $criteria = $activity->eligibility_criteria ?? [];
