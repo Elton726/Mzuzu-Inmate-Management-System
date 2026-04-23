@@ -65,6 +65,7 @@ class AdmissionController extends Controller
                 'sentence_months' => $validated['sentence_months'] ?? null,
                 'sentence_start_date' => $validated['sentence_start_date'] ?? null,
                 'projected_release_date' => $projectedReleaseDate,
+                'original_release_date' => $projectedReleaseDate,
                 'remand_next_court_date' => $validated['remand_next_court_date'] ?? null,
                 'admitted_by' => $user->id,
                 'is_current' => true,
