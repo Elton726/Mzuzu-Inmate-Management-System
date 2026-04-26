@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
-import { MdHome, MdPerson, MdDashboard, MdPeople, MdLogout, MdAssignment, MdHistory, MdSchedule, MdLocalActivity } from 'react-icons/md';
+import { MdHome, MdPerson, MdDashboard, MdPeople, MdLogout, MdAssignment, MdHistory, MdSchedule, MdLocalActivity, MdCheckCircle, MdExitToApp } from 'react-icons/md';
 import { getRoleName, ROLES } from '../utils/helpers';
 import logo from '/government-logo.png';
 
@@ -108,6 +108,34 @@ const Sidebar = ({ onClose }) => {
                   <MdLocalActivity className="mr-2 text-xl" /> Activity Sessions
                 </Link>
               </li>
+            </>
+          )}
+
+          {/* Release Management - Station Officer & Gatekeeper */}
+          {(role === ROLES.STATION_OFFICER || role === ROLES.GATEKEEPER || isAdmin) && (
+            <>
+              <li className="text-malawiRed text-sm font-semibold mt-4 mb-2">Releases</li>
+              {(role === ROLES.STATION_OFFICER || isAdmin) && (
+                <li>
+                  <Link to="/releases/approval" className="hover:text-malawiGold transition flex items-center">
+                    <MdCheckCircle className="mr-2 text-xl" /> Release Approval
+                  </Link>
+                </li>
+              )}
+              {(role === ROLES.GATEKEEPER || isAdmin) && (
+                <li>
+                  <Link to="/releases/confirmation" className="hover:text-malawiGold transition flex items-center">
+                    <MdExitToApp className="mr-2 text-xl" /> Confirm Release
+                  </Link>
+                </li>
+              )}
+              {(role === ROLES.STATION_OFFICER || role === ROLES.GATEKEEPER || isAdmin) && (
+                <li>
+                  <Link to="/releases/history" className="hover:text-malawiGold transition flex items-center">
+                    <MdHistory className="mr-2 text-xl" /> Release History
+                  </Link>
+                </li>
+              )}
             </>
           )}
 

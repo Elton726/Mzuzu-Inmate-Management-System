@@ -45,6 +45,10 @@ import AdmissionFormPage from './modules/admissions/pages/AdmissionFormPage';
 import AdmissionShowPage from './modules/admissions/pages/AdmissionShowPage';
 import AdmissionsIndexPage from './modules/admissions/pages/AdmissionsIndexPage';
 import InmateDetailPage from './modules/admissions/pages/InmateDetailPage';
+import ReleaseApprovalPage from './modules/releases/pages/ReleaseApprovalPage';
+import ReleaseConfirmationPage from './modules/releases/pages/ReleaseConfirmationPage';
+import SentenceAdjustmentPage from './modules/releases/pages/SentenceAdjustmentPage';
+import ReleaseHistoryPage from './modules/releases/pages/ReleaseHistoryPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import { ToastProvider } from './contexts/ToastContext';
@@ -148,6 +152,40 @@ const AppContent = () => {
             element={
               <ProtectedRoute allowedRoles={['reception_officer']}>
                 <InmateDetailPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Release Management routes - Station Officer & Gatekeeper */}
+          <Route
+            path="/releases/approval"
+            element={
+              <ProtectedRoute allowedRoles={['station_officer', 'admin']}>
+                <ReleaseApprovalPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/releases/confirmation"
+            element={
+              <ProtectedRoute allowedRoles={['gatekeeper', 'admin']}>
+                <ReleaseConfirmationPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/adjustments/:admissionId"
+            element={
+              <ProtectedRoute allowedRoles={['station_officer', 'admin']}>
+                <SentenceAdjustmentPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/releases/history"
+            element={
+              <ProtectedRoute allowedRoles={['station_officer', 'gatekeeper', 'admin']}>
+                <ReleaseHistoryPage />
               </ProtectedRoute>
             }
           />
