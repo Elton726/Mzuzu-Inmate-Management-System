@@ -27,11 +27,13 @@ class Inmate extends Model
         'personal_belongings',
         'photo_path',
         'status',
+        'last_release_date',
     ];
 
     protected $casts = [
         'date_of_birth' => 'date',
         'is_young_offender' => 'boolean',
+        'last_release_date' => 'date',
     ];
 
     public function admissions(): HasMany

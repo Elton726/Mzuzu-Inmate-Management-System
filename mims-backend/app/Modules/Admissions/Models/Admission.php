@@ -3,6 +3,8 @@
 namespace App\Modules\Admissions\Models;
 
 use App\Models\User;
+use App\Modules\Release\Models\ReleaseWorkflow;
+use App\Modules\Release\Models\SentenceAdjustment;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -24,6 +26,7 @@ class Admission extends Model
         'sentence_months',
         'sentence_start_date',
         'projected_release_date',
+        'original_release_date',
         'remand_next_court_date',
         'committal_warrant_path',
         'remand_warrant_path',
@@ -37,6 +40,7 @@ class Admission extends Model
         'admission_date' => 'date',
         'sentence_start_date' => 'date',
         'projected_release_date' => 'date',
+        'original_release_date' => 'date',
         'remand_next_court_date' => 'date',
         'released_at' => 'date',
         'is_current' => 'boolean',
@@ -65,5 +69,15 @@ class Admission extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(Document::class);
+    }
+
+    public function releaseWorkflows(): HasMany
+    {
+        return $this->hasMany(ReleaseWorkflow::class);
+    }
+
+    public function sentenceAdjustments(): HasMany
+    {
+        return $this->hasMany(SentenceAdjustment::class);
     }
 }

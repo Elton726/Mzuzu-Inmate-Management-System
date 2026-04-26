@@ -16,6 +16,9 @@ use App\Modules\Admissions\Controllers\Api\AdmissionController;
 use App\Modules\Admissions\Controllers\Api\CellController;
 use App\Modules\Admissions\Controllers\Api\DocumentController;
 use App\Modules\Admissions\Controllers\Api\InmateController;
+use App\Modules\Release\Controllers\Api\ReleaseApprovalController;
+use App\Modules\Release\Controllers\Api\ReleaseConfirmationController;
+use App\Modules\Release\Controllers\Api\SentenceAdjustmentController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -103,6 +106,23 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::middleware(['role:reception_officer'])->group(function () {
         Route::get('/admissions/{admission}', [AdmissionController::class, 'show'])->middleware('throttle:60,60,user');
     });
+
+    Route::middleware(['role:station_officer,admin', 'throttle:60,60,user'])->group(function () {
+        Route::get('/releases/eligible', [ReleaseApprovalController::class, 'index']);
+        Route::post('/releases/approve', [ReleaseApprovalController::class, 'store']);
+        Route::delete('/releases/{workflowId}', [ReleaseApprovalController::class, 'destroy']);
+
+        Route::get('/adjustments/{admissionId}', [SentenceAdjustmentController::class, 'index']);
+        Route::post('/adjustments', [SentenceAdjustmentController::class, 'store']);
+    });
+
+    Route::middleware(['role:gatekeeper,admin', 'throttle:60,60,user'])->group(function () {
+        Route::get('/releases/pending', [ReleaseConfirmationController::class, 'index']);
+        Route::put('/releases/{workflowId}/confirm', [ReleaseConfirmationController::class, 'update']);
+    });
+
+    Route::delete('/adjustments/{adjustmentId}', [SentenceAdjustmentController::class, 'destroy'])
+        ->middleware(['role:admin', 'throttle:60,60,user']);
 
     // Activity Allocation - Officer endpoints
     Route::middleware(['role:officer_on_duty', 'throttle:100,60,user'])->prefix('officer')->group(function () {
