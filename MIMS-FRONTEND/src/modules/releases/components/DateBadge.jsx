@@ -5,9 +5,25 @@ import React from 'react';
  * Shows color-coded badge based on proximity to release date
  */
 export default function DateBadge({ date }) {
+  if (!date) {
+    return (
+      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300">
+        -
+      </span>
+    );
+  }
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const releaseDate = new Date(date);
+  if (Number.isNaN(releaseDate.getTime())) {
+    return (
+      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300">
+        -
+      </span>
+    );
+  }
+
   releaseDate.setHours(0, 0, 0, 0);
   const daysUntilRelease = Math.floor((releaseDate - today) / (1000 * 60 * 60 * 24));
 

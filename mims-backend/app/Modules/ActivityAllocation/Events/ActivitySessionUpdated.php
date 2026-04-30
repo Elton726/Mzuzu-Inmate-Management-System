@@ -9,5 +9,8 @@ class ActivitySessionUpdated
 {
     use Dispatchable;
 
-    public function __construct(public ActivitySession $session) {}
+    public function __construct(
+        public ActivitySession $session,
+        public array $oldData = [],
+    ) {}
 }

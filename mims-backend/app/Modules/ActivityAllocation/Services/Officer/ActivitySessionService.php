@@ -120,8 +120,10 @@ class ActivitySessionService
             throw new RuntimeException('A status value is required to update the session.');
         }
 
-        $session = $this->repository->update($id, ['status' => $data['status']], $this->currentOfficerId());
-        event(new ActivitySessionUpdated($session));
+        $currentOfficerId = $this->currentOfficerId();
+        $oldData = $this->repository->findById($id, $currentOfficerId)->toArray();
+        $session = $this->repository->update($id, ['status' => $data['status']], $currentOfficerId);
+        event(new ActivitySessionUpdated($session, $oldData));
 
         return $session;
     }

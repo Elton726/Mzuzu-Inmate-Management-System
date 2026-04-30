@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { FiTrash2, FiChevronLeft } from 'react-icons/fi';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -13,6 +13,16 @@ import {
 import SkeletonLoader from '../components/SkeletonLoader';
 import Button from '../../../components/common/Button';
 import Modal from '../../../components/common/Modal';
+
+const getErrorMessage = (err, fallback) => (
+  err?.response?.data?.message ||
+  err?.response?.data?.error ||
+  err?.message ||
+  fallback
+);
+
+const getAdjustmentDays = (adjustment) => adjustment?.adjustment_days ?? adjustment?.days ?? 0;
+const getAdjustmentCreator = (adjustment) => adjustment?.approver?.name || adjustment?.created_by || 'System';
 
 /**
  * Validation schema for sentence adjustments
@@ -25,7 +35,7 @@ const adjustmentSchema = z.object({
 });
 
 /**
- * Sentence Adjustment Page (Station Officer / Admin)
+ * Sentence Adjustment Page (Station Officer)
  * Apply sentence adjustments (remissions, pardons) for a specific inmate
  */
 export default function SentenceAdjustmentPage() {
@@ -43,7 +53,6 @@ export default function SentenceAdjustmentPage() {
 
   const {
     register,
-    control,
     handleSubmit,
     reset,
     formState: { errors }
@@ -71,7 +80,7 @@ export default function SentenceAdjustmentPage() {
       setTotalPages(data.last_page || 1);
       setCurrentPage(data.current_page || 1);
     } catch (err) {
-      toast.error(err?.message || 'Failed to load adjustments');
+      toast.error(getErrorMessage(err, 'Failed to load adjustments'));
     } finally {
       setLoading(false);
     }
@@ -87,9 +96,10 @@ export default function SentenceAdjustmentPage() {
     try {
       setSubmitLoading(true);
       const response = await createAdjustment(admissionId, data);
+      const newReleaseDate = response.new_projected_release_date || response.new_release_date;
 
       toast.success(
-        `${data.days} days ${data.adjustment_type} applied. New release date: ${response.new_release_date}`
+        `${data.days} days ${data.adjustment_type} applied${newReleaseDate ? `. New release date: ${newReleaseDate}` : ''}`
       );
 
       reset({
@@ -101,7 +111,7 @@ export default function SentenceAdjustmentPage() {
 
       loadAdjustments();
     } catch (err) {
-      toast.error(err?.message || 'Failed to apply adjustment');
+      toast.error(getErrorMessage(err, 'Failed to apply adjustment'));
     } finally {
       setSubmitLoading(false);
     }
@@ -123,7 +133,7 @@ export default function SentenceAdjustmentPage() {
       setSelectedAdjustment(null);
       loadAdjustments();
     } catch (err) {
-      toast.error(err?.message || 'Failed to delete adjustment');
+      toast.error(getErrorMessage(err, 'Failed to delete adjustment'));
     } finally {
       setDeleteLoading(false);
     }
@@ -165,9 +175,8 @@ export default function SentenceAdjustmentPage() {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-malawiGreen dark:bg-gray-700 dark:text-gray-100"
                 >
                   <option value="remission">Remission</option>
-                  <option value="presidential_pardon">Presidential Pardon</option>
-                  <option value="court_reduction">Court Reduction</option>
-                  <option value="good_behaviour">Good Behaviour</option>
+                  <option value="pardon">Pardon</option>
+                  <option value="reduction">Reduction</option>
                 </select>
                 {errors.adjustment_type && (
                   <p className="text-red-600 text-sm mt-1">{errors.adjustment_type.message}</p>
@@ -290,16 +299,16 @@ export default function SentenceAdjustmentPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                          {adjustment.days}
+                          {getAdjustmentDays(adjustment)}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                          {new Date(adjustment.effective_date).toLocaleDateString()}
+                          {adjustment.effective_date ? new Date(adjustment.effective_date).toLocaleDateString() : '-'}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                           {adjustment.reason || '-'}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                          {adjustment.created_by || 'System'}
+                          {getAdjustmentCreator(adjustment)}
                         </td>
                         <td className="px-6 py-4 text-sm">
                           <button
@@ -345,45 +354,45 @@ export default function SentenceAdjustmentPage() {
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={deleteModalOpen}
-        onClose={() => {
-          setDeleteModalOpen(false);
-          setSelectedAdjustment(null);
-        }}
-        title="Delete Adjustment"
-      >
-        <div className="space-y-4">
-          <p className="text-gray-700 dark:text-gray-300">
-            Are you sure you want to delete this adjustment? This action cannot be undone.
-          </p>
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-3">
-            <p className="text-sm text-red-800 dark:text-red-300">
-              {selectedAdjustment?.days} days {selectedAdjustment?.adjustment_type?.replace(/_/g, ' ')}
+      {deleteModalOpen && (
+        <Modal
+          onClose={() => {
+            setDeleteModalOpen(false);
+            setSelectedAdjustment(null);
+          }}
+          title="Delete Adjustment"
+        >
+          <div className="space-y-4">
+            <p className="text-gray-700 dark:text-gray-300">
+              Are you sure you want to delete this adjustment? This action cannot be undone.
             </p>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-3">
+              <p className="text-sm text-red-800 dark:text-red-300">
+                {getAdjustmentDays(selectedAdjustment)} days {selectedAdjustment?.adjustment_type?.replace(/_/g, ' ')}
+              </p>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setDeleteModalOpen(false);
+                  setSelectedAdjustment(null);
+                }}
+                disabled={deleteLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleDeleteConfirm}
+                loading={deleteLoading}
+              >
+                Delete Adjustment
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-3 justify-end">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setDeleteModalOpen(false);
-                setSelectedAdjustment(null);
-              }}
-              disabled={deleteLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleDeleteConfirm}
-              loading={deleteLoading}
-            >
-              Delete Adjustment
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        </Modal>
+      )}
     </div>
   );
 }

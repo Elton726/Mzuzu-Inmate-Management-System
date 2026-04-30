@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Modules\ActivityAllocation\Events\ActivityCreated;
 use App\Modules\ActivityAllocation\Events\ActivitySessionCreated;
+use App\Modules\ActivityAllocation\Events\ActivitySessionUpdated;
 use App\Modules\ActivityAllocation\Events\ActivityUpdated;
 use App\Modules\ActivityAllocation\Events\AttendanceRecorded;
 use App\Modules\ActivityAllocation\Events\OfficerDutyAssigned;
@@ -35,6 +36,9 @@ class EventServiceProvider extends ServiceProvider
             LogActivityChange::class,
         ],
         ActivitySessionCreated::class => [
+            LogActivitySessionCreation::class,
+        ],
+        ActivitySessionUpdated::class => [
             LogActivitySessionCreation::class,
         ],
         AttendanceRecorded::class => [

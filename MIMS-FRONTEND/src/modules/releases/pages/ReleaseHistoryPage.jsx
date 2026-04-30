@@ -5,8 +5,25 @@ import { listReleaseHistory, exportReleaseHistory } from '../services/releaseSer
 import SkeletonLoader from '../components/SkeletonLoader';
 import Button from '../../../components/common/Button';
 
+const normalizeHistoryRecord = (release) => {
+  const inmate = release?.inmate || release?.admission?.inmate || {};
+  const firstName = inmate.first_name || inmate.firstName || release?.first_name || release?.firstName || '';
+  const lastName = inmate.last_name || inmate.lastName || release?.last_name || release?.lastName || '';
+
+  return {
+    key: release?.workflow_id || release?.id || release?.admission_id,
+    inmateName: release?.inmate_name || release?.inmateName || [firstName, lastName].filter(Boolean).join(' '),
+    prisonNumber: inmate.prison_number || inmate.prisonNumber || release?.prison_number || release?.prisonNumber || '',
+    approvedBy: release?.approved_by_name || release?.approver?.name || release?.approvedByName || release?.approved_by || '-',
+    approvedAt: release?.approved_at || release?.approvedAt,
+    confirmedBy: release?.confirmed_by_name || release?.confirmer?.name || release?.confirmedByName || release?.confirmed_by || '-',
+    confirmedAt: release?.confirmed_at || release?.confirmedAt,
+    status: release?.status || 'approved',
+  };
+};
+
 /**
- * Release History Page (Station Officer / Admin)
+ * Release History Page (Station Officer / Gatekeeper)
  * Audit trail of all release workflows
  */
 export default function ReleaseHistoryPage() {
@@ -253,38 +270,42 @@ export default function ReleaseHistoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {releases.map((release) => (
-                  <tr
-                    key={release.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                  >
-                    <td className="px-6 py-4 text-sm">
-                      <p className="font-semibold text-gray-900 dark:text-gray-100">
-                        {release.inmate?.first_name} {release.inmate?.last_name}
-                      </p>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                      {release.inmate?.prison_number}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                      {release.approved_by || '-'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                      {release.approved_at ? new Date(release.approved_at).toLocaleString() : '-'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                      {release.confirmed_by || '-'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                      {release.confirmed_at ? new Date(release.confirmed_at).toLocaleString() : '-'}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(release.status)}`}>
-                        {getStatusLabel(release.status)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {releases.map((release) => {
+                  const record = normalizeHistoryRecord(release);
+
+                  return (
+                    <tr
+                      key={record.key}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                    >
+                      <td className="px-6 py-4 text-sm">
+                        <p className="font-semibold text-gray-900 dark:text-gray-100">
+                          {record.inmateName || '-'}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
+                        {record.prisonNumber || '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
+                        {record.approvedBy || '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
+                        {record.approvedAt ? new Date(record.approvedAt).toLocaleString() : '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
+                        {record.confirmedBy || '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
+                        {record.confirmedAt ? new Date(record.confirmedAt).toLocaleString() : '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(record.status)}`}>
+                          {getStatusLabel(record.status)}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

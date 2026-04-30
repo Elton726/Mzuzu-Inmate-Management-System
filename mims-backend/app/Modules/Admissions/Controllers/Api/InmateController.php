@@ -41,8 +41,9 @@ class InmateController extends Controller
         $sortOrder = $request->string('sort_order', 'desc')->toString();
 
         $query = Inmate::query()
+            ->where('status', '<>', 'released')
             ->withCount('admissions')
-            ->with(['currentAdmission:id,inmate_id,is_current,admission_date,inmate_type,case_number']);
+            ->with(['currentAdmission:id,inmate_id,is_current,admission_date,inmate_type,case_number,sentence_years,sentence_months,sentence_start_date,projected_release_date,original_release_date,released_at']);
 
         return response()->json($query->orderBy($sortBy, $sortOrder)->paginate($perPage));
     }
@@ -51,13 +52,16 @@ class InmateController extends Controller
     {
         $request->validate([
             'q' => ['required', 'string', 'min:2'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $q = $request->string('q')->toString();
+        $perPage = $request->integer('per_page', 25);
 
         $query = Inmate::query()
+            ->where('status', '<>', 'released')
             ->withCount('admissions')
-            ->with(['currentAdmission:id,inmate_id,is_current,admission_date,inmate_type,case_number'])
+            ->with(['currentAdmission:id,inmate_id,is_current,admission_date,inmate_type,case_number,sentence_years,sentence_months,sentence_start_date,projected_release_date,original_release_date,released_at'])
             ->where(function ($builder) use ($q) {
                 $builder
                     ->where('prison_number', 'like', "%{$q}%")
@@ -66,7 +70,7 @@ class InmateController extends Controller
                     ->orWhere('national_id', 'like', "%{$q}%");
             });
 
-        return response()->json($query->orderBy('id', 'desc')->paginate(25));
+        return response()->json($query->orderBy('id', 'desc')->paginate($perPage));
     }
 
     public function store(StoreInmateRequest $request)
@@ -90,6 +94,10 @@ class InmateController extends Controller
 
     public function show(Inmate $inmate)
     {
+        if ($inmate->status === 'released') {
+            return response()->json(['error' => 'Inmate profile not available.'], 404);
+        }
+
         return response()->json($inmate->load('currentAdmission', 'documents'));
     }
 

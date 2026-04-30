@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Modules\Release;
 
+use App\Models\Role;
 use App\Models\User;
 use App\Modules\Admissions\Models\Admission;
 use App\Modules\Admissions\Models\Inmate;
@@ -25,17 +26,11 @@ class SentenceAdjustmentTest extends TestCase
         parent::setUp();
 
         // Create users
-        $this->stationOfficer = User::factory()
-            ->hasAttached(\Spatie\Permission\Models\Role::firstOrCreate(['name' => 'station_officer']))
-            ->create();
+        $this->stationOfficer = $this->userWithRole('station_officer');
 
-        $this->admin = User::factory()
-            ->hasAttached(\Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin']))
-            ->create();
+        $this->admin = $this->userWithRole('admin');
 
-        $this->receptionist = User::factory()
-            ->hasAttached(\Spatie\Permission\Models\Role::firstOrCreate(['name' => 'reception_officer']))
-            ->create();
+        $this->receptionist = $this->userWithRole('reception_officer');
 
         // Create inmate and admission
         $this->inmate = Inmate::factory()->create();
@@ -46,6 +41,13 @@ class SentenceAdjustmentTest extends TestCase
             'original_release_date' => Carbon::now()->addDays(365),
             'projected_release_date' => Carbon::now()->addDays(365),
         ]);
+    }
+
+    private function userWithRole(string $roleName): User
+    {
+        $role = Role::firstOrCreate(['name' => $roleName], ['description' => null]);
+
+        return User::factory()->create(['role_id' => $role->id]);
     }
 
     /** @test */
@@ -66,13 +68,12 @@ class SentenceAdjustmentTest extends TestCase
     }
 
     /** @test */
-    public function admin_can_view_adjustments_for_admission()
+    public function admin_cannot_view_adjustments_for_admission()
     {
         $response = $this->actingAs($this->admin)
             ->getJson("/api/adjustments/{$this->admission->id}");
 
-        $response->assertStatus(200);
-        $response->assertJsonStructure(['data']);
+        $response->assertStatus(403);
     }
 
     /** @test */
@@ -153,7 +154,7 @@ class SentenceAdjustmentTest extends TestCase
     }
 
     /** @test */
-    public function admin_can_apply_adjustment()
+    public function admin_cannot_apply_adjustment()
     {
         $response = $this->actingAs($this->admin)
             ->postJson('/api/adjustments', [
@@ -164,7 +165,7 @@ class SentenceAdjustmentTest extends TestCase
                 'reason' => 'Admin adjustment',
             ]);
 
-        $response->assertStatus(201);
+        $response->assertStatus(403);
     }
 
     /** @test */
@@ -254,13 +255,13 @@ class SentenceAdjustmentTest extends TestCase
     }
 
     /** @test */
-    public function admin_can_delete_adjustment()
+    public function station_officer_can_delete_adjustment()
     {
         $adjustment = SentenceAdjustment::factory()->create([
             'admission_id' => $this->admission->id,
         ]);
 
-        $response = $this->actingAs($this->admin)
+        $response = $this->actingAs($this->stationOfficer)
             ->deleteJson("/api/adjustments/{$adjustment->id}");
 
         $response->assertStatus(204);
@@ -272,13 +273,13 @@ class SentenceAdjustmentTest extends TestCase
     }
 
     /** @test */
-    public function station_officer_cannot_delete_adjustment()
+    public function admin_cannot_delete_adjustment()
     {
         $adjustment = SentenceAdjustment::factory()->create([
             'admission_id' => $this->admission->id,
         ]);
 
-        $response = $this->actingAs($this->stationOfficer)
+        $response = $this->actingAs($this->admin)
             ->deleteJson("/api/adjustments/{$adjustment->id}");
 
         $response->assertStatus(403);

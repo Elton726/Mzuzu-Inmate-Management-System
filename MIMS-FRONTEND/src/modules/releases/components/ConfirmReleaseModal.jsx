@@ -17,7 +17,7 @@ export default function ConfirmReleaseModal({
   loading = false
 }) {
   const { register, handleSubmit, reset, formState: { errors } } = useForm({
-    defaultValues: { confirmation_notes: '' }
+    defaultValues: { notes: '' }
   });
 
   const onSubmit = (data) => {
@@ -57,7 +57,7 @@ export default function ConfirmReleaseModal({
           <div>
             <p className="text-sm text-gray-600 dark:text-gray-400">Approved At</p>
             <p className="font-semibold text-gray-900 dark:text-gray-100">
-              {new Date(approvedAt).toLocaleString()}
+              {approvedAt ? new Date(approvedAt).toLocaleString() : '-'}
             </p>
           </div>
         </div>
@@ -68,15 +68,15 @@ export default function ConfirmReleaseModal({
             Confirmation Notes
           </label>
           <textarea
-            {...register('confirmation_notes', {
+            {...register('notes', {
               required: 'Confirmation notes are required'
             })}
             placeholder="E.g., Released at 14:30, ID verified..."
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-malawiGreen dark:bg-gray-700 dark:text-gray-100"
             rows="4"
           />
-          {errors.confirmation_notes && (
-            <p className="text-red-600 text-sm mt-1">{errors.confirmation_notes.message}</p>
+          {errors.notes && (
+            <p className="text-red-600 text-sm mt-1">{errors.notes.message}</p>
           )}
         </div>
 

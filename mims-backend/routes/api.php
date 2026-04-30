@@ -7,15 +7,15 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Modules\ActivityAllocation\Controllers\Admin\ActivityManagementController;
 use App\Modules\ActivityAllocation\Controllers\Admin\OfficerDutyRosterController;
-use App\Modules\ActivityAllocation\Controllers\Officer\AvailableActivitiesController;
-use App\Modules\ActivityAllocation\Controllers\Officer\ActivitySessionController;
-use App\Modules\ActivityAllocation\Controllers\Officer\ExternalActivityAllocationController;
-use App\Modules\ActivityAllocation\Controllers\Officer\SessionAttendanceController;
 use App\Modules\Admissions\Controllers\Api\ActivityController;
 use App\Modules\Admissions\Controllers\Api\AdmissionController;
 use App\Modules\Admissions\Controllers\Api\CellController;
 use App\Modules\Admissions\Controllers\Api\DocumentController;
 use App\Modules\Admissions\Controllers\Api\InmateController;
+use App\Modules\ActivityAllocation\Controllers\Officer\ActivitySessionController;
+use App\Modules\ActivityAllocation\Controllers\Officer\AvailableActivitiesController;
+use App\Modules\ActivityAllocation\Controllers\Officer\ExternalActivityAllocationController;
+use App\Modules\ActivityAllocation\Controllers\Officer\SessionAttendanceController;
 use App\Modules\Release\Controllers\Api\ReleaseApprovalController;
 use App\Modules\Release\Controllers\Api\ReleaseConfirmationController;
 use App\Modules\Release\Controllers\Api\SentenceAdjustmentController;
@@ -86,7 +86,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
 
     // Inmate Admission Module
-    Route::middleware(['role:reception_officer'])->group(function () {
+    Route::middleware(['role:reception_officer,station_officer'])->group(function () {
         Route::get('/inmates', [InmateController::class, 'index'])->middleware('throttle:60,60,user');
         Route::post('/inmates/check-duplicate', [InmateController::class, 'checkDuplicate'])->middleware('throttle:30,60,user');
         Route::get('/inmates/search', [InmateController::class, 'search'])->middleware('throttle:60,60,user');
@@ -103,48 +103,88 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/documents', [DocumentController::class, 'store'])->middleware('throttle:30,60,user');
     });
 
-    Route::middleware(['role:reception_officer'])->group(function () {
+    Route::middleware(['role:reception_officer,station_officer'])->group(function () {
         Route::get('/admissions/{admission}', [AdmissionController::class, 'show'])->middleware('throttle:60,60,user');
     });
 
-    Route::middleware(['role:station_officer,admin', 'throttle:60,60,user'])->group(function () {
-        Route::get('/releases/eligible', [ReleaseApprovalController::class, 'index']);
-        Route::post('/releases/approve', [ReleaseApprovalController::class, 'store']);
-        Route::delete('/releases/{workflowId}', [ReleaseApprovalController::class, 'destroy']);
-
-        Route::get('/adjustments/{admissionId}', [SentenceAdjustmentController::class, 'index']);
-        Route::post('/adjustments', [SentenceAdjustmentController::class, 'store']);
-    });
-
-    Route::middleware(['role:gatekeeper,admin', 'throttle:60,60,user'])->group(function () {
-        Route::get('/releases/pending', [ReleaseConfirmationController::class, 'index']);
-        Route::put('/releases/{workflowId}/confirm', [ReleaseConfirmationController::class, 'update']);
-    });
-
-    Route::delete('/adjustments/{adjustmentId}', [SentenceAdjustmentController::class, 'destroy'])
-        ->middleware(['role:admin', 'throttle:60,60,user']);
-
-    // Activity Allocation - Officer endpoints
-    Route::middleware(['role:officer_on_duty', 'throttle:100,60,user'])->prefix('officer')->group(function () {
-        Route::get('/activities/available', [AvailableActivitiesController::class, 'index']);
-        Route::get('/activities/{activity}/eligible-inmates', [ExternalActivityAllocationController::class, 'eligible']);
-        Route::post('/activities/{activity}/allocations/manual', [ExternalActivityAllocationController::class, 'manual']);
-        Route::post('/activities/{activity}/allocations/auto', [ExternalActivityAllocationController::class, 'auto']);
-
-        Route::get('/activity-sessions', [ActivitySessionController::class, 'index']);
-        Route::post('/activity-sessions', [ActivitySessionController::class, 'store']);
-        Route::post('/activity-sessions/daily', [ActivitySessionController::class, 'daily']);
-        Route::post('/activity-sessions/external-once', [ActivitySessionController::class, 'externalOnce']);
-        Route::get('/activity-sessions/{id}', [ActivitySessionController::class, 'show']);
-        Route::put('/activity-sessions/{id}', [ActivitySessionController::class, 'update']);
-        Route::delete('/activity-sessions/{id}', [ActivitySessionController::class, 'destroy']);
-
-        Route::post('/activity-sessions/{session}/attendance', [SessionAttendanceController::class, 'store']);
-        Route::get('/activity-sessions/{session}/attendance/report', [SessionAttendanceController::class, 'report']);
-        Route::get('/activity-sessions/{session}/attendance/summary', [SessionAttendanceController::class, 'summary']);
-        Route::put('/attendance/{attendanceId}', [SessionAttendanceController::class, 'update']);
+    Route::middleware(['role:station_officer'])->group(function () {
+        Route::put('/admissions/{admission}/sentence-length', [AdmissionController::class, 'updateSentenceLength'])->middleware('throttle:30,60,user');
     });
 
     Route::get('/statistics/population', [StatisticsController::class, 'population'])->middleware('throttle:60,60,user');
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware(['role:admin', 'throttle:60,60,user']);
+
+    // Release Module - Station Officer & Gatekeeper
+    Route::middleware(['role:station_officer,gatekeeper'])->group(function () {
+        // Release approval (station officer)
+        Route::middleware('role:station_officer')->group(function () {
+            Route::get('/releases/eligible', [ReleaseApprovalController::class, 'index'])->middleware('throttle:60,60,user');
+            Route::post('/releases/approve', [ReleaseApprovalController::class, 'store'])->middleware('throttle:30,60,user');
+            Route::delete('/releases/{workflowId}', [ReleaseApprovalController::class, 'destroy'])->middleware('throttle:10,60,user');
+        });
+
+        // Release confirmation (gatekeeper)
+        Route::middleware('role:gatekeeper')->group(function () {
+            Route::get('/releases/pending-confirmations', [ReleaseConfirmationController::class, 'index'])->middleware('throttle:60,60,user');
+            Route::put('/releases/{workflowId}/confirm', [ReleaseConfirmationController::class, 'update'])->middleware('throttle:10,60,user');
+        });
+
+        // Confirmed releases (station officer)
+        Route::middleware('role:station_officer')->group(function () {
+            Route::get('/releases/confirmed', [ReleaseApprovalController::class, 'confirmed'])->middleware('throttle:60,60,user');
+        });
+
+        // Sentence adjustments (station officer)
+        Route::middleware('role:station_officer')->group(function () {
+            Route::get('/admissions/{admissionId}/adjustments', [SentenceAdjustmentController::class, 'index'])->middleware('throttle:60,60,user');
+            Route::get('/adjustments/{admissionId}', [SentenceAdjustmentController::class, 'index'])->middleware('throttle:60,60,user');
+            Route::post('/admissions/{admissionId}/adjustments', [SentenceAdjustmentController::class, 'store'])->middleware('throttle:30,60,user');
+            Route::post('/adjustments', [SentenceAdjustmentController::class, 'storeLegacy'])->middleware('throttle:30,60,user');
+            Route::delete('/adjustments/{adjustmentId}', [SentenceAdjustmentController::class, 'destroy'])->middleware('throttle:10,60,user');
+        });
+
+        // Release history (station officer & gatekeeper)
+        Route::get('/releases/history', [ReleaseApprovalController::class, 'history'])->middleware('throttle:60,60,user');
+        Route::get('/releases/history/export', [ReleaseApprovalController::class, 'exportHistory'])->middleware('throttle:10,60,user');
+    });
+});
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    // Officer session routes - existing front-end paths and backwards compatibility
+    Route::prefix('officer')->group(function () {
+        Route::prefix('activity-sessions')->group(function () {
+            Route::get('/', [ActivitySessionController::class, 'index']);
+            Route::post('/', [ActivitySessionController::class, 'store']);
+            Route::post('/daily', [ActivitySessionController::class, 'daily']);
+            Route::post('/external-once', [ActivitySessionController::class, 'externalOnce']);
+            Route::get('/{id}', [ActivitySessionController::class, 'show']);
+            Route::put('/{id}', [ActivitySessionController::class, 'update']);
+            Route::delete('/{id}', [ActivitySessionController::class, 'destroy']);
+            Route::post('/{id}/attendance', [SessionAttendanceController::class, 'store']);
+            Route::get('/{id}/attendance/report', [SessionAttendanceController::class, 'report']);
+            Route::get('/{id}/attendance/summary', [SessionAttendanceController::class, 'summary']);
+        });
+
+        Route::get('/activities/available', [AvailableActivitiesController::class, 'index'])->middleware('throttle:60,60,user');
+        Route::get('/activities/{activityId}/eligible-inmates', [ExternalActivityAllocationController::class, 'eligible'])->middleware('throttle:60,60,user');
+        Route::post('/activities/{activityId}/allocations/manual', [ExternalActivityAllocationController::class, 'manual'])->middleware('throttle:30,60,user');
+        Route::post('/activities/{activityId}/allocations/auto', [ExternalActivityAllocationController::class, 'auto'])->middleware('throttle:30,60,user');
+    });
+
+    // Sessions – accessible by officer_on_duty and admin
+    Route::prefix('sessions')->group(function () {
+        Route::get('/', [ActivitySessionController::class, 'index']);
+        Route::post('/', [ActivitySessionController::class, 'store']);
+        Route::get('{id}', [ActivitySessionController::class, 'show']);
+        Route::put('{id}', [ActivitySessionController::class, 'update']);
+        Route::delete('{id}', [ActivitySessionController::class, 'destroy']);
+    });
+
+    // Attendance
+    Route::prefix('attendance')->group(function () {
+        Route::post('/', [SessionAttendanceController::class, 'store']);
+        Route::get('sessions/{sessionId}/report', [SessionAttendanceController::class, 'report']);
+        Route::get('sessions/{sessionId}/summary', [SessionAttendanceController::class, 'summary']);
+        Route::put('{attendanceId}', [SessionAttendanceController::class, 'update']);
+    });
 });

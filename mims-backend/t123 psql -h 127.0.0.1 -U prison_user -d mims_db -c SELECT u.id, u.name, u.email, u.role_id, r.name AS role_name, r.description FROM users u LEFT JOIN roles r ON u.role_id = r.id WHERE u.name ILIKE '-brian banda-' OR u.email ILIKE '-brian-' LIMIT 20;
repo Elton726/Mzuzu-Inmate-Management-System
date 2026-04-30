@@ -1,0 +1,5 @@
+ id |    name     |       email       | role_id |    role_name    |             description              
+----+-------------+-------------------+---------+-----------------+--------------------------------------
+ 70 | Brian Banda | brian@example.com |       3 | station_officer | Oversees inmate records and releases
+(1 row)
+

@@ -10,7 +10,7 @@
  * - Role-based access control
  *
  * Architecture:
- * - Uses BrowserRouter for clean URLs
+ * - Uses HashRouter so browser refreshes preserve app state across static hosts
  * - Context providers wrap the entire app for global state
  * - Protected routes enforce authentication and role permissions
  * - Modular structure with feature-based routing
@@ -24,9 +24,10 @@
  */
 
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/useAuth';
+import { ROLES } from './utils/helpers';
 import LoginPage from './modules/auth/pages/LoginPage';
 import HomePage from './modules/home/pages/HomePage';
 import ProfilePage from './modules/user/pages/ProfilePage';
@@ -47,7 +48,9 @@ import AdmissionsIndexPage from './modules/admissions/pages/AdmissionsIndexPage'
 import InmateDetailPage from './modules/admissions/pages/InmateDetailPage';
 import ReleaseApprovalPage from './modules/releases/pages/ReleaseApprovalPage';
 import ReleaseConfirmationPage from './modules/releases/pages/ReleaseConfirmationPage';
+import ConfirmedReleasesPage from './modules/releases/pages/ConfirmedReleasesPage';
 import SentenceAdjustmentPage from './modules/releases/pages/SentenceAdjustmentPage';
+import SentenceLengthPage from './modules/releases/pages/SentenceLengthPage';
 import ReleaseHistoryPage from './modules/releases/pages/ReleaseHistoryPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
@@ -160,7 +163,7 @@ const AppContent = () => {
           <Route
             path="/releases/approval"
             element={
-              <ProtectedRoute allowedRoles={['station_officer', 'admin']}>
+              <ProtectedRoute allowedRoles={['station_officer']}>
                 <ReleaseApprovalPage />
               </ProtectedRoute>
             }
@@ -168,7 +171,7 @@ const AppContent = () => {
           <Route
             path="/releases/confirmation"
             element={
-              <ProtectedRoute allowedRoles={['gatekeeper', 'admin']}>
+              <ProtectedRoute allowedRoles={['gatekeeper']}>
                 <ReleaseConfirmationPage />
               </ProtectedRoute>
             }
@@ -176,16 +179,40 @@ const AppContent = () => {
           <Route
             path="/adjustments/:admissionId"
             element={
-              <ProtectedRoute allowedRoles={['station_officer', 'admin']}>
+              <ProtectedRoute allowedRoles={['station_officer']}>
                 <SentenceAdjustmentPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/releases/sentences"
+            element={
+              <ProtectedRoute allowedRoles={['station_officer']}>
+                <SentenceLengthPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/releases"
+            element={
+              <ProtectedRoute allowedRoles={['station_officer', 'gatekeeper']}>
+                <ReleaseModuleHomeRedirect />
               </ProtectedRoute>
             }
           />
           <Route
             path="/releases/history"
             element={
-              <ProtectedRoute allowedRoles={['station_officer', 'gatekeeper', 'admin']}>
+              <ProtectedRoute allowedRoles={['station_officer', 'gatekeeper']}>
                 <ReleaseHistoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/releases/confirmed"
+            element={
+              <ProtectedRoute allowedRoles={['station_officer']}>
+                <ConfirmedReleasesPage />
               </ProtectedRoute>
             }
           />
@@ -320,6 +347,21 @@ const AppContent = () => {
  * - Auto-close: 7 seconds
  * - Custom styling via ToastContext
  */
+const ReleaseModuleHomeRedirect = () => {
+  const { getRoleName } = useAuth();
+  const role = getRoleName();
+
+  if (role === ROLES.STATION_OFFICER) {
+    return <Navigate to="/releases/approval" replace />;
+  }
+
+  if (role === ROLES.GATEKEEPER) {
+    return <Navigate to="/releases/confirmation" replace />;
+  }
+
+  return <Navigate to="/" replace />;
+};
+
 function App() {
   return (
     <Router>

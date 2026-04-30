@@ -11,7 +11,7 @@ class StoreSentenceAdjustmentRequest extends FormRequest
     {
         $user = $this->user();
 
-        return (bool) $user && ($user->hasRole('station_officer') || $user->isAdmin());
+        return (bool) $user && $user->hasRole('station_officer');
     }
 
     public function rules(): array

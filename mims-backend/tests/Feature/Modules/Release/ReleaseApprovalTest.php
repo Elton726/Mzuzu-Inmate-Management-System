@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Modules\Release;
 
+use App\Models\Role;
 use App\Models\User;
 use App\Modules\Admissions\Models\Admission;
 use App\Modules\Admissions\Models\Inmate;
@@ -25,17 +26,11 @@ class ReleaseApprovalTest extends TestCase
         parent::setUp();
 
         // Create users
-        $this->stationOfficer = User::factory()
-            ->hasAttached(\Spatie\Permission\Models\Role::firstOrCreate(['name' => 'station_officer']))
-            ->create();
+        $this->stationOfficer = $this->userWithRole('station_officer');
 
-        $this->admin = User::factory()
-            ->hasAttached(\Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin']))
-            ->create();
+        $this->admin = $this->userWithRole('admin');
 
-        $this->receptionist = User::factory()
-            ->hasAttached(\Spatie\Permission\Models\Role::firstOrCreate(['name' => 'reception_officer']))
-            ->create();
+        $this->receptionist = $this->userWithRole('reception_officer');
 
         // Create inmate
         $this->inmate = Inmate::factory()->create([
@@ -54,6 +49,13 @@ class ReleaseApprovalTest extends TestCase
         ]);
     }
 
+    private function userWithRole(string $roleName): User
+    {
+        $role = Role::firstOrCreate(['name' => $roleName], ['description' => null]);
+
+        return User::factory()->create(['role_id' => $role->id]);
+    }
+
     /** @test */
     public function station_officer_can_view_eligible_inmates_for_release()
     {
@@ -70,13 +72,12 @@ class ReleaseApprovalTest extends TestCase
     }
 
     /** @test */
-    public function admin_can_view_eligible_inmates_for_release()
+    public function admin_cannot_view_eligible_inmates_for_release()
     {
         $response = $this->actingAs($this->admin)
             ->getJson('/api/releases/eligible');
 
-        $response->assertStatus(200);
-        $response->assertJsonStructure(['data']);
+        $response->assertStatus(403);
     }
 
     /** @test */
@@ -114,7 +115,7 @@ class ReleaseApprovalTest extends TestCase
     }
 
     /** @test */
-    public function admin_can_approve_release()
+    public function admin_cannot_approve_release()
     {
         $response = $this->actingAs($this->admin)
             ->postJson('/api/releases/approve', [
@@ -122,15 +123,17 @@ class ReleaseApprovalTest extends TestCase
                 'notes' => 'Admin approved release.',
             ]);
 
-        $response->assertStatus(201);
+        $response->assertStatus(403);
     }
 
     /** @test */
     public function cannot_approve_non_eligible_admission()
     {
+        $inmate = Inmate::factory()->create();
+
         // Create non-eligible admission (projected release date > 30 days away)
         $nonEligibleAdmission = Admission::factory()->create([
-            'inmate_id' => $this->inmate->id,
+            'inmate_id' => $inmate->id,
             'is_current' => true,
             'released_at' => null,
             'projected_release_date' => Carbon::now()->addDays(45),

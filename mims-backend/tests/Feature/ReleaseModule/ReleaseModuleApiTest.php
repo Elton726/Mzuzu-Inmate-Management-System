@@ -151,10 +151,9 @@ class ReleaseModuleApiTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_sentence_adjustment_recalculates_release_date_and_admin_can_delete_it(): void
+    public function test_sentence_adjustment_recalculates_release_date_and_station_officer_can_delete_it(): void
     {
         $stationOfficer = $this->userWithRole('station_officer');
-        $admin = $this->userWithRole('admin');
         $admission = $this->createAdmission([
             'projected_release_date' => '2026-05-30',
             'original_release_date' => '2026-05-30',
@@ -185,7 +184,7 @@ class ReleaseModuleApiTest extends TestCase
             'user_id' => $stationOfficer->id,
         ]);
 
-        $this->actingAs($admin, 'sanctum')
+        $this->actingAs($stationOfficer, 'sanctum')
             ->deleteJson('/api/adjustments/' . $store->json('adjustment.id'))
             ->assertNoContent();
 

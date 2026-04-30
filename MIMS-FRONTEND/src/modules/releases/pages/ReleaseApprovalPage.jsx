@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
-import { FiRefreshCw, FiHistory, FiSearch } from 'react-icons/fi';
-import { FaCalendarAlt, FaCheckCircle, FaHourglass } from 'react-icons/fa';
+import { FiRefreshCw, FiSearch } from 'react-icons/fi';
+import { FaCalendarAlt, FaCheckCircle, FaHistory, FaHourglass } from 'react-icons/fa';
 import {
   listEligibleReleases,
-  searchReleases,
   approveRelease
 } from '../services/releaseService';
 import StatsCard from '../components/StatsCard';
@@ -14,8 +13,39 @@ import ReleaseStatusBadge from '../components/ReleaseStatusBadge';
 import DateBadge from '../components/DateBadge';
 import Button from '../../../components/common/Button';
 
+const normalizeRelease = (release) => {
+  const admission = release?.admission || {};
+  const inmate = release?.inmate || admission?.inmate || {};
+  const firstName = inmate.first_name || inmate.firstName || release?.first_name || release?.firstName || '';
+  const lastName = inmate.last_name || inmate.lastName || release?.last_name || release?.lastName || '';
+  const projectedReleaseDate = (
+    release?.projected_release_date ||
+    release?.projectedReleaseDate ||
+    release?.release_date ||
+    release?.releaseDate ||
+    admission?.projected_release_date ||
+    admission?.projectedReleaseDate
+  );
+
+  return {
+    raw: release,
+    key: release?.workflow_id || release?.id || release?.admission_id || admission?.id || release?.inmate_id,
+    admissionId: release?.admission_id || admission?.id,
+    inmate: {
+      id: inmate.id || release?.inmate_id,
+      first_name: firstName,
+      last_name: lastName,
+      prison_number: inmate.prison_number || inmate.prisonNumber || release?.prison_number || release?.prisonNumber || '',
+      projected_release_date: projectedReleaseDate,
+    },
+    inmateName: release?.inmate_name || release?.inmateName || [firstName, lastName].filter(Boolean).join(' '),
+    projectedReleaseDate,
+    status: release?.status || release?.workflow_status || release?.workflowStatus || 'not_approved',
+  };
+};
+
 /**
- * Release Approval Page (Station Officer / Admin)
+ * Release Approval Page (Station Officer)
  * View and approve inmates eligible for release
  */
 export default function ReleaseApprovalPage() {
@@ -24,13 +54,13 @@ export default function ReleaseApprovalPage() {
   const [stats, setStats] = useState({
     total_eligible: 0,
     eligible_this_week: 0,
-    already_approved: 0
+already_approved: 0
   });
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [perPage, setPerPage] = useState(25);
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -43,26 +73,26 @@ export default function ReleaseApprovalPage() {
       const params = {
         per_page: perPage,
         page: currentPage,
-        status: statusFilter !== 'all' ? statusFilter : undefined
       };
 
-      let data;
       if (searchQuery.trim().length >= 2) {
-        data = await searchReleases({ q: searchQuery, ...params });
-      } else {
-        data = await listEligibleReleases(params);
+        params.q = searchQuery;
       }
 
-      setReleases(data.data || []);
+      const data = await listEligibleReleases(params);
+
+      const rows = Array.isArray(data) ? data : (data.data || []);
+      setReleases(rows);
       setTotalPages(data.last_page || 1);
       setCurrentPage(data.current_page || 1);
 
       // Calculate stats
-      const total = data.total || 0;
-      const approved = data.data?.filter(r => r.status === 'approved').length || 0;
-      const thisWeek = data.data?.filter(r => {
+      const total = data.total || rows.length;
+      const thisWeek = rows.filter(r => {
+        const normalizedRelease = normalizeRelease(r);
         const today = new Date();
-        const releaseDate = new Date(r.projected_release_date);
+        const releaseDate = new Date(normalizedRelease.projectedReleaseDate);
+        if (Number.isNaN(releaseDate.getTime())) return false;
         const daysUntilRelease = Math.floor((releaseDate - today) / (1000 * 60 * 60 * 24));
         return daysUntilRelease >= 0 && daysUntilRelease <= 7;
       }).length || 0;
@@ -70,7 +100,7 @@ export default function ReleaseApprovalPage() {
       setStats({
         total_eligible: total,
         eligible_this_week: thisWeek,
-        already_approved: approved
+        already_approved: 0
       });
     } catch (err) {
       toast.error(err?.message || 'Failed to load releases');
@@ -78,11 +108,17 @@ export default function ReleaseApprovalPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, statusFilter, perPage, searchQuery]);
+  }, [currentPage, perPage, searchQuery]);
+
+  const displayReleases = useMemo(() => {
+    return releases
+      .map(normalizeRelease)
+      .filter((release) => statusFilter === 'all' || release.status === statusFilter);
+  }, [releases, statusFilter]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter, perPage]);
+  }, [searchQuery, perPage]);
 
   useEffect(() => {
     loadReleases();
@@ -95,10 +131,11 @@ export default function ReleaseApprovalPage() {
 
   const handleApproveConfirm = async (data) => {
     if (!selectedRelease) return;
+    const release = normalizeRelease(selectedRelease);
 
     try {
       setApproveLoading(true);
-      await approveRelease(selectedRelease.inmate_id, {
+      await approveRelease(release.admissionId, {
         notes: data.notes || ''
       });
 
@@ -117,7 +154,7 @@ export default function ReleaseApprovalPage() {
     loadReleases();
   };
 
-  const handleClearFilters = () => {
+const handleClearFilters = () => {
     setSearchQuery('');
     setStatusFilter('all');
     setCurrentPage(1);
@@ -146,7 +183,7 @@ export default function ReleaseApprovalPage() {
             variant="secondary"
             onClick={() => {}} // Navigate to history
           >
-            <FiHistory className="inline mr-2" />
+            <FaHistory className="inline mr-2" />
             Release History
           </Button>
         </div>
@@ -250,7 +287,7 @@ export default function ReleaseApprovalPage() {
           <div className="p-6">
             <SkeletonLoader rows={5} columns={5} />
           </div>
-        ) : releases.length === 0 ? (
+        ) : displayReleases.length === 0 ? (
           <div className="p-8 text-center">
             <p className="text-gray-600 dark:text-gray-400">
               {searchQuery || statusFilter !== 'all' ? 'No releases found matching your filters.' : 'No eligible inmates for release.'}
@@ -279,23 +316,28 @@ export default function ReleaseApprovalPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {releases.map((release) => (
+                {displayReleases.map((release) => (
                   <tr
-                    key={release.id}
+                    key={release.key}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                   >
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                      {release.inmate?.prison_number}
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {release.inmate.prison_number || '-'}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <div>
                         <p className="font-semibold text-gray-900 dark:text-gray-100">
-                          {release.inmate?.first_name} {release.inmate?.last_name}
+                          {release.inmateName || '-'}
                         </p>
+                        {release.admissionId && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Admission #{release.admissionId}
+                          </p>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      <DateBadge date={release.projected_release_date} />
+                      <DateBadge date={release.projectedReleaseDate} />
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <ReleaseStatusBadge status={release.status} />
@@ -305,7 +347,8 @@ export default function ReleaseApprovalPage() {
                         <Button
                           variant="primary"
                           size="sm"
-                          onClick={() => handleApproveClick(release)}
+                          disabled={!release.admissionId}
+                          onClick={() => handleApproveClick(release.raw)}
                         >
                           Approve
                         </Button>
@@ -355,7 +398,7 @@ export default function ReleaseApprovalPage() {
       {/* Approve Modal */}
       <ApproveReleaseModal
         isOpen={modalOpen}
-        inmate={selectedRelease?.inmate}
+        inmate={selectedRelease ? normalizeRelease(selectedRelease).inmate : null}
         onClose={() => {
           setModalOpen(false);
           setSelectedRelease(null);

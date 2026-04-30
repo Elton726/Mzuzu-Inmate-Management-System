@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Modules\Release;
 
+use App\Models\Role;
 use App\Models\User;
 use App\Modules\Admissions\Models\Admission;
 use App\Modules\Admissions\Models\Inmate;
@@ -24,17 +25,11 @@ class ReleaseWorkflowIntegrationTest extends TestCase
         parent::setUp();
 
         // Create users with proper roles
-        $this->stationOfficer = User::factory()
-            ->hasAttached(\Spatie\Permission\Models\Role::firstOrCreate(['name' => 'station_officer']))
-            ->create();
+        $this->stationOfficer = $this->userWithRole('station_officer');
 
-        $this->gatekeeper = User::factory()
-            ->hasAttached(\Spatie\Permission\Models\Role::firstOrCreate(['name' => 'gatekeeper']))
-            ->create();
+        $this->gatekeeper = $this->userWithRole('gatekeeper');
 
-        $this->admin = User::factory()
-            ->hasAttached(\Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin']))
-            ->create();
+        $this->admin = $this->userWithRole('admin');
 
         // Create inmate and eligible admission
         $this->inmate = Inmate::factory()->create([
@@ -50,6 +45,13 @@ class ReleaseWorkflowIntegrationTest extends TestCase
             'original_release_date' => Carbon::now()->addDays(20),
             'projected_release_date' => Carbon::now()->addDays(20),
         ]);
+    }
+
+    private function userWithRole(string $roleName): User
+    {
+        $role = Role::firstOrCreate(['name' => $roleName], ['description' => null]);
+
+        return User::factory()->create(['role_id' => $role->id]);
     }
 
     /** @test */
@@ -145,32 +147,18 @@ class ReleaseWorkflowIntegrationTest extends TestCase
     }
 
     /** @test */
-    public function admin_can_oversee_full_workflow()
+    public function admin_cannot_oversee_release_workflow()
     {
-        // Admin approves
         $approvalResponse = $this->actingAs($this->admin)
             ->postJson('/api/releases/approve', [
                 'admission_id' => $this->admission->id,
                 'notes' => 'Admin approval',
             ]);
 
-        $approvalResponse->assertStatus(201);
-        $workflowId = $approvalResponse->json('id');
-
-        // Admin confirms
-        $confirmResponse = $this->actingAs($this->admin)
-            ->putJson("/api/releases/{$workflowId}/confirm", [
-                'notes' => 'Admin confirmation',
-            ]);
-
-        $confirmResponse->assertStatus(200);
-
-        // Verify workflow status
-        $this->assertDatabaseHas('release_workflow', [
-            'id' => $workflowId,
-            'status' => 'confirmed',
+        $approvalResponse->assertStatus(403);
+        $this->assertDatabaseMissing('release_workflow', [
+            'admission_id' => $this->admission->id,
             'approved_by' => $this->admin->id,
-            'confirmed_by' => $this->admin->id,
         ]);
     }
 
@@ -264,7 +252,7 @@ class ReleaseWorkflowIntegrationTest extends TestCase
         // Verify complete audit trail
         $workflow = \App\Modules\Release\Models\ReleaseWorkflow::find($workflowId);
 
-        $this->assertEquals('approved', $workflow->status);
+        $this->assertEquals('confirmed', $workflow->status);
         $this->assertEquals($this->stationOfficer->id, $workflow->approved_by);
         $this->assertEquals('Station officer approval notes.', $workflow->approval_notes);
         $this->assertEquals($this->gatekeeper->id, $workflow->confirmed_by);

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Modules\Release;
 
+use App\Models\Role;
 use App\Models\User;
 use App\Modules\Admissions\Models\Admission;
 use App\Modules\Admissions\Models\Inmate;
@@ -26,17 +27,11 @@ class ReleaseConfirmationTest extends TestCase
         parent::setUp();
 
         // Create users
-        $this->gatekeeper = User::factory()
-            ->hasAttached(\Spatie\Permission\Models\Role::firstOrCreate(['name' => 'gatekeeper']))
-            ->create();
+        $this->gatekeeper = $this->userWithRole('gatekeeper');
 
-        $this->admin = User::factory()
-            ->hasAttached(\Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin']))
-            ->create();
+        $this->admin = $this->userWithRole('admin');
 
-        $this->stationOfficer = User::factory()
-            ->hasAttached(\Spatie\Permission\Models\Role::firstOrCreate(['name' => 'station_officer']))
-            ->create();
+        $this->stationOfficer = $this->userWithRole('station_officer');
 
         // Create inmate and admission
         $this->inmate = Inmate::factory()->create();
@@ -56,6 +51,13 @@ class ReleaseConfirmationTest extends TestCase
         ]);
     }
 
+    private function userWithRole(string $roleName): User
+    {
+        $role = Role::firstOrCreate(['name' => $roleName], ['description' => null]);
+
+        return User::factory()->create(['role_id' => $role->id]);
+    }
+
     /** @test */
     public function gatekeeper_can_view_pending_releases()
     {
@@ -67,13 +69,12 @@ class ReleaseConfirmationTest extends TestCase
     }
 
     /** @test */
-    public function admin_can_view_pending_releases()
+    public function admin_cannot_view_pending_releases()
     {
         $response = $this->actingAs($this->admin)
             ->getJson('/api/releases/pending');
 
-        $response->assertStatus(200);
-        $response->assertJsonStructure(['data']);
+        $response->assertStatus(403);
     }
 
     /** @test */
@@ -111,17 +112,16 @@ class ReleaseConfirmationTest extends TestCase
     }
 
     /** @test */
-    public function admin_can_confirm_release()
+    public function admin_cannot_confirm_release()
     {
         $response = $this->actingAs($this->admin)
             ->putJson("/api/releases/{$this->approvedWorkflow->id}/confirm", [
                 'notes' => 'Admin confirmed release.',
             ]);
 
-        $response->assertStatus(200);
-        $this->assertDatabaseHas('release_workflow', [
+        $response->assertStatus(403);
+        $this->assertDatabaseMissing('release_workflow', [
             'id' => $this->approvedWorkflow->id,
-            'status' => 'confirmed',
             'confirmed_by' => $this->admin->id,
         ]);
     }

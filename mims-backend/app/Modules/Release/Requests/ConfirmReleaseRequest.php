@@ -10,7 +10,14 @@ class ConfirmReleaseRequest extends FormRequest
     {
         $user = $this->user();
 
-        return (bool) $user && ($user->hasRole('gatekeeper') || $user->isAdmin());
+        return (bool) $user && $user->hasRole('gatekeeper');
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (!$this->has('notes') && $this->has('confirmation_notes')) {
+            $this->merge(['notes' => $this->input('confirmation_notes')]);
+        }
     }
 
     public function rules(): array

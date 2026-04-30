@@ -61,6 +61,19 @@ class ReleaseService
             throw new RuntimeException('Only approved releases can be confirmed.');
         }
 
+        $releaseDate = $workflow->admission?->projected_release_date;
+        if ($releaseDate === null) {
+            throw new RuntimeException('This inmate does not have a projected release date.');
+        }
+
+        if ($releaseDate->isFuture()) {
+            throw new RuntimeException('Inmate cannot be confirmed yet because the release day has not yet reached.');
+        }
+
+        if (!$releaseDate->isToday()) {
+            throw new RuntimeException('Inmate can only be confirmed on the exact release date.');
+        }
+
         $oldData = $workflow->toArray();
 
         try {
@@ -129,10 +142,10 @@ class ReleaseService
             return 'Release already confirmed for this admission.';
         }
 
-        if (str_contains($message, 'Only a gatekeeper or admin can confirm a release')) {
-            return 'Only a gatekeeper or admin can confirm a release.';
+        if (str_contains($message, 'Only a gatekeeper can confirm a release')) {
+            return 'Only a gatekeeper can confirm a release.';
         }
 
-        return 'Unable to confirm this release.';
+        return config('app.debug') ? $message : 'Unable to confirm this release.';
     }
 }

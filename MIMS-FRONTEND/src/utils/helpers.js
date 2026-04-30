@@ -130,12 +130,26 @@ export const getFieldErrors = (error) => {
 };
 
 /**
+ * Map of role_id to role name
+ * Based on backend roles table:
+ * id: 1 = admin, 2 = reception_officer, 3 = station_officer, 4 = officer_on_duty, 5 = gatekeeper
+ */
+const ROLE_ID_MAP = {
+  1: 'admin',
+  2: 'reception_officer',
+  3: 'station_officer',
+  4: 'officer_on_duty',
+  5: 'gatekeeper'
+};
+
+/**
  * Extract role name from user object or role data
  *
  * Handles different formats of role data from backend:
  * - String role name
  * - User object with role relationship
  * - Role object with name property
+ * - Numeric role_id (e.g., role_id: 3 returns 'station_officer')
  *
  * @param {Object|string} userOrRole - User object, role object, or role string
  * @returns {string|null} Normalized role name or null if not found
@@ -145,14 +159,29 @@ export const getRoleName = (userOrRole) => {
   if (typeof userOrRole === 'string') return userOrRole;
 
   if (typeof userOrRole === 'object') {
+    // Check for role_name property (e.g., { role_name: 'admin' })
     if ('role_name' in userOrRole && typeof userOrRole.role_name === 'string') return userOrRole.role_name;
 
+    // Check for role relationship object (e.g., { role: { name: 'admin' } })
     if ('role' in userOrRole) {
       const r = userOrRole.role;
       if (typeof r === 'string') return r;
       if (r && typeof r === 'object' && typeof r.name === 'string') return r.name;
     }
 
+// Check for numeric role_id (e.g., { role_id: 3 } returns 'station_officer')
+    if ('role_id' in userOrRole) {
+      const roleId = userOrRole.role_id;
+      // Handle both number and string representations of role_id
+      if (typeof roleId === 'number') {
+        return ROLE_ID_MAP[roleId] || null;
+      }
+      if (typeof roleId === 'string' && /^\d+$/.test(roleId)) {
+        return ROLE_ID_MAP[parseInt(roleId, 10)] || null;
+      }
+    }
+
+    // Check for standalone role object with id (e.g., { id: 1 } in role lookup)
     if (!('email' in userOrRole) && typeof userOrRole.name === 'string') return userOrRole.name;
   }
 

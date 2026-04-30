@@ -13,8 +13,8 @@ class ReleaseWorkflowFactory extends Factory
     {
         return [
             'admission_id' => null, // Should be set explicitly
-            'approved_by' => null,
-            'approved_at' => null,
+            'approved_by' => \App\Models\User::factory(),
+            'approved_at' => now(),
             'approval_notes' => $this->faker->sentence(),
             'confirmed_by' => null,
             'confirmed_at' => null,

@@ -10,7 +10,7 @@ class ReleaseWorkflowRepository
 {
     public function getEligibleInmates(): Collection
     {
-        return DB::table('inmates_due_for_release')->get();
+        return collect(DB::table('inmates_due_for_release')->get());
     }
 
     public function getPendingForGatekeeper(): Collection

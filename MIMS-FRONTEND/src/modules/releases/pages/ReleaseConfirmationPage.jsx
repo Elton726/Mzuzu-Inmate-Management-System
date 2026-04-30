@@ -12,8 +12,75 @@ import ConfirmReleaseModal from '../components/ConfirmReleaseModal';
 import DateBadge from '../components/DateBadge';
 import Button from '../../../components/common/Button';
 
+const getErrorMessage = (err, fallback) => (
+  err?.response?.data?.message ||
+  err?.response?.data?.error ||
+  err?.message ||
+  fallback
+);
+
+const toDateOnly = (date) => {
+  if (!date) return null;
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return null;
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
+};
+
+const getReleaseTiming = (projectedReleaseDate) => {
+  const releaseDate = toDateOnly(projectedReleaseDate);
+  if (!releaseDate) {
+    return {
+      canConfirm: false,
+      message: 'Inmate cannot be confirmed because the release date is missing.',
+    };
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (releaseDate > today) {
+    return {
+      canConfirm: false,
+      message: 'Inmate cannot be confirmed yet because the release day has not yet reached.',
+    };
+  }
+
+  if (releaseDate < today) {
+    return {
+      canConfirm: false,
+      message: 'Inmate can only be confirmed on the exact release date.',
+    };
+  }
+
+  return { canConfirm: true, message: '' };
+};
+
+const normalizeConfirmation = (release) => {
+  const admission = release?.admission || {};
+  const inmate = release?.inmate || admission?.inmate || {};
+  const firstName = inmate.first_name || release?.first_name || '';
+  const lastName = inmate.last_name || release?.last_name || '';
+
+  return {
+    raw: release,
+    workflowId: release?.workflow_id || release?.id,
+    key: release?.workflow_id || release?.id || release?.admission_id,
+    inmate: {
+      id: inmate.id || release?.inmate_id,
+      first_name: firstName,
+      last_name: lastName,
+      prison_number: inmate.prison_number || release?.prison_number || '',
+    },
+    inmateName: [firstName, lastName].filter(Boolean).join(' '),
+    approvedBy: release?.approved_by_name || release?.approver?.name || release?.approved_by || 'N/A',
+    approvedAt: release?.approved_at,
+    projectedReleaseDate: release?.projected_release_date || admission?.projected_release_date,
+  };
+};
+
 /**
- * Release Confirmation Page (Gatekeeper / Admin)
+ * Release Confirmation Page (Gatekeeper)
  * Confirm physical exits of approved releases
  */
 export default function ReleaseConfirmationPage() {
@@ -60,7 +127,7 @@ export default function ReleaseConfirmationPage() {
         confirmed_today: confirmedToday
       });
     } catch (err) {
-      toast.error(err?.message || 'Failed to load confirmations');
+      toast.error(getErrorMessage(err, 'Failed to load confirmations'));
       setReleases([]);
     } finally {
       setLoading(false);
@@ -76,17 +143,26 @@ export default function ReleaseConfirmationPage() {
   }, [loadReleases]);
 
   const handleConfirmClick = (release) => {
+    const row = normalizeConfirmation(release);
+    const timing = getReleaseTiming(row.projectedReleaseDate);
+
+    if (!timing.canConfirm) {
+      toast.info(timing.message);
+      return;
+    }
+
     setSelectedRelease(release);
     setModalOpen(true);
   };
 
   const handleConfirmation = async (data) => {
     if (!selectedRelease) return;
+    const release = normalizeConfirmation(selectedRelease);
 
     try {
       setConfirmLoading(true);
-      await confirmRelease(selectedRelease.inmate_id, {
-        confirmation_notes: data.confirmation_notes
+      await confirmRelease(release.workflowId, {
+        notes: data.notes
       });
 
       toast.success('Release confirmed successfully');
@@ -94,7 +170,7 @@ export default function ReleaseConfirmationPage() {
       setSelectedRelease(null);
       loadReleases();
     } catch (err) {
-      toast.error(err?.message || 'Failed to confirm release');
+      toast.error(getErrorMessage(err, 'Failed to confirm release'));
     } finally {
       setConfirmLoading(false);
     }
@@ -234,39 +310,51 @@ export default function ReleaseConfirmationPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {releases.map((release) => (
-                  <tr
-                    key={release.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                  >
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                      {release.inmate?.prison_number}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <p className="font-semibold text-gray-900 dark:text-gray-100">
-                        {release.inmate?.first_name} {release.inmate?.last_name}
-                      </p>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                      {release.approved_by || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                      {new Date(release.approved_at).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <DateBadge date={release.projected_release_date} />
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => handleConfirmClick(release)}
-                      >
-                        Confirm
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                {releases.map((release) => {
+                  const row = normalizeConfirmation(release);
+                  const timing = getReleaseTiming(row.projectedReleaseDate);
+
+                  return (
+                    <tr
+                      key={row.key}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                    >
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                        {row.inmate.prison_number || '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <p className="font-semibold text-gray-900 dark:text-gray-100">
+                          {row.inmateName || '-'}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
+                        {row.approvedBy || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
+                        {row.approvedAt ? new Date(row.approvedAt).toLocaleString() : '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <DateBadge date={row.projectedReleaseDate} />
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          disabled={!row.workflowId || !timing.canConfirm}
+                          title={timing.message || 'Confirm release'}
+                          onClick={() => handleConfirmClick(row.raw)}
+                        >
+                          Confirm
+                        </Button>
+                        {!timing.canConfirm && (
+                          <p className="mt-2 max-w-xs text-xs text-gray-600 dark:text-gray-400">
+                            {timing.message}
+                          </p>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -301,9 +389,9 @@ export default function ReleaseConfirmationPage() {
       {/* Confirm Modal */}
       <ConfirmReleaseModal
         isOpen={modalOpen}
-        inmate={selectedRelease?.inmate}
-        approvedBy={selectedRelease?.approved_by}
-        approvedAt={selectedRelease?.approved_at}
+        inmate={selectedRelease ? normalizeConfirmation(selectedRelease).inmate : null}
+        approvedBy={selectedRelease ? normalizeConfirmation(selectedRelease).approvedBy : null}
+        approvedAt={selectedRelease ? normalizeConfirmation(selectedRelease).approvedAt : null}
         onClose={() => {
           setModalOpen(false);
           setSelectedRelease(null);

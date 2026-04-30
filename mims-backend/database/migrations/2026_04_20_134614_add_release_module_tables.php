@@ -214,10 +214,10 @@ return new class extends Migration
                     FROM users
                     LEFT JOIN roles ON roles.id = users.role_id
                     WHERE users.id = NEW.confirmed_by
-                      AND roles.name IN ('gatekeeper', 'admin');
+                      AND roles.name = 'gatekeeper';
 
                     IF NOT FOUND THEN
-                        RAISE EXCEPTION 'Only a gatekeeper or admin can confirm a release';
+                        RAISE EXCEPTION 'Only a gatekeeper can confirm a release';
                     END IF;
                 END IF;
 
@@ -309,8 +309,8 @@ return new class extends Migration
                         FROM users
                         LEFT JOIN roles ON roles.id = users.role_id
                         WHERE users.id = NEW.confirmed_by
-                          AND roles.name IN ('gatekeeper', 'admin')
-                    ) THEN RAISE(ABORT, 'Only a gatekeeper or admin can confirm a release')
+                          AND roles.name = 'gatekeeper'
+                    ) THEN RAISE(ABORT, 'Only a gatekeeper can confirm a release')
                 END;
             END
         ");
