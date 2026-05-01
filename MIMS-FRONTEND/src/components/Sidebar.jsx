@@ -169,6 +169,17 @@ const Sidebar = ({ onClose }) => {
             </>
           )}
 
+          {role === ROLES.GATEKEEPER && (
+            <>
+              <li className="text-malawiRed text-sm font-semibold mt-4 mb-2">Visitation</li>
+              <li>
+                <Link to="/visitation/visitors" className="hover:text-malawiGold transition flex items-center">
+                  <MdPerson className="mr-2 text-xl" /> Visitation
+                </Link>
+              </li>
+            </>
+          )}
+
           {/* Profile link for all users */}
           <li>
             <Link to="/profile" className="hover:text-malawiGreen transition flex items-center">

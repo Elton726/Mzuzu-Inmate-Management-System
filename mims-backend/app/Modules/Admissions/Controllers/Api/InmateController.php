@@ -55,19 +55,39 @@ class InmateController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $q = $request->string('q')->toString();
+        $q = trim($request->string('q')->toString());
+        $terms = collect(preg_split('/\s+/', $q) ?: [])
+            ->filter()
+            ->values();
+        $like = fn (string $value) => '%' . strtolower($value) . '%';
         $perPage = $request->integer('per_page', 25);
 
         $query = Inmate::query()
             ->where('status', '<>', 'released')
             ->withCount('admissions')
             ->with(['currentAdmission:id,inmate_id,is_current,admission_date,inmate_type,case_number,sentence_years,sentence_months,sentence_start_date,projected_release_date,original_release_date,released_at'])
-            ->where(function ($builder) use ($q) {
+            ->where(function ($builder) use ($q, $terms, $like) {
                 $builder
-                    ->where('prison_number', 'like', "%{$q}%")
-                    ->orWhere('first_name', 'like', "%{$q}%")
-                    ->orWhere('last_name', 'like', "%{$q}%")
-                    ->orWhere('national_id', 'like', "%{$q}%");
+                    ->whereRaw('LOWER(prison_number) LIKE ?', [$like($q)])
+                    ->orWhereRaw('LOWER(first_name) LIKE ?', [$like($q)])
+                    ->orWhereRaw('LOWER(last_name) LIKE ?', [$like($q)])
+                    ->orWhereRaw('LOWER(other_names) LIKE ?', [$like($q)])
+                    ->orWhereRaw('LOWER(national_id) LIKE ?', [$like($q)]);
+
+                if ($terms->count() > 1) {
+                    $builder->orWhere(function ($termGroup) use ($terms, $like) {
+                        $terms->each(function ($term) use ($termGroup, $like) {
+                            $termGroup->where(function ($termBuilder) use ($term, $like) {
+                                $termBuilder
+                                    ->whereRaw('LOWER(prison_number) LIKE ?', [$like($term)])
+                                    ->orWhereRaw('LOWER(first_name) LIKE ?', [$like($term)])
+                                    ->orWhereRaw('LOWER(last_name) LIKE ?', [$like($term)])
+                                    ->orWhereRaw('LOWER(other_names) LIKE ?', [$like($term)])
+                                    ->orWhereRaw('LOWER(national_id) LIKE ?', [$like($term)]);
+                            });
+                        });
+                    });
+                }
             });
 
         return response()->json($query->orderBy('id', 'desc')->paginate($perPage));
