@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -30,8 +30,6 @@ export default function ActivityFormPage() {
   const toast = useToast();
 
   const { categories, currentActivity, loading } = useSelector((s) => s.activity);
-  const [isExternal, setIsExternal] = useState(false);
-
   const categoryOptions = useMemo(
     () => (categories || []).map((c) => ({ value: c.id, label: c.name })),
     [categories]
@@ -61,16 +59,24 @@ export default function ActivityFormPage() {
     },
   });
 
-  const watchCategoryId = form.watch('category_id');
+  const watchCategoryId = useWatch({
+    control: form.control,
+    name: 'category_id',
+  });
+  const eligibilityCriteria = useWatch({
+    control: form.control,
+    name: 'eligibility_criteria',
+  });
 
   const selectedCategory = useMemo(() => {
     if (!watchCategoryId) return null;
     return (categories || []).find((c) => c?.id === watchCategoryId) || null;
   }, [categories, watchCategoryId]);
 
-  useEffect(() => {
-    setIsExternal(String(selectedCategory?.name || '').toLowerCase() === 'external');
-  }, [selectedCategory]);
+  const isExternal = useMemo(
+    () => String(selectedCategory?.name || '').toLowerCase() === 'external',
+    [selectedCategory]
+  );
 
   useEffect(() => {
     dispatch(fetchCategories());
@@ -181,7 +187,7 @@ export default function ActivityFormPage() {
             </Card>
 
             <EligibilityCriteriaForm
-              value={form.watch('eligibility_criteria')}
+              value={eligibilityCriteria}
               onChange={(val) => form.setValue('eligibility_criteria', val, { shouldDirty: true })}
             />
 

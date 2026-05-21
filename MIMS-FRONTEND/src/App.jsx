@@ -10,7 +10,7 @@
  * - Role-based access control
  *
  * Architecture:
- * - Uses BrowserRouter for clean URLs
+ * - Uses HashRouter so browser refreshes preserve app state across static hosts
  * - Context providers wrap the entire app for global state
  * - Protected routes enforce authentication and role permissions
  * - Modular structure with feature-based routing
@@ -24,9 +24,13 @@
  */
 
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider, ThemeContext } from './contexts/ThemeContext';
 import { useAuth } from './contexts/useAuth';
+import { useContext } from 'react';
+import { MdDarkMode, MdLightMode } from 'react-icons/md';
+import { ROLES } from './utils/helpers';
 import LoginPage from './modules/auth/pages/LoginPage';
 import HomePage from './modules/home/pages/HomePage';
 import ProfilePage from './modules/user/pages/ProfilePage';
@@ -45,6 +49,18 @@ import AdmissionFormPage from './modules/admissions/pages/AdmissionFormPage';
 import AdmissionShowPage from './modules/admissions/pages/AdmissionShowPage';
 import AdmissionsIndexPage from './modules/admissions/pages/AdmissionsIndexPage';
 import InmateDetailPage from './modules/admissions/pages/InmateDetailPage';
+import ReleaseApprovalPage from './modules/releases/pages/ReleaseApprovalPage';
+import ReleaseConfirmationPage from './modules/releases/pages/ReleaseConfirmationPage';
+import ConfirmedReleasesPage from './modules/releases/pages/ConfirmedReleasesPage';
+import SentenceAdjustmentPage from './modules/releases/pages/SentenceAdjustmentPage';
+import SentenceLengthPage from './modules/releases/pages/SentenceLengthPage';
+import ReleaseHistoryPage from './modules/releases/pages/ReleaseHistoryPage';
+import VisitorsPage from './modules/visitation/pages/VisitorsPage';
+import RegistrationsPage from './modules/visitation/pages/RegistrationsPage';
+import SessionsPage from './modules/visitation/pages/SessionsPage';
+import CharityPage from './modules/visitation/pages/CharityPage';
+import RulesPage from './modules/visitation/pages/RulesPage';
+import ReportsPage from './modules/visitation/pages/ReportsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import { ToastProvider } from './contexts/ToastContext';
@@ -60,6 +76,7 @@ import { ToastContainer } from 'react-toastify';
  */
 const AppContent = () => {
   const { isAuthenticated, loading } = useAuth();
+  const { theme, toggleTheme } = useContext(ThemeContext);
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
 
   // Show loading spinner during authentication verification
@@ -83,6 +100,27 @@ const AppContent = () => {
 
       {/* Main content area - adjusts margin based on sidebar state */}
       <div className={isAuthenticated && sidebarOpen ? "ml-64 flex-1" : "flex-1"}>
+        {/* Theme toggle button */}
+        {isAuthenticated && (
+          <button
+            className="fixed top-4 right-4 z-50 bg-malawiGreen text-white px-3 py-2 rounded shadow hover:bg-green-700 transition inline-flex items-center gap-2"
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? (
+              <>
+                <MdLightMode className="w-5 h-5" />
+                Light Mode
+              </>
+            ) : (
+              <>
+                <MdDarkMode className="w-5 h-5" />
+                Dark Mode
+              </>
+            )}
+          </button>
+        )}
+
         {/* Sidebar toggle button - shown when sidebar is closed */}
         {isAuthenticated && !sidebarOpen && (
           <button
@@ -152,6 +190,64 @@ const AppContent = () => {
             }
           />
 
+          {/* Release Management routes - Station Officer & Gatekeeper */}
+          <Route
+            path="/releases/approval"
+            element={
+              <ProtectedRoute allowedRoles={['station_officer']}>
+                <ReleaseApprovalPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/releases/confirmation"
+            element={
+              <ProtectedRoute allowedRoles={['gatekeeper']}>
+                <ReleaseConfirmationPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/adjustments/:admissionId"
+            element={
+              <ProtectedRoute allowedRoles={['station_officer']}>
+                <SentenceAdjustmentPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/releases/sentences"
+            element={
+              <ProtectedRoute allowedRoles={['station_officer']}>
+                <SentenceLengthPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/releases"
+            element={
+              <ProtectedRoute allowedRoles={['station_officer', 'gatekeeper']}>
+                <ReleaseModuleHomeRedirect />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/releases/history"
+            element={
+              <ProtectedRoute allowedRoles={['station_officer', 'gatekeeper']}>
+                <ReleaseHistoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/releases/confirmed"
+            element={
+              <ProtectedRoute allowedRoles={['station_officer']}>
+                <ConfirmedReleasesPage />
+              </ProtectedRoute>
+            }
+          />
+
           {/* Admin routes - system administration */}
           <Route
             path="/admin/dashboard"
@@ -206,6 +302,56 @@ const AppContent = () => {
             element={
               <ProtectedRoute requireAdmin={true}>
                 <ActivityFormPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Visitation module routes - gatekeeper only */}
+          <Route
+            path="/visitation/visitors"
+            element={
+              <ProtectedRoute allowedRoles={['gatekeeper']}>
+                <VisitorsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/visitation/registrations"
+            element={
+              <ProtectedRoute allowedRoles={['gatekeeper']}>
+                <RegistrationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/visitation/sessions"
+            element={
+              <ProtectedRoute allowedRoles={['gatekeeper']}>
+                <SessionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/visitation/charity"
+            element={
+              <ProtectedRoute allowedRoles={['gatekeeper']}>
+                <CharityPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/visitation/rules"
+            element={
+              <ProtectedRoute allowedRoles={['gatekeeper']}>
+                <RulesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/visitation/reports"
+            element={
+              <ProtectedRoute allowedRoles={['gatekeeper']}>
+                <ReportsPage />
               </ProtectedRoute>
             }
           />
@@ -282,15 +428,32 @@ const AppContent = () => {
  * - Auto-close: 7 seconds
  * - Custom styling via ToastContext
  */
+const ReleaseModuleHomeRedirect = () => {
+  const { getRoleName } = useAuth();
+  const role = getRoleName();
+
+  if (role === ROLES.STATION_OFFICER) {
+    return <Navigate to="/releases/approval" replace />;
+  }
+
+  if (role === ROLES.GATEKEEPER) {
+    return <Navigate to="/releases/confirmation" replace />;
+  }
+
+  return <Navigate to="/" replace />;
+};
+
 function App() {
   return (
     <Router>
-      <ToastProvider>
-        <ToastContainer position="top-right" autoClose={7000} />
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </ToastProvider>
+      <ThemeProvider>
+        <ToastProvider>
+          <ToastContainer position="top-right" autoClose={7000} />
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </ToastProvider>
+      </ThemeProvider>
     </Router>
   );
 }

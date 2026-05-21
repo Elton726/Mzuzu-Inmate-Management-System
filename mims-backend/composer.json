@@ -12,7 +12,8 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "spiral/roadrunner": "^2025.1",
-        "swoole/ide-helper": "*"
+        "swoole/ide-helper": "*",
+        "dompdf/dompdf": "^2.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

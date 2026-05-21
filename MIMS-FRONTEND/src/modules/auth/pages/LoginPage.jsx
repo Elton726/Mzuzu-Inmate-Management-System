@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/useAuth';
 import { useToast } from '../../../contexts/useToast';
 import { getRoleName } from '../../../utils/helpers';
@@ -13,6 +13,7 @@ export const LoginPage = () => {
   const { login } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -30,9 +31,12 @@ export const LoginPage = () => {
     const result = await login(email, password);
     
     if (result.success) {
-      // Redirect admins to dashboard, others to home
-      const redirectPath = getRoleName(result.user) === 'admin' ? '/admin/dashboard' : '/';
-      navigate(redirectPath);
+      const requestedPath = location.state?.from
+        ? `${location.state.from.pathname}${location.state.from.search || ''}${location.state.from.hash || ''}`
+        : null;
+      const fallbackPath = getRoleName(result.user) === 'admin' ? '/admin/dashboard' : '/';
+
+      navigate(requestedPath || fallbackPath, { replace: true });
     } else {
       setError(result.error);
       if (result.apiError) toast.fromError(result.apiError);
@@ -63,7 +67,7 @@ export const LoginPage = () => {
                 MIMS
               </h1>
               <p className="text-gray-600 text-sm font-semibold tracking-wide">
-                Malawi Inmate Management System
+                Mzuzu Inmate Management System
               </p>
             </div>
           </div>

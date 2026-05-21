@@ -15,6 +15,7 @@ use App\Services\AuditLogService;
 use App\Modules\Admissions\Services\CellAllocationService;
 use App\Modules\Admissions\Services\SentenceCalculationService;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class AdmissionController extends Controller
@@ -65,6 +66,7 @@ class AdmissionController extends Controller
                 'sentence_months' => $validated['sentence_months'] ?? null,
                 'sentence_start_date' => $validated['sentence_start_date'] ?? null,
                 'projected_release_date' => $projectedReleaseDate,
+                'original_release_date' => $projectedReleaseDate,
                 'remand_next_court_date' => $validated['remand_next_court_date'] ?? null,
                 'admitted_by' => $user->id,
                 'is_current' => true,
@@ -137,6 +139,61 @@ class AdmissionController extends Controller
             'documents',
             'admittedBy'
         ));
+    }
+
+    public function updateSentenceLength(Request $request, Admission $admission)
+    {
+        $validated = $request->validate([
+            'sentence_years' => ['required', 'integer', 'min:0'],
+            'sentence_months' => ['nullable', 'integer', 'min:0', 'max:11'],
+        ]);
+
+        if (!$admission->is_current || $admission->released_at !== null) {
+            abort(422, 'Sentence length can only be changed for current unreleased admissions.');
+        }
+
+        if ($admission->inmate_type !== 'convict' || $admission->sentence_start_date === null) {
+            abort(422, 'Sentence length can only be changed for convicted inmates with a sentence start date.');
+        }
+
+        $updatedAdmission = DB::transaction(function () use ($validated, $admission, $request) {
+            $before = $admission->toArray();
+            $sentenceYears = (int) $validated['sentence_years'];
+            $sentenceMonths = (int) ($validated['sentence_months'] ?? 0);
+
+            $baseReleaseDate = $this->sentenceCalculationService->calculateProjectedReleaseDate(
+                CarbonImmutable::parse($admission->sentence_start_date),
+                $sentenceYears,
+                $sentenceMonths,
+            );
+
+            $adjustmentDays = (int) $admission->sentenceAdjustments()->sum('adjustment_days');
+            $projectedReleaseDate = $baseReleaseDate->subDays($adjustmentDays)->toDateString();
+
+            $admission->update([
+                'sentence_years' => $sentenceYears,
+                'sentence_months' => $sentenceMonths,
+                'original_release_date' => $baseReleaseDate->toDateString(),
+                'projected_release_date' => $projectedReleaseDate,
+            ]);
+
+            $this->auditLogService->log(
+                $request->user()?->id,
+                'UPDATE',
+                'admissions',
+                $admission->id,
+                $before,
+                $admission->fresh()->toArray(),
+                $request->ip(),
+            );
+
+            return $admission->fresh('inmate');
+        });
+
+        return response()->json([
+            'message' => 'Sentence length updated successfully.',
+            'admission' => $updatedAdmission,
+        ]);
     }
 
     private function mapInmateTypeToSecurityClassification(string $inmateType): string

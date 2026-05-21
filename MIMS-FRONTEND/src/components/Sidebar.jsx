@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
-import { MdHome, MdPerson, MdDashboard, MdPeople, MdLogout, MdAssignment, MdHistory, MdSchedule, MdLocalActivity } from 'react-icons/md';
-import { getRoleName, ROLES } from '../utils/helpers';
+import { MdHome, MdPerson, MdDashboard, MdPeople, MdLogout, MdAssignment, MdHistory, MdSchedule, MdLocalActivity, MdCheckCircle, MdExitToApp, MdEditCalendar } from 'react-icons/md';
+import { ROLES } from '../utils/helpers';
 import logo from '/government-logo.png';
 
 /**
@@ -28,10 +28,26 @@ import logo from '/government-logo.png';
  * @param {Function} props.onClose - Callback to close/hide the sidebar
  */
 const Sidebar = ({ onClose }) => {
-  const { logout, isAdmin, user } = useAuth();
+  const { logout, isAdmin, getRoleName, loading } = useAuth();
   const navigate = useNavigate();
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const role = getRoleName(user);
+  const role = getRoleName();
+
+  // Show loading skeleton while auth is initializing
+  if (loading) {
+    return (
+      <aside className="w-64 h-screen bg-malawiBlack text-malawiGold flex flex-col shadow-lg fixed top-0 left-0 z-50">
+        <div className="flex items-center justify-center h-24 border-b border-malawiGold px-4">
+          <div className="animate-pulse bg-gray-600 h-16 w-16 rounded-full"></div>
+        </div>
+        <div className="flex-1 mt-8 px-6 space-y-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="animate-pulse bg-gray-700 h-8 rounded"></div>
+          ))}
+        </div>
+      </aside>
+    );
+  }
 
   /**
    * Handle logout button click - show confirmation modal
@@ -106,6 +122,59 @@ const Sidebar = ({ onClose }) => {
               <li>
                 <Link to="/officer/activity-sessions" className="hover:text-malawiGold transition flex items-center">
                   <MdLocalActivity className="mr-2 text-xl" /> Activity Sessions
+                </Link>
+              </li>
+            </>
+          )}
+
+          {/* Release Management - Station Officer & Gatekeeper */}
+          {(role === ROLES.STATION_OFFICER || role === ROLES.GATEKEEPER) && (
+            <>
+              <li className="text-malawiRed text-sm font-semibold mt-4 mb-2">Releases</li>
+              {role === ROLES.STATION_OFFICER && (
+                <li>
+                  <Link to="/releases/approval" className="hover:text-malawiGold transition flex items-center">
+                    <MdCheckCircle className="mr-2 text-xl" /> Release Approval
+                  </Link>
+                </li>
+              )}
+              {role === ROLES.STATION_OFFICER && (
+                <li>
+                  <Link to="/releases/sentences" className="hover:text-malawiGold transition flex items-center">
+                    <MdEditCalendar className="mr-2 text-xl" /> Sentence Lengths
+                  </Link>
+                </li>
+              )}
+              {role === ROLES.GATEKEEPER && (
+                <li>
+                  <Link to="/releases/confirmation" className="hover:text-malawiGold transition flex items-center">
+                    <MdExitToApp className="mr-2 text-xl" /> Confirm Release
+                  </Link>
+                </li>
+              )}
+              {role === ROLES.STATION_OFFICER && (
+                <li>
+                  <Link to="/releases/confirmed" className="hover:text-malawiGold transition flex items-center">
+                    <MdHistory className="mr-2 text-xl" /> Confirmed Releases
+                  </Link>
+                </li>
+              )}
+              {(role === ROLES.STATION_OFFICER || role === ROLES.GATEKEEPER) && (
+                <li>
+                  <Link to="/releases/history" className="hover:text-malawiGold transition flex items-center">
+                    <MdHistory className="mr-2 text-xl" /> Release History
+                  </Link>
+                </li>
+              )}
+            </>
+          )}
+
+          {role === ROLES.GATEKEEPER && (
+            <>
+              <li className="text-malawiRed text-sm font-semibold mt-4 mb-2">Visitation</li>
+              <li>
+                <Link to="/visitation/visitors" className="hover:text-malawiGold transition flex items-center">
+                  <MdPerson className="mr-2 text-xl" /> Visitation
                 </Link>
               </li>
             </>

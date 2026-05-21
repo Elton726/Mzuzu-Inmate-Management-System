@@ -147,7 +147,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Computed authentication state
+// Computed authentication state
   const isAdmin = getRoleName(user) === 'admin';
   const isAuthenticated = !!user;
 
@@ -163,7 +163,8 @@ export const AuthProvider = ({ children }) => {
         logout,
         updateProfile,
         fetchCurrentUser,
-        setError
+        setError,
+        getRoleName: () => getRoleName(user)
       }}
     >
       {children}

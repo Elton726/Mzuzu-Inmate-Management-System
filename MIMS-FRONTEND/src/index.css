@@ -83,3 +83,27 @@ body {
   @apply bg-yellow-400 text-black font-sans;
   /* For custom background, use .bg-malawiGold in JSX */
 }
+
+.dark body {
+  @apply bg-slate-950 text-white;
+}
+
+.dark .bg-white {
+  background-color: #0f172a;
+}
+
+.dark .text-gray-900 {
+  color: #f8fafc;
+}
+
+.dark .text-gray-700 {
+  color: #cbd5e1;
+}
+
+.dark .bg-gray-50 {
+  background-color: #1e293b;
+}
+
+.dark .border-gray-200 {
+  border-color: #334155;
+}

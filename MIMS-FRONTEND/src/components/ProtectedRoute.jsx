@@ -1,6 +1,5 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
-import { getRoleName } from '../utils/helpers';
 
 /**
  * ProtectedRoute Component - Route protection with role-based access control
@@ -27,7 +26,8 @@ import { getRoleName } from '../utils/helpers';
  * @returns {React.ReactNode} Protected content or redirect component
  */
 export const ProtectedRoute = ({ children, requireAdmin = false, allowedRoles = null }) => {
-  const { isAuthenticated, isAdmin, loading, user } = useAuth();
+  const { isAuthenticated, isAdmin, loading, getRoleName } = useAuth();
+  const location = useLocation();
 
   // Show loading state during authentication check
   if (loading) {
@@ -43,7 +43,7 @@ export const ProtectedRoute = ({ children, requireAdmin = false, allowedRoles = 
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   // Check admin requirement
@@ -53,7 +53,7 @@ export const ProtectedRoute = ({ children, requireAdmin = false, allowedRoles = 
 
   // Check role-based access if roles are specified
   if (Array.isArray(allowedRoles) && allowedRoles.length > 0) {
-    const role = getRoleName(user);
+    const role = getRoleName();
     if (!allowedRoles.includes(role)) {
       return <Navigate to="/" replace />;
     }
