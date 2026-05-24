@@ -2,11 +2,13 @@ import { useCallback, useMemo, useState } from 'react';
 import Toast from '../components/Toast';
 import { normalizeApiError } from '../utils/normalizeApiError';
 import { ToastContext } from './ToastContextCreate';
+import { useNotification } from './useNotification';
 
 const newId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
+  const { addNotification } = useNotification();
 
   const remove = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -17,11 +19,16 @@ export const ToastProvider = ({ children }) => {
     const timeoutMs = typeof toast?.timeoutMs === 'number' ? toast.timeoutMs : 7000;
     const next = { id, variant: 'error', ...toast };
     setToasts((prev) => [next, ...prev].slice(0, 4));
+    addNotification({
+      title: next.title || notificationTitle(next.variant),
+      message: next.message || next.details || 'System activity recorded.',
+      type: next.variant,
+    });
     if (timeoutMs > 0) {
       window.setTimeout(() => remove(id), timeoutMs);
     }
     return id;
-  }, [remove]);
+  }, [addNotification, remove]);
 
   const fromError = useCallback((err, overrides = {}) => {
     const normalized = normalizeApiError(err);
@@ -34,7 +41,43 @@ export const ToastProvider = ({ children }) => {
     });
   }, [push]);
 
-  const value = useMemo(() => ({ push, remove, fromError }), [push, remove, fromError]);
+  const success = useCallback((message, options = {}) => push({
+    title: options.title || 'Success',
+    message,
+    variant: 'success',
+    timeoutMs: options.timeoutMs,
+  }), [push]);
+
+  const error = useCallback((message, options = {}) => push({
+    title: options.title || 'Error',
+    message,
+    variant: 'error',
+    timeoutMs: options.timeoutMs,
+  }), [push]);
+
+  const warning = useCallback((message, options = {}) => push({
+    title: options.title || 'Warning',
+    message,
+    variant: 'warning',
+    timeoutMs: options.timeoutMs,
+  }), [push]);
+
+  const info = useCallback((message, options = {}) => push({
+    title: options.title || 'Information',
+    message,
+    variant: 'info',
+    timeoutMs: options.timeoutMs,
+  }), [push]);
+
+  const value = useMemo(() => ({
+    push,
+    remove,
+    fromError,
+    success,
+    error,
+    warning,
+    info,
+  }), [push, remove, fromError, success, error, warning, info]);
 
   return (
     <ToastContext.Provider value={value}>
@@ -55,3 +98,15 @@ export const ToastProvider = ({ children }) => {
   );
 };
 
+const notificationTitle = (variant) => {
+  switch (variant) {
+    case 'success':
+      return 'Success';
+    case 'warning':
+      return 'Warning';
+    case 'info':
+      return 'Information';
+    default:
+      return 'Error';
+  }
+};

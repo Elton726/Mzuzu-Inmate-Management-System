@@ -1,19 +1,26 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
-import { MdHome, MdPerson, MdDashboard, MdPeople, MdLogout, MdAssignment, MdHistory, MdSchedule, MdLocalActivity, MdCheckCircle, MdExitToApp, MdEditCalendar } from 'react-icons/md';
+import { MdHome, MdPerson, MdDashboard, MdPeople, MdAssignment, MdHistory, MdSchedule, MdLocalActivity, MdCheckCircle, MdExitToApp, MdEditCalendar } from 'react-icons/md';
 import { ROLES } from '../utils/helpers';
-import logo from '/government-logo.png';
+import logo from '/cuffs.png';
+
+const navLinkClass = ({ isActive }) =>
+  `flex items-center rounded px-3 py-2 transition ${
+    isActive
+      ? 'bg-malawiGreen text-white shadow-sm'
+      : 'text-malawiGold hover:bg-malawiGreen/25 hover:text-white'
+  }`;
 
 /**
  * Sidebar Navigation Component
  *
  * Main navigation sidebar for authenticated users with role-based menu items.
- * Features Malawi government branding, responsive design, and logout confirmation.
+ * Features Inmate Management System branding, responsive design, and logout confirmation.
  *
  * Features:
  * - Role-based navigation (admin, reception officer, regular users)
- * - Malawi government logo and branding
+ * - Cuffs logo
  * - Collapsible/closeable design
  * - Logout confirmation modal
  * - Responsive layout with fixed positioning
@@ -24,13 +31,9 @@ import logo from '/government-logo.png';
  * - Reception Officer: Admissions
  * - Admin: Admin Dashboard, User Management
  *
- * @param {Object} props - Component props
- * @param {Function} props.onClose - Callback to close/hide the sidebar
  */
-const Sidebar = ({ onClose }) => {
-  const { logout, isAdmin, getRoleName, loading } = useAuth();
-  const navigate = useNavigate();
-  const [showConfirmation, setShowConfirmation] = useState(false);
+const Sidebar = () => {
+  const { isAdmin, getRoleName, loading } = useAuth();
   const role = getRoleName();
 
   // Show loading skeleton while auth is initializing
@@ -49,45 +52,14 @@ const Sidebar = ({ onClose }) => {
     );
   }
 
-  /**
-   * Handle logout button click - show confirmation modal
-   */
-  const handleLogoutClick = () => {
-    setShowConfirmation(true);
-  };
-
-  /**
-   * Confirm and execute logout
-   * Calls auth logout and redirects to login page
-   */
-  const handleConfirmLogout = async () => {
-    setShowConfirmation(false);
-    await logout();
-    navigate('/login');
-  };
-
-  /**
-   * Cancel logout - hide confirmation modal
-   */
-  const handleCancelLogout = () => {
-    setShowConfirmation(false);
-  };
-
   return (
     <aside className="w-64 h-screen bg-malawiBlack text-malawiGold flex flex-col shadow-lg fixed top-0 left-0 z-50 transition-transform duration-300">
-      {/* Header with government logo and close button */}
-      <div className="flex items-center justify-between h-24 border-b border-malawiGold px-4">
+      {/* Header with cuffs logo */}
+      <div className="flex items-center h-24 border-b border-malawiGold px-4">
         <div className="flex items-center">
-          <img src={logo} alt="Malawi Government Logo" className="h-16 w-16 rounded-full border-4 border-malawiRed" />
-          <span className="ml-4 text-xl font-bold">Malawi Government</span>
+          <img src={logo} alt="Cuffs logo" className="h-16 w-16 rounded-full border-4 border-malawiRed" />
+          <span className="ml-4 text-xl font-bold">Inmate Management System</span>
         </div>
-        <button
-          className="bg-malawiGold text-malawiBlack rounded-full p-2 hover:bg-malawiRed hover:text-malawiGold transition"
-          onClick={onClose}
-          aria-label="Close sidebar"
-        >
-          ✕
-        </button>
       </div>
 
       {/* Main navigation menu */}
@@ -96,18 +68,18 @@ const Sidebar = ({ onClose }) => {
           {/* Home link for non-admin users */}
           {!isAdmin && (
             <li>
-              <Link to="/" className="hover:text-malawiRed transition flex items-center">
+              <NavLink to="/" end className={navLinkClass}>
                 <MdHome className="mr-2 text-xl" /> Home
-              </Link>
+              </NavLink>
             </li>
           )}
 
           {/* Admissions link for reception officers */}
           {role === ROLES.RECEPTION_OFFICER && (
             <li>
-              <Link to="/admissions" className="hover:text-malawiGold transition flex items-center">
+              <NavLink to="/admissions" className={navLinkClass}>
                 <MdAssignment className="mr-2 text-xl" /> Admissions
-              </Link>
+              </NavLink>
             </li>
           )}
 
@@ -115,14 +87,14 @@ const Sidebar = ({ onClose }) => {
           {role === ROLES.OFFICER_ON_DUTY && (
             <>
               <li>
-                <Link to="/officer/activities" className="hover:text-malawiGold transition flex items-center">
+                <NavLink to="/officer/activities" className={navLinkClass}>
                   <MdLocalActivity className="mr-2 text-xl" /> Available Activities
-                </Link>
+                </NavLink>
               </li>
               <li>
-                <Link to="/officer/activity-sessions" className="hover:text-malawiGold transition flex items-center">
+                <NavLink to="/officer/activity-sessions" className={navLinkClass}>
                   <MdLocalActivity className="mr-2 text-xl" /> Activity Sessions
-                </Link>
+                </NavLink>
               </li>
             </>
           )}
@@ -133,37 +105,37 @@ const Sidebar = ({ onClose }) => {
               <li className="text-malawiRed text-sm font-semibold mt-4 mb-2">Releases</li>
               {role === ROLES.STATION_OFFICER && (
                 <li>
-                  <Link to="/releases/approval" className="hover:text-malawiGold transition flex items-center">
+                  <NavLink to="/releases/approval" className={navLinkClass}>
                     <MdCheckCircle className="mr-2 text-xl" /> Release Approval
-                  </Link>
+                  </NavLink>
                 </li>
               )}
               {role === ROLES.STATION_OFFICER && (
                 <li>
-                  <Link to="/releases/sentences" className="hover:text-malawiGold transition flex items-center">
+                  <NavLink to="/releases/sentences" className={navLinkClass}>
                     <MdEditCalendar className="mr-2 text-xl" /> Sentence Lengths
-                  </Link>
+                  </NavLink>
                 </li>
               )}
               {role === ROLES.GATEKEEPER && (
                 <li>
-                  <Link to="/releases/confirmation" className="hover:text-malawiGold transition flex items-center">
+                  <NavLink to="/releases/confirmation" className={navLinkClass}>
                     <MdExitToApp className="mr-2 text-xl" /> Confirm Release
-                  </Link>
+                  </NavLink>
                 </li>
               )}
               {role === ROLES.STATION_OFFICER && (
                 <li>
-                  <Link to="/releases/confirmed" className="hover:text-malawiGold transition flex items-center">
+                  <NavLink to="/releases/confirmed" className={navLinkClass}>
                     <MdHistory className="mr-2 text-xl" /> Confirmed Releases
-                  </Link>
+                  </NavLink>
                 </li>
               )}
               {(role === ROLES.STATION_OFFICER || role === ROLES.GATEKEEPER) && (
                 <li>
-                  <Link to="/releases/history" className="hover:text-malawiGold transition flex items-center">
+                  <NavLink to="/releases/history" className={navLinkClass}>
                     <MdHistory className="mr-2 text-xl" /> Release History
-                  </Link>
+                  </NavLink>
                 </li>
               )}
             </>
@@ -173,83 +145,53 @@ const Sidebar = ({ onClose }) => {
             <>
               <li className="text-malawiRed text-sm font-semibold mt-4 mb-2">Visitation</li>
               <li>
-                <Link to="/visitation/visitors" className="hover:text-malawiGold transition flex items-center">
+                <NavLink to="/visitation/visitors" className={navLinkClass}>
                   <MdPerson className="mr-2 text-xl" /> Visitation
-                </Link>
+                </NavLink>
               </li>
             </>
           )}
 
           {/* Profile link for all users */}
           <li>
-            <Link to="/profile" className="hover:text-malawiGreen transition flex items-center">
+            <NavLink to="/profile" className={navLinkClass}>
               <MdPerson className="mr-2 text-xl" /> Profile
-            </Link>
+            </NavLink>
           </li>
 
           {/* Admin-only navigation items */}
           {isAdmin && (
             <>
               <li>
-                <Link to="/admin/dashboard" className="hover:text-malawiGold transition flex items-center">
+                <NavLink to="/admin/dashboard" className={navLinkClass}>
                   <MdDashboard className="mr-2 text-xl" /> Admin Dashboard
-                </Link>
+                </NavLink>
               </li>
               <li>
-                <Link to="/admin/users" className="hover:text-malawiRed transition flex items-center">
+                <NavLink to="/admin/users" className={navLinkClass}>
                   <MdPeople className="mr-2 text-xl" /> User Management
-                </Link>
+                </NavLink>
               </li>
               <li>
-                <Link to="/admin/audit-logs" className="hover:text-malawiGreen transition flex items-center">
+                <NavLink to="/admin/audit-logs" className={navLinkClass}>
                   <MdHistory className="mr-2 text-xl" /> Audit Logs
-                </Link>
+                </NavLink>
               </li>
               <li>
-                <Link to="/admin/duty-rosters" className="hover:text-malawiGold transition flex items-center">
+                <NavLink to="/admin/duty-rosters" className={navLinkClass}>
                   <MdSchedule className="mr-2 text-xl" /> Duty Rosters
-                </Link>
+                </NavLink>
               </li>
               <li>
-                <Link to="/admin/activities" className="hover:text-malawiRed transition flex items-center">
+                <NavLink to="/admin/activities" className={navLinkClass}>
                   <MdLocalActivity className="mr-2 text-xl" /> Activities
-                </Link>
+                </NavLink>
               </li>
             </>
           )}
         </ul>
       </nav>
 
-      {/* Logout button at bottom */}
-      <div className="mt-auto px-6 py-4 border-t border-malawiGold">
-        <button onClick={handleLogoutClick} className="w-full bg-malawiRed text-malawiGold py-2 rounded hover:bg-malawiGold hover:text-malawiBlack transition font-semibold flex items-center justify-center gap-2">
-          <MdLogout /> Logout
-        </button>
-      </div>
-
-      {/* Logout confirmation modal */}
-      {showConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
-          <div className="bg-malawiGold text-malawiBlack rounded-lg shadow-lg p-6 max-w-sm mx-4">
-            <h2 className="text-xl font-semibold mb-4">Confirm Logout</h2>
-            <p className="text-gray-700 mb-6">Are you sure you want to log out?</p>
-            <div className="flex gap-4 justify-end">
-              <button
-                onClick={handleCancelLogout}
-                className="px-4 py-2 rounded bg-gray-400 text-white hover:bg-gray-500 transition font-semibold"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmLogout}
-                className="px-4 py-2 rounded bg-malawiRed text-malawiGold hover:bg-red-700 transition font-semibold"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </aside>
   );
 };

@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { MdPeople, MdAdminPanelSettings, MdBarChart, MdPerson, MdGavel, MdSchedule } from 'react-icons/md';
 import apiService from '../../../services/apiService';
-import { getRoleDisplayName } from '../../../utils/helpers';
 import { useToast } from '../../../contexts/useToast';
+import UserAvatarWithRole from '../../../components/common/UserAvatarWithRole';
 
 export default function AdminDashboard() {
   const [statistics, setStatistics] = useState(null);
@@ -144,9 +144,7 @@ export default function AdminDashboard() {
             <table className="w-full min-w-[700px]">
               <thead className="bg-gray-100 border-b">
                 <tr>
-                  <th className="px-6 py-3 text-left text-gray-700 font-semibold">Name</th>
-                  <th className="px-6 py-3 text-left text-gray-700 font-semibold">Email</th>
-                  <th className="px-6 py-3 text-left text-gray-700 font-semibold">Role</th>
+                  <th className="px-6 py-3 text-left text-gray-700 font-semibold">User</th>
                   <th className="px-6 py-3 text-left text-gray-700 font-semibold">Added</th>
                   <th className="px-6 py-3 text-left text-gray-700 font-semibold">Action</th>
                 </tr>
@@ -154,17 +152,13 @@ export default function AdminDashboard() {
               <tbody>
                 {recent.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-6 text-center text-gray-500">No recent users</td>
+                    <td colSpan={3} className="px-6 py-6 text-center text-gray-500">No recent users</td>
                   </tr>
                 ) : (
                   recent.map((user) => (
                     <tr key={user.id} className="border-b hover:bg-gray-50 transition">
-                      <td className="px-6 py-4 font-semibold text-gray-800">{user.name}</td>
-                      <td className="px-6 py-4 text-gray-600">{user.email}</td>
                       <td className="px-6 py-4">
-                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
-                          {getRoleDisplayName(user)}
-                        </span>
+                        <UserAvatarWithRole user={user} />
                       </td>
                       <td className="px-6 py-4 text-gray-600 text-sm">
                         {user.created_at ? new Date(user.created_at).toLocaleDateString() : '--'}

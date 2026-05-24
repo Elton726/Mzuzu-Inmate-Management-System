@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import apiService from '../../../services/apiService';
-import { getRoleDisplayName, ROLE_OPTIONS, validatePassword, getErrorMessage, getFieldErrors } from '../../../utils/helpers';
+import { ROLE_OPTIONS, validatePassword, getErrorMessage, getFieldErrors } from '../../../utils/helpers';
 import { useDebouncedValue } from '../../../utils/useDebouncedValue';
 import { useToast } from '../../../contexts/useToast';
+import UserAvatarWithRole from '../../../components/common/UserAvatarWithRole';
 
 export const UserManagementPage = () => {
   const { fromError } = useToast();
@@ -400,9 +401,7 @@ export const UserManagementPage = () => {
                       className="rounded"
                     />
                   </th>
-                  <th className="px-6 py-3 text-left text-gray-700 font-semibold">Name</th>
-                  <th className="px-6 py-3 text-left text-gray-700 font-semibold">Email</th>
-                  <th className="px-6 py-3 text-left text-gray-700 font-semibold">Role</th>
+                  <th className="px-6 py-3 text-left text-gray-700 font-semibold">User</th>
                   <th className="px-6 py-3 text-left text-gray-700 font-semibold">Created</th>
                   <th className="px-6 py-3 text-left text-gray-700 font-semibold">Actions</th>
                 </tr>
@@ -418,12 +417,8 @@ export const UserManagementPage = () => {
                         className="rounded"
                       />
                     </td>
-                    <td className="px-6 py-4 font-semibold text-gray-800">{user.name}</td>
-                    <td className="px-6 py-4 text-gray-600">{user.email}</td>
                     <td className="px-6 py-4">
-                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
-                          {getRoleDisplayName(user)}
-                        </span>
+                      <UserAvatarWithRole user={user} />
                     </td>
                     <td className="px-6 py-4 text-gray-600">
                       {new Date(user.created_at).toLocaleDateString()}

@@ -26,7 +26,9 @@
 import React from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import { ThemeProvider, ThemeContext } from './contexts/ThemeContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { ThemeContext } from './contexts/ThemeContextCreate';
+import { NotificationProvider } from './contexts/NotificationContext';
 import { useAuth } from './contexts/useAuth';
 import { useContext } from 'react';
 import { MdDarkMode, MdLightMode } from 'react-icons/md';
@@ -63,6 +65,7 @@ import RulesPage from './modules/visitation/pages/RulesPage';
 import ReportsPage from './modules/visitation/pages/ReportsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
+import { Navigation } from './components/Navigation';
 import { ToastProvider } from './contexts/ToastContext';
 import { ToastContainer } from 'react-toastify';
 
@@ -100,24 +103,17 @@ const AppContent = () => {
 
       {/* Main content area - adjusts margin based on sidebar state */}
       <div className={isAuthenticated && sidebarOpen ? "ml-64 flex-1" : "flex-1"}>
+        {/* Top Navigation Bar - shows for authenticated users */}
+        {isAuthenticated && <Navigation />}
         {/* Theme toggle button */}
         {isAuthenticated && (
           <button
-            className="fixed top-4 right-4 z-50 bg-malawiGreen text-white px-3 py-2 rounded shadow hover:bg-green-700 transition inline-flex items-center gap-2"
+            className="fixed top-5 right-4 z-50 inline-flex h-8 w-8 items-center justify-center rounded-full bg-malawiGreen text-white shadow hover:bg-green-700 transition"
             onClick={toggleTheme}
-            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
-            {theme === 'dark' ? (
-              <>
-                <MdLightMode className="w-5 h-5" />
-                Light Mode
-              </>
-            ) : (
-              <>
-                <MdDarkMode className="w-5 h-5" />
-                Dark Mode
-              </>
-            )}
+            {theme === 'dark' ? <MdDarkMode className="h-4 w-4" /> : <MdLightMode className="h-4 w-4" />}
           </button>
         )}
 
@@ -447,12 +443,14 @@ function App() {
   return (
     <Router>
       <ThemeProvider>
-        <ToastProvider>
-          <ToastContainer position="top-right" autoClose={7000} />
-          <AuthProvider>
-            <AppContent />
-          </AuthProvider>
-        </ToastProvider>
+        <NotificationProvider>
+          <ToastProvider>
+            <ToastContainer position="top-right" autoClose={7000} />
+            <AuthProvider>
+              <AppContent />
+            </AuthProvider>
+          </ToastProvider>
+        </NotificationProvider>
       </ThemeProvider>
     </Router>
   );

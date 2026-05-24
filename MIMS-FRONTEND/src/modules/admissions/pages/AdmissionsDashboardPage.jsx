@@ -19,10 +19,10 @@ const getCellLabel = (cell) => `Block ${cell.block} · Cell ${cell.cell_number}`
 
 function MetricCard({ label, value, helper, accent }) {
   return (
-    <div className={`rounded-3xl border p-5 shadow-sm ${accent}`}>
-      <div className="text-sm font-semibold uppercase tracking-[0.18em]">{label}</div>
-      <div className="mt-3 text-4xl font-black">{value}</div>
-      <div className="mt-2 text-sm opacity-80">{helper}</div>
+    <div className={`rounded-3xl border p-5 shadow-sm ${accent.card}`}>
+      <div className={`text-sm font-semibold uppercase tracking-[0.18em] ${accent.label}`}>{label}</div>
+      <div className={`mt-3 text-4xl font-black ${accent.value}`}>{value}</div>
+      <div className={`mt-2 text-sm ${accent.helper}`}>{helper}</div>
     </div>
   );
 }
@@ -140,7 +140,7 @@ export default function AdmissionsDashboardPage() {
                   </Button>
                 </Link>
                 <Link to="/admissions">
-                  <Button variant="outline" className="border-white text-white hover:bg-white hover:text-malawiBlack">
+                  <Button variant="outline" className="!border-white !text-white hover:!bg-white hover:!text-malawiBlack">
                     Open Admissions Register
                   </Button>
                 </Link>
@@ -172,7 +172,7 @@ export default function AdmissionsDashboardPage() {
                       <Button>Start Admission</Button>
                     </Link>
                     <Link to={`/inmates/${admissionQueue[0].id}`}>
-                      <Button variant="outline" className="border-white text-white hover:bg-white hover:text-malawiBlack">
+                      <Button variant="outline" className="!border-white !text-white hover:!bg-white hover:!text-malawiBlack">
                         View Inmate
                       </Button>
                     </Link>
@@ -192,25 +192,45 @@ export default function AdmissionsDashboardPage() {
             label="Ready For Admission"
             value={readyForAdmission.length}
             helper="Inmates without a current admission"
-            accent="border-green-200 bg-green-50 text-green-900"
+            accent={{
+              card: 'border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-950',
+              label: 'text-green-900 dark:text-green-100',
+              value: 'text-green-900 dark:text-white',
+              helper: 'text-green-800 dark:text-green-100',
+            }}
           />
           <MetricCard
             label="Active Admissions"
             value={activeAdmissions.length}
             helper="Inmates currently admitted in the loaded list"
-            accent="border-blue-200 bg-blue-50 text-blue-900"
+            accent={{
+              card: 'border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-950',
+              label: 'text-blue-900 dark:text-blue-100',
+              value: 'text-blue-900 dark:text-white',
+              helper: 'text-blue-800 dark:text-blue-100',
+            }}
           />
           <MetricCard
             label="Available Cells"
             value={cells.length}
             helper="Cells ready for allocation right now"
-            accent="border-amber-200 bg-amber-50 text-amber-900"
+            accent={{
+              card: 'border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-950',
+              label: 'text-amber-950 dark:text-amber-100',
+              value: 'text-amber-950 dark:text-white',
+              helper: 'text-amber-900 dark:text-amber-100',
+            }}
           />
           <MetricCard
             label="First-Time Cases"
             value={readyForAdmission.filter((inmate) => inmate.neverAdmitted).length}
             helper="Inmates who have never been admitted before"
-            accent="border-malawiBlack/10 bg-white text-gray-900"
+            accent={{
+              card: 'border-gray-300 bg-white dark:border-slate-600 dark:bg-slate-900',
+              label: 'text-gray-950 dark:text-white',
+              value: 'text-gray-950 dark:text-white',
+              helper: 'text-gray-700 dark:text-slate-100',
+            }}
           />
         </section>
 

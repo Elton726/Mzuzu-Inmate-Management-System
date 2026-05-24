@@ -290,7 +290,7 @@ export default function OfficerAvailableActivitiesPage() {
                   Refresh Dashboard
                 </Button>
                 <Link to="/officer/activity-sessions">
-                  <Button variant="outline" className="border-white text-white hover:bg-white hover:text-malawiBlack">
+                  <Button variant="outline" className="!border-white !text-white hover:!bg-white hover:!text-malawiBlack">
                     View All Sessions
                   </Button>
                 </Link>
@@ -367,7 +367,7 @@ export default function OfficerAvailableActivitiesPage() {
             }
             secondary={
               <Link to="/officer/activity-sessions/new">
-                <Button variant="outline" className="border-white text-white hover:bg-white hover:text-malawiGreen">
+                <Button variant="outline" className="!border-white !text-white hover:!bg-white hover:!text-malawiGreen">
                   New Session Form
                 </Button>
               </Link>
@@ -388,7 +388,7 @@ export default function OfficerAvailableActivitiesPage() {
             secondary={
               <Button
                 variant="outline"
-                className="border-malawiGold text-malawiGold hover:bg-malawiGold hover:text-malawiBlack"
+                className="!border-malawiGold !text-malawiGold hover:!bg-malawiGold hover:!text-malawiBlack"
                 onClick={() => firstExternal && openExternalOnceSession(firstExternal)}
                 disabled={!firstExternal}
                 loading={workingAction === `external-${firstExternal?.id}`}
