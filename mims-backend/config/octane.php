@@ -100,6 +100,7 @@ return [
     |
     */
 
+
     'listeners' => [
         WorkerStarting::class => [
             EnsureUploadedFilesAreValid::class,
@@ -135,6 +136,7 @@ return [
         ],
 
         TickTerminated::class => [
+        
             //
         ],
 
