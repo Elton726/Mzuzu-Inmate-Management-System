@@ -96,16 +96,52 @@ body {
   color: #f8fafc;
 }
 
+.dark .text-gray-800 {
+  color: #f1f5f9;
+}
+
 .dark .text-gray-700 {
   color: #cbd5e1;
+}
+
+.dark .text-gray-600,
+.dark .text-gray-500 {
+  color: #94a3b8;
 }
 
 .dark .bg-gray-50 {
   background-color: #1e293b;
 }
 
+.dark .bg-gray-100 {
+  background-color: #1e293b;
+}
+
+.dark .bg-gray-200,
+.dark .bg-gray-300 {
+  background-color: #334155;
+}
+
 .dark .border-gray-200 {
   border-color: #334155;
+}
+
+.dark .hover\:bg-white:hover,
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover,
+.dark .hover\:bg-gray-200:hover {
+  background-color: #1e293b;
+}
+
+.dark .focus\:bg-gray-50:focus,
+.dark .focus\:bg-gray-100:focus {
+  background-color: #1e293b;
+}
+
+.dark .hover\:text-gray-700:hover,
+.dark .hover\:text-gray-800:hover,
+.dark .hover\:text-malawiBlack:hover {
+  color: #f8fafc;
 }
 
 input,
