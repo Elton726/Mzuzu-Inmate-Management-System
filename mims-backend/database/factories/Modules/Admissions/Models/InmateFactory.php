@@ -17,6 +17,7 @@ class InmateFactory extends Factory
             'last_name' => $this->faker->lastName(),
             'other_names' => null,
             'date_of_birth' => $this->faker->dateTimeBetween('-60 years', '-18 years')->format('Y-m-d'),
+            'gender' => $this->faker->randomElement(['male', 'female', 'other']),
             'is_young_offender' => false,
             'place_of_birth' => $this->faker->city(),
             'nationality' => 'Malawian',

@@ -28,6 +28,7 @@ class Admission extends Model
         'projected_release_date',
         'original_release_date',
         'remand_next_court_date',
+        'remand_duration_days',
         'committal_warrant_path',
         'remand_warrant_path',
         'admitted_by',
@@ -42,6 +43,7 @@ class Admission extends Model
         'projected_release_date' => 'date',
         'original_release_date' => 'date',
         'remand_next_court_date' => 'date',
+        'remand_duration_days' => 'integer',
         'released_at' => 'date',
         'is_current' => 'boolean',
     ];

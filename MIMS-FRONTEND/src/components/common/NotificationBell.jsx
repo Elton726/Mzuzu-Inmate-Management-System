@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { BiBell } from 'react-icons/bi';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * NotificationBell Component
@@ -15,6 +16,7 @@ import { BiBell } from 'react-icons/bi';
 export const NotificationBell = ({ notifications = [], onMarkAsRead, onClearAll }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const navigate = useNavigate();
 
   // Count unread notifications
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -35,6 +37,17 @@ export const NotificationBell = ({ notifications = [], onMarkAsRead, onClearAll 
     if (onMarkAsRead) {
       onMarkAsRead(notificationId);
     }
+  };
+
+  const handleAction = (notification) => {
+    if (onMarkAsRead) onMarkAsRead(notification.id);
+    // prefer url navigation
+    if (notification?.action?.url) {
+      navigate(notification.action.url);
+    } else if (typeof notification?.action?.onClick === 'function') {
+      notification.action.onClick(notification);
+    }
+    setIsOpen(false);
   };
 
   const handleClearAll = () => {
@@ -104,9 +117,21 @@ export const NotificationBell = ({ notifications = [], onMarkAsRead, onClearAll 
                         </p>
                       )}
                     </div>
-                    {!notification.isRead && (
-                      <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 ml-2"></div>
-                    )}
+                    <div className="flex items-center gap-2 ml-3">
+                      {notification.action && (
+                        <button
+                          type="button"
+                          onClick={(ev) => { ev.stopPropagation(); handleAction(notification); }}
+                          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                          aria-label={notification.action.label || 'Open'}
+                        >
+                          {notification.action.label || 'Open'}
+                        </button>
+                      )}
+                      {!notification.isRead && (
+                        <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 ml-2"></div>
+                      )}
+                    </div>
                   </div>
                 </li>
               ))}

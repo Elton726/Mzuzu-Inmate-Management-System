@@ -169,6 +169,96 @@ class AdmissionModuleApiTest extends TestCase
         ]);
     }
 
+    public function test_admission_type_is_discovered_and_remand_duration_is_stored(): void
+    {
+        $user = $this->userWithRole('reception_officer');
+
+        Cell::create([
+            'cell_number' => 'R-101',
+            'block' => 'R',
+            'security_classification' => 'minimum',
+            'capacity' => 8,
+            'current_occupancy' => 0,
+            'status' => 'available',
+        ]);
+
+        $inmate = $this->actingAs($user, 'sanctum')->postJson('/api/inmates', [
+            'first_name' => 'Remand',
+            'last_name' => 'Duration',
+            'date_of_birth' => '1990-01-01',
+        ])->assertStatus(201)->json();
+
+        $admission = $this->actingAs($user, 'sanctum')->postJson('/api/admissions', [
+            'inmate_id' => $inmate['id'],
+            'admission_date' => '2026-06-18',
+            'admission_type' => 'repeat',
+            'inmate_type' => 'remandee',
+            'case_number' => 'RM-001',
+            'remand_next_court_date' => '2026-06-28',
+        ]);
+
+        $admission->assertStatus(201)->assertJsonFragment([
+            'admission_type' => 'first_time',
+            'remand_duration_days' => 10,
+        ]);
+    }
+
+    public function test_remand_next_court_date_must_be_after_admission_date(): void
+    {
+        $user = $this->userWithRole('reception_officer');
+
+        $inmate = $this->actingAs($user, 'sanctum')->postJson('/api/inmates', [
+            'first_name' => 'Invalid',
+            'last_name' => 'Remand',
+            'date_of_birth' => '1990-01-01',
+        ])->assertStatus(201)->json();
+
+        $response = $this->actingAs($user, 'sanctum')->postJson('/api/admissions', [
+            'inmate_id' => $inmate['id'],
+            'admission_date' => '2026-06-18',
+            'inmate_type' => 'remandee',
+            'case_number' => 'RM-002',
+            'remand_next_court_date' => '2026-06-18',
+        ]);
+
+        $response->assertStatus(422);
+    }
+
+    public function test_inmate_with_completed_admission_cannot_be_admitted_again(): void
+    {
+        $user = $this->userWithRole('reception_officer');
+
+        $inmate = $this->actingAs($user, 'sanctum')->postJson('/api/inmates', [
+            'first_name' => 'Already',
+            'last_name' => 'Admitted',
+            'date_of_birth' => '1990-01-01',
+        ])->assertStatus(201)->json();
+
+        Admission::query()->create([
+            'inmate_id' => $inmate['id'],
+            'admission_date' => '2026-06-01',
+            'admission_type' => 'first_time',
+            'inmate_type' => 'remandee',
+            'case_number' => 'RM-OLD',
+            'remand_next_court_date' => '2026-06-10',
+            'remand_duration_days' => 9,
+            'admitted_by' => $user->id,
+            'is_current' => false,
+        ]);
+
+        $response = $this->actingAs($user, 'sanctum')->postJson('/api/admissions', [
+            'inmate_id' => $inmate['id'],
+            'admission_date' => '2026-06-18',
+            'inmate_type' => 'remandee',
+            'case_number' => 'RM-NEW',
+            'remand_next_court_date' => '2026-06-28',
+        ]);
+
+        $response->assertStatus(422)->assertJsonFragment([
+            'message' => 'This inmate already has a completed admission and cannot be admitted again through this flow.',
+        ]);
+    }
+
     public function test_station_officer_cannot_access_admissions_module(): void
     {
         $station = $this->userWithRole('station_officer');

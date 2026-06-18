@@ -83,12 +83,7 @@ export default function AdmissionShowPage() {
                 className="w-32 h-40 object-cover rounded border border-gray-300"
                 onError={(e) => {
                   console.error('Photo loading error:', { src: e.target.src, inmate });
-                  e.target.replaceWith(
-                    Object.assign(document.createElement('div'), {
-                      className: 'w-32 h-40 rounded border border-gray-300 bg-gray-200 flex items-center justify-center text-xs text-gray-600',
-                      textContent: 'Photo unavailable'
-                    })
-                  );
+                  e.currentTarget.src = '';
                 }}
               />
             </div>
@@ -98,7 +93,14 @@ export default function AdmissionShowPage() {
             </div>
           )}
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Admission #{admission.id}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-gray-800">Admission #{admission.id}</h1>
+              {admission.status && (
+                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-gray-700">
+                  {formatStatusLabel(admission.status)}
+                </span>
+              )}
+            </div>
             <p className="text-gray-600">
               {inmate.prison_number ? `${inmate.prison_number} — ` : ''}{inmate.first_name} {inmate.last_name}
             </p>
@@ -189,6 +191,9 @@ export default function AdmissionShowPage() {
               <h3 className="font-semibold text-gray-800 mb-2">Remand</h3>
               <p className="text-gray-800">
                 Next court date: <span className="font-semibold">{admission.remand_next_court_date ? formatDate(admission.remand_next_court_date) : '—'}</span>
+              </p>
+              <p className="text-gray-800 mt-1">
+                Remand duration: <span className="font-semibold">{admission.remand_duration_days ? `${admission.remand_duration_days} day${admission.remand_duration_days === 1 ? '' : 's'}` : '—'}</span>
               </p>
             </div>
           )}
@@ -285,12 +290,30 @@ export default function AdmissionShowPage() {
           <p className="text-gray-700">—</p>
         ) : (
           <div className="border rounded divide-y">
-            {documents.map((d) => (
-              <div key={d.id} className="px-4 py-3">
-                <div className="font-semibold text-gray-800">{d.document_type}</div>
-                <div className="text-sm text-gray-600">{d.description || '—'}</div>
-              </div>
-            ))}
+            {documents.map((d) => {
+              const filePath = d.file_path || d.filePath || d.path || null;
+              const fileUrl = filePath ? `${SERVER_BASE_URL}/storage/${filePath}` : null;
+              return (
+                <div key={d.id} className="px-4 py-3 grid gap-2 md:grid-cols-[1fr_auto] items-start">
+                  <div>
+                    <div className="font-semibold text-gray-800">{d.document_type}</div>
+                    <div className="text-sm text-gray-600">{d.description || '—'}</div>
+                  </div>
+                  {fileUrl ? (
+                    <a
+                      href={fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center rounded bg-malawiGold px-3 py-2 text-sm font-semibold text-malawiBlack hover:opacity-90 transition"
+                    >
+                      View document
+                    </a>
+                  ) : (
+                    <span className="rounded-full bg-gray-100 px-3 py-2 text-xs text-gray-700">No file link</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

@@ -11,6 +11,25 @@ import { calculateProjectedReleaseDate } from '../../../../utils/helpers';
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
+const getAdmissionsCount = (inmate) => {
+  const n = inmate?.admissions_count ?? inmate?.admissionsCount;
+  return Number.isFinite(Number(n)) ? Number(n) : 0;
+};
+
+const getAutomaticAdmissionType = (inmate) => (getAdmissionsCount(inmate) > 0 ? 'repeat' : 'first_time');
+
+const formatAdmissionType = (type) => (type === 'repeat' ? 'Repeat' : 'First time');
+
+const calculateRemandDurationDays = (admissionDate, nextCourtDate) => {
+  if (!admissionDate || !nextCourtDate) return null;
+  const start = new Date(admissionDate);
+  const end = new Date(nextCourtDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  const ms = end.setHours(0, 0, 0, 0) - start.setHours(0, 0, 0, 0);
+  const days = Math.round(ms / 86400000);
+  return days > 0 ? days : null;
+};
+
 const mapInmateTypeToSecurityClassification = (inmateType) => {
   if (inmateType === 'murder_remandee') return 'maximum';
   if (inmateType === 'convict') return 'medium';
@@ -100,7 +119,8 @@ const labelFor = (key) => {
   return map[key] || key;
 };
 
-export default function StepAdmissionDetails({ defaultValues, onBack, onNext }) {
+export default function StepAdmissionDetails({ defaultValues, selectedInmate, onBack, onNext }) {
+  const automaticAdmissionType = useMemo(() => getAutomaticAdmissionType(selectedInmate), [selectedInmate]);
   const {
     register,
     handleSubmit,
@@ -112,7 +132,7 @@ export default function StepAdmissionDetails({ defaultValues, onBack, onNext }) 
     resolver: zodResolver(admissionSchema),
     defaultValues: {
       admissionDate: todayIso(),
-      admissionType: 'first_time',
+      admissionType: automaticAdmissionType,
       inmateType: 'remandee',
       caseNumber: '',
       courtName: '',
@@ -121,6 +141,7 @@ export default function StepAdmissionDetails({ defaultValues, onBack, onNext }) 
       sentenceMonths: '',
       sentenceStartDate: '',
       remandNextCourtDate: '',
+      remandDurationDays: '',
       cellId: '',
       activityId: '',
       ...(defaultValues || {})
@@ -128,6 +149,8 @@ export default function StepAdmissionDetails({ defaultValues, onBack, onNext }) 
   });
 
   const inmateType = watch('inmateType');
+  const admissionDate = watch('admissionDate');
+  const remandNextCourtDate = watch('remandNextCourtDate');
   const security = useMemo(() => mapInmateTypeToSecurityClassification(inmateType), [inmateType]);
 
   const sentenceYears = watch('sentenceYears');
@@ -135,6 +158,10 @@ export default function StepAdmissionDetails({ defaultValues, onBack, onNext }) 
   const sentenceStartDate = watch('sentenceStartDate');
 
   // Clear sentence fields when inmate type changes from convict to remandee
+  useEffect(() => {
+    setValue('admissionType', automaticAdmissionType, { shouldDirty: true, shouldValidate: true });
+  }, [automaticAdmissionType, setValue]);
+
   useEffect(() => {
     if (inmateType !== 'convict') {
       setValue('sentenceYears', '', { shouldValidate: false });
@@ -144,6 +171,15 @@ export default function StepAdmissionDetails({ defaultValues, onBack, onNext }) 
       setTimeout(() => trigger(['sentenceYears', 'sentenceMonths', 'sentenceStartDate']), 0);
     }
   }, [inmateType, setValue, trigger]);
+
+  const remandDurationDays = useMemo(
+    () => calculateRemandDurationDays(admissionDate, remandNextCourtDate),
+    [admissionDate, remandNextCourtDate]
+  );
+
+  useEffect(() => {
+    setValue('remandDurationDays', remandDurationDays || '', { shouldValidate: true });
+  }, [remandDurationDays, setValue]);
 
   const projectedReleaseDate = useMemo(() => {
     if (inmateType === 'convict' && sentenceStartDate && sentenceYears !== undefined && sentenceYears !== '') {
@@ -216,10 +252,10 @@ export default function StepAdmissionDetails({ defaultValues, onBack, onNext }) 
             />
           </FormField>
           <FormField label="Admission type *" error={errors.admissionType?.message}>
-            <select className={`w-full border rounded px-3 py-2 ${errors.admissionType ? 'border-red-500' : ''}`} {...register('admissionType')}>
-              <option value="first_time">First time</option>
-              <option value="repeat">Repeat</option>
-            </select>
+            <input type="hidden" {...register('admissionType')} />
+            <div className="w-full border rounded px-3 py-2 bg-gray-50 text-gray-800 font-semibold">
+              {formatAdmissionType(automaticAdmissionType)}
+            </div>
           </FormField>
           <FormField label="Inmate type *" error={errors.inmateType?.message}>
             <select className={`w-full border rounded px-3 py-2 ${errors.inmateType ? 'border-red-500' : ''}`} {...register('inmateType')}>
@@ -308,7 +344,13 @@ export default function StepAdmissionDetails({ defaultValues, onBack, onNext }) 
               />
             </FormField>
             <div className="text-sm text-gray-600">
-              Security classification: <span className="font-semibold text-gray-800">{security}</span>
+              <input type="hidden" {...register('remandDurationDays')} />
+              <p>
+                Security classification: <span className="font-semibold text-gray-800">{security}</span>
+              </p>
+              <p className="mt-1">
+                Remand duration: <span className="font-semibold text-gray-800">{remandDurationDays ? `${remandDurationDays} day${remandDurationDays === 1 ? '' : 's'}` : 'Select a later court date'}</span>
+              </p>
             </div>
           </div>
         )}
@@ -366,6 +408,7 @@ export default function StepAdmissionDetails({ defaultValues, onBack, onNext }) 
 
 StepAdmissionDetails.propTypes = {
   defaultValues: PropTypes.object,
+  selectedInmate: PropTypes.object,
   onBack: PropTypes.func.isRequired,
   onNext: PropTypes.func.isRequired
 };
