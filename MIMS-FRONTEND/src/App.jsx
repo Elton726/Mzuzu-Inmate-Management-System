@@ -180,7 +180,7 @@ const AppContent = () => {
           <Route
             path="/inmates/:inmateId"
             element={
-              <ProtectedRoute allowedRoles={['reception_officer']}>
+              <ProtectedRoute allowedRoles={['reception_officer', 'station_officer']}>
                 <InmateDetailPage />
               </ProtectedRoute>
             }

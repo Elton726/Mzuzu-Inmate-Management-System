@@ -46,7 +46,6 @@ DropzoneField.propTypes = {
 };
 
 export default function StepDocuments({ defaultValues, onBack, onNext }) {
-  const initialPhoto = defaultValues?.photo || null;
   const initialWarrant = defaultValues?.warrant || null;
   const {
     register,
@@ -55,10 +54,9 @@ export default function StepDocuments({ defaultValues, onBack, onNext }) {
     formState: { errors }
   } = useForm({
     resolver: zodResolver(documentsSchema),
-    defaultValues: defaultValues || { photo: null, warrant: null, warrantDescription: '' }
+    defaultValues: defaultValues || { warrant: null, warrantDescription: '' }
   });
 
-  const [photo, setPhoto] = useState(initialPhoto);
   const [warrant, setWarrant] = useState(initialWarrant);
 
   const accept = useMemo(
@@ -71,17 +69,6 @@ export default function StepDocuments({ defaultValues, onBack, onNext }) {
       <h2 className="text-xl font-semibold text-gray-800 mb-4">Documents</h2>
 
       <form onSubmit={handleSubmit(onNext)} className="space-y-4">
-        <DropzoneField
-          label="Inmate photo (optional)"
-          accept={{ 'image/*': ['.png', '.jpg', '.jpeg'] }}
-          value={photo}
-          onFile={(f) => {
-            setPhoto(f);
-            setValue('photo', f, { shouldDirty: true });
-          }}
-          hint="JPG/PNG"
-        />
-
         <DropzoneField
           label="Warrant document (optional)"
           accept={accept}

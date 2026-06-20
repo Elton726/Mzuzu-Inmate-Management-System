@@ -8,8 +8,13 @@ import { toast } from 'react-toastify';
 import { uploadDocument } from '../services/documentService';
 import { createAdmission } from '../services/admissionService';
 import { getInmate } from '../services/inmateService';
+import { useNotification } from '../../../contexts/useNotification';
 
 const toIso = (val) => (val ? new Date(val).toISOString().slice(0, 10) : null);
+const getAdmissionsCount = (inmate) => {
+  const n = inmate?.admissions_count ?? inmate?.admissionsCount;
+  return Number.isFinite(Number(n)) ? Number(n) : 0;
+};
 
 const buildAdmissionPayload = ({ inmateId, admission, warrantDocId }) => {
   const payload = {
@@ -20,7 +25,6 @@ const buildAdmissionPayload = ({ inmateId, admission, warrantDocId }) => {
     case_number: admission.caseNumber,
     court_name: admission.courtName || null,
     offence_description: admission.offenceDescription || null,
-    cell_id: admission.cellId ? Number(admission.cellId) : null,
     activity_id: admission.activityId ? Number(admission.activityId) : null
   };
 
@@ -33,6 +37,7 @@ const buildAdmissionPayload = ({ inmateId, admission, warrantDocId }) => {
     payload.remand_next_court_date = null;
   } else {
     payload.remand_next_court_date = toIso(admission.remandNextCourtDate);
+    payload.remand_duration_days = admission.remandDurationDays ? Number(admission.remandDurationDays) : null;
     payload.remand_warrant_id = warrantDocId || null;
     payload.committal_warrant_id = null;
     payload.sentence_years = null;
@@ -60,8 +65,10 @@ export default function AdmissionFormPage() {
 
   const [selectedInmate, setSelectedInmate] = useState(null);
   const [inmateDraft, setInmateDraft] = useState(null);
+  const [photoFromInmate, setPhotoFromInmate] = useState(null);
   const [admissionDraft, setAdmissionDraft] = useState(null);
   const [documentsDraft, setDocumentsDraft] = useState(null);
+  const { addNotification } = useNotification();
 
   useEffect(() => {
     const inmateId = searchParams.get('inmateId');
@@ -72,26 +79,52 @@ export default function AdmissionFormPage() {
       try {
         const inmate = await getInmate(inmateId);
         const activeAdmission = inmate?.current_admission || inmate?.currentAdmission || null;
+        const admissionsCount = inmate?.admissions_count ?? inmate?.admissionsCount ?? 0;
         if (activeAdmission?.id) {
           toast.error('This inmate already has an active admission. Finish it before creating a new one.');
           navigate(`/admissions/${activeAdmission.id}`);
           return;
         }
+
+        // If inmate has previous (completed) admissions, disallow creating a new admission
+        if (!activeAdmission?.id && admissionsCount > 0) {
+          toast.error('This inmate already has a completed admission and cannot be admitted again through this flow.');
+          navigate(`/inmates/${inmate.id}`);
+          return;
+        }
         setSelectedInmate(inmate);
         setCurrent(1);
         toast.success('Inmate loaded for admission');
+        addNotification({ title: 'Inmate loaded', message: `Inmate ${inmate.first_name} ${inmate.last_name} loaded for admission`, type: 'info', duration: 5000, action: { label: 'Open inmate', url: `/inmates/${inmate.id}` } });
       } catch (err) {
         toast.error(err?.response?.data?.message || err.message || 'Failed to load inmate');
       }
     };
 
     loadInmate();
-  }, [searchParams, selectedInmate, navigate]);
+  }, [searchParams, selectedInmate, navigate, addNotification]);
 
-  const onInmateSelected = ({ inmate, inmateDraft: draft }) => {
+  const onInmateSelected = ({ inmate, inmateDraft: draft, photo }) => {
+    const activeAdmission = inmate?.current_admission || inmate?.currentAdmission || null;
+    const admissionsCount = inmate?.admissions_count ?? inmate?.admissionsCount ?? 0;
+
+    if (activeAdmission?.id) {
+      toast.error('This inmate already has an active admission. Finish it before creating a new one.');
+      navigate(`/admissions/${activeAdmission.id}`);
+      return;
+    }
+
+    if (!activeAdmission?.id && admissionsCount > 0) {
+      toast.error('This inmate already has a completed admission and cannot be admitted again through this flow.');
+      navigate(`/inmates/${inmate.id}`);
+      return;
+    }
+
     setSelectedInmate(inmate);
     if (draft) setInmateDraft(draft);
+    if (photo) setPhotoFromInmate(photo);
     toast.success('Inmate selected');
+    addNotification({ title: 'Inmate selected', message: `Selected ${inmate.first_name} ${inmate.last_name} for admission`, type: 'info', duration: 4000, action: { label: 'Open inmate', url: `/inmates/${inmate.id}` } });
     setCurrent(1);
   };
 
@@ -107,9 +140,15 @@ export default function AdmissionFormPage() {
       return;
     }
     const activeAdmission = selectedInmate?.current_admission || selectedInmate?.currentAdmission || null;
+    const admissionsCount = getAdmissionsCount(selectedInmate);
     if (activeAdmission?.id) {
       toast.error('This inmate already has an active admission. Finish it before creating a new one.');
       navigate(`/admissions/${activeAdmission.id}`);
+      return;
+    }
+    if (admissionsCount > 0) {
+      toast.error('This inmate already has a completed admission and cannot be admitted again through this flow.');
+      navigate(`/inmates/${selectedInmate.id}`);
       return;
     }
     if (!admissionDraft) {
@@ -122,15 +161,18 @@ export default function AdmissionFormPage() {
       setSubmitting(true);
       setDocumentsDraft(docs);
 
+      // Determine which photo to use (from inmate creation step or documents step)
+      const photoToUpload = photoFromInmate || docs?.photo;
+
       // Upload optional photo
-      if (docs?.photo) {
+      if (photoToUpload) {
         try {
           const photoRes = await uploadDocument({
             inmateId: selectedInmate.id,
             admissionId: null,
             documentType: 'inmate_photo',
             description: 'Inmate photo',
-            file: docs.photo
+            file: photoToUpload
           });
           console.log('Photo uploaded successfully:', {
             document: photoRes,
@@ -140,12 +182,15 @@ export default function AdmissionFormPage() {
           });
           if (photoRes?.inmate?.photo_path) {
             toast.success(`✓ Photo uploaded: ${photoRes.file_name}`);
+            addNotification({ title: 'Photo uploaded', message: `Photo saved for ${selectedInmate.first_name} ${selectedInmate.last_name}`, type: 'success', action: { label: 'Open inmate', url: `/inmates/${selectedInmate.id}` } });
           } else {
             toast.success('Photo uploaded');
+            addNotification({ title: 'Photo uploaded', message: `Photo uploaded for ${selectedInmate.first_name}`, type: 'success', action: { label: 'Open inmate', url: `/inmates/${selectedInmate.id}` } });
           }
         } catch (photoErr) {
           console.error('Photo upload failed:', photoErr);
           toast.warning('Photo upload failed, continuing with admission');
+          addNotification({ title: 'Photo upload failed', message: `Photo upload failed for ${selectedInmate.first_name} ${selectedInmate.last_name}`, type: 'error', duration: 0 });
         }
       }
 
@@ -164,9 +209,11 @@ export default function AdmissionFormPage() {
           warrantDocId = warrantRes?.id || null;
           console.log('Warrant uploaded successfully:', warrantRes);
           toast.success('Warrant uploaded');
+          addNotification({ title: 'Warrant uploaded', message: `Warrant uploaded for ${selectedInmate.first_name} ${selectedInmate.last_name}`, type: 'success', action: { label: 'Open inmate', url: `/inmates/${selectedInmate.id}` } });
         } catch (warrantErr) {
           console.error('Warrant upload failed:', warrantErr);
           toast.warning('Warrant upload failed, continuing with admission');
+          addNotification({ title: 'Warrant upload failed', message: `Warrant upload failed for ${selectedInmate.first_name} ${selectedInmate.last_name}`, type: 'error', duration: 0 });
         }
       }
 
@@ -179,6 +226,7 @@ export default function AdmissionFormPage() {
       const createdAdmission = await createAdmission(payload);
 
       toast.success('Inmate admitted successfully');
+      addNotification({ title: 'Admission created', message: `Admission ${createdAdmission.id} created for ${selectedInmate.first_name} ${selectedInmate.last_name}`, type: 'success', action: { label: 'Open admission', url: `/admissions/${createdAdmission.id}` } });
       navigate(`/admissions/${createdAdmission.id}`);
     } catch (err) {
       toast.error(err?.response?.data?.message || err.message || 'Admission failed');
@@ -219,6 +267,7 @@ export default function AdmissionFormPage() {
       {current === 1 && (
         <StepAdmissionDetails
           defaultValues={admissionDraft}
+          selectedInmate={selectedInmate}
           onBack={() => setCurrent(0)}
           onNext={onAdmissionNext}
         />

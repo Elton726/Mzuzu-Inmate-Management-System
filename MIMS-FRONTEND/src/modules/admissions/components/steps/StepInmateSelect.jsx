@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useDropzone } from 'react-dropzone';
 import FormField from '../../../../components/common/FormField';
 import { inmateSchema } from '../../schemas/admissionSchemas';
 import { checkDuplicate, createInmate } from '../../services/inmateService';
@@ -22,10 +22,51 @@ const computeAgeYears = (dobIso) => {
   return age;
 };
 
+function DropzoneField({ label, accept, onFile, value, hint }) {
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    accept,
+    multiple: false,
+    onDrop: (accepted) => onFile(accepted?.[0] || null)
+  });
+
+  return (
+    <div>
+      <p className="block text-sm font-semibold text-gray-700 mb-1">{label}</p>
+      <div
+        {...getRootProps()}
+        className={[
+          'border-2 border-dashed rounded-lg p-4 cursor-pointer transition',
+          isDragActive ? 'border-malawiRed bg-malawiGold/20' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'
+        ].join(' ')}
+      >
+        <input {...getInputProps()} />
+        <p className="text-sm text-gray-700">
+          {value ? (
+            <span className="font-semibold">{value.name}</span>
+          ) : (
+            'Drag & drop a file here, or click to select'
+          )}
+        </p>
+        {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
+      </div>
+    </div>
+  );
+}
+
+DropzoneField.propTypes = {
+  accept: PropTypes.object,
+  hint: PropTypes.string,
+  label: PropTypes.string.isRequired,
+  onFile: PropTypes.func.isRequired,
+  value: PropTypes.any
+};
+
+
 export default function StepInmateSelect({ defaultValues, onSelected }) {
   const [checking, setChecking] = useState(false);
   const [dupes, setDupes] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [photo, setPhoto] = useState(null);
 
   const {
     register,
@@ -35,7 +76,7 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
     formState: { errors }
   } = useForm({
     resolver: zodResolver(inmateSchema),
-    defaultValues: { isYoungOffender: false, ...(defaultValues || {}) }
+    defaultValues: { isYoungOffender: false, gender: '', ...(defaultValues || {}) }
   });
 
   const watchDob = watch('dateOfBirth');
@@ -47,6 +88,8 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
     const isYoung = typeof age === 'number' ? age < YOUNG_OFFENDER_AGE_YEARS : false;
     setValue('isYoungOffender', isYoung, { shouldDirty: true, shouldValidate: true });
   }, [watchDob, setValue]);
+
+  // search removed: creation flow now always starts with fresh inmate creation
 
   const onCreate = async (form) => {
     try {
@@ -88,11 +131,12 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
         next_of_kin_name: form.nextOfKinName || null,
         next_of_kin_contact: form.nextOfKinContact || null,
         is_young_offender: Boolean(form.isYoungOffender),
-        personal_belongings: form.personalBelongings || null
+        personal_belongings: form.personalBelongings || null,
+        gender: form.gender || null
       };
       const created = await createInmate(payload);
       toast.success(`Inmate created (${created?.prison_number || created?.id})`);
-      onSelected({ inmate: created, created: true, inmateDraft: form });
+      onSelected({ inmate: created, created: true, inmateDraft: form, photo });
     } catch (err) {
       const msg = err?.response?.data?.message || err.message || 'Failed to create inmate';
       toast.error(msg);
@@ -103,6 +147,8 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
 
   return (
     <div className="space-y-6">
+      {/* Select-existing functionality removed: creation flow starts with the form below */}
+
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-semibold text-gray-800 mb-3">Create new inmate</h2>
 
@@ -118,6 +164,14 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
             <FormField label="Other names" error={errors.otherNames?.message}>
               <input className="w-full border rounded px-3 py-2" {...register('otherNames')} />
             </FormField>
+            <FormField label="Gender" error={errors.gender?.message}>
+              <select className="w-full border rounded px-3 py-2" {...register('gender')}>
+                <option value="">Select gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </FormField>
             <FormField label="Date of birth *" error={errors.dateOfBirth?.message}>
               <input type="date" className="w-full border rounded px-3 py-2" {...register('dateOfBirth')} />
             </FormField>
@@ -126,6 +180,15 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
             </FormField>
             <FormField label="Nationality" error={errors.nationality?.message}>
               <input className="w-full border rounded px-3 py-2" {...register('nationality')} />
+            </FormField>
+            <FormField label="Marital status" error={errors.maritalStatus?.message}>
+              <select className="w-full border rounded px-3 py-2" {...register('maritalStatus')}>
+                <option value="">Select marital status</option>
+                <option value="single">Single</option>
+                <option value="married">Married</option>
+                <option value="divorced">Divorced</option>
+                <option value="widowed">Widowed</option>
+              </select>
             </FormField>
             <FormField label="Next of kin name" error={errors.nextOfKinName?.message}>
               <input className="w-full border rounded px-3 py-2" {...register('nextOfKinName')} />
@@ -137,6 +200,18 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
               <textarea className="w-full border rounded px-3 py-2" {...register('personalBelongings')} rows={3} />
             </FormField>
           </div>
+
+          <DropzoneField
+            label="Inmate photo *"
+            accept={{ 'image/*': ['.png', '.jpg', '.jpeg'] }}
+            value={photo}
+            onFile={(f) => {
+              setPhoto(f);
+              setValue('photo', f, { shouldDirty: true });
+            }}
+            hint="JPG/PNG"
+          />
+          {errors.photo && <p className="text-sm text-red-600">{errors.photo.message}</p>}
 
           {watchDob && (
             <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">

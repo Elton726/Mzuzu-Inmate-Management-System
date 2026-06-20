@@ -17,7 +17,7 @@ class StoreAdmissionRequest extends FormRequest
         return [
             'inmate_id' => ['required', 'exists:inmates,id'],
             'admission_date' => ['required', 'date'],
-            'admission_type' => ['required', 'in:first_time,repeat'],
+            'admission_type' => ['nullable', 'in:first_time,repeat'],
             'inmate_type' => ['required', 'in:convict,remandee,murder_remandee'],
             'case_number' => ['required', 'string', 'max:50'],
             'court_name' => ['nullable', 'string', 'max:100'],
@@ -28,8 +28,8 @@ class StoreAdmissionRequest extends FormRequest
             'sentence_start_date' => ['nullable', 'date', 'required_if:inmate_type,convict'],
 
             'remand_next_court_date' => ['nullable', 'date', 'required_if:inmate_type,remandee,murder_remandee'],
+            'remand_duration_days' => ['nullable', 'integer', 'min:1'],
 
-            'cell_id' => ['nullable', 'exists:cells,id'],
             'activity_id' => [
                 'nullable',
                 Rule::exists('activities', 'id')->where(function ($query) {

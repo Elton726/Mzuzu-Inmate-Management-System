@@ -123,7 +123,17 @@ class InmateController extends Controller
             return response()->json(['error' => 'Inmate profile not available.'], 404);
         }
 
-        return response()->json($inmate->load('currentAdmission', 'documents'));
+        return response()->json($inmate->loadCount('admissions')->load([
+            'currentAdmission.cellAllocations.cell',
+            'currentAdmission.inmateActivities.activity',
+            'admissions' => fn ($query) => $query
+                ->with(['cellAllocations.cell', 'inmateActivities.activity'])
+                ->latest('admission_date')
+                ->latest('id'),
+            'cellAllocations.cell',
+            'inmateActivities.activity',
+            'documents' => fn ($query) => $query->latest('id'),
+        ]));
     }
 
     public function update(UpdateInmateRequest $request, Inmate $inmate)

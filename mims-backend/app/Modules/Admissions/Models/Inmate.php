@@ -17,6 +17,7 @@ class Inmate extends Model
         'last_name',
         'other_names',
         'date_of_birth',
+        'gender',
         'is_young_offender',
         'place_of_birth',
         'nationality',

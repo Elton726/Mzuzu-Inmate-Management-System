@@ -5,7 +5,6 @@ namespace App\Modules\Admissions\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Modules\Admissions\Models\Activity;
 use App\Modules\Admissions\Models\Admission;
-use App\Modules\Admissions\Models\Cell;
 use App\Modules\Admissions\Models\Document;
 use App\Modules\Admissions\Models\Inmate;
 use App\Modules\Admissions\Models\InmateActivity;
@@ -40,18 +39,30 @@ class AdmissionController extends Controller
             abort(422, 'Inmate already has an active admission. Complete the current admission before creating a new one.');
         }
 
-        $admission = DB::transaction(function () use ($validated, $inmate, $user, $request) {
-            if ($validated['admission_type'] === 'repeat') {
-                Admission::where('inmate_id', $inmate->id)->where('is_current', true)->update(['is_current' => false]);
-            }
+        if ($inmate->admissions()->exists()) {
+            abort(422, 'This inmate already has a completed admission and cannot be admitted again through this flow.');
+        }
 
+        $validated['admission_type'] = $inmate->admissions()->exists() ? 'repeat' : 'first_time';
+
+        $admission = DB::transaction(function () use ($validated, $inmate, $user, $request) {
             $projectedReleaseDate = null;
+            $remandDurationDays = null;
             if ($validated['inmate_type'] === 'convict') {
                 $projectedReleaseDate = $this->sentenceCalculationService->calculateProjectedReleaseDate(
                     CarbonImmutable::parse($validated['sentence_start_date']),
                     (int) $validated['sentence_years'],
                     (int) ($validated['sentence_months'] ?? 0),
                 )->toDateString();
+            } else {
+                $admissionDate = CarbonImmutable::parse($validated['admission_date'])->startOfDay();
+                $nextCourtDate = CarbonImmutable::parse($validated['remand_next_court_date'])->startOfDay();
+
+                if ($nextCourtDate->lessThanOrEqualTo($admissionDate)) {
+                    abort(422, 'Next court date must be after the admission date for remandees.');
+                }
+
+                $remandDurationDays = (int) $admissionDate->diffInDays($nextCourtDate);
             }
 
             $admission = Admission::create([
@@ -68,24 +79,19 @@ class AdmissionController extends Controller
                 'projected_release_date' => $projectedReleaseDate,
                 'original_release_date' => $projectedReleaseDate,
                 'remand_next_court_date' => $validated['remand_next_court_date'] ?? null,
+                'remand_duration_days' => $remandDurationDays,
                 'admitted_by' => $user->id,
                 'is_current' => true,
             ]);
 
-            $cell = null;
-            if (!empty($validated['cell_id'])) {
-                $cell = Cell::lockForUpdate()->findOrFail($validated['cell_id']);
-                if ($cell->status !== 'available' || $cell->current_occupancy >= $cell->capacity) {
-                    abort(422, 'Selected cell is not available.');
-                }
-            } else {
-                $classification = $this->mapInmateTypeToSecurityClassification($validated['inmate_type']);
-                $cell = $this->cellAllocationService->findAvailableCell($classification);
+            $classification = $this->mapInmateTypeToSecurityClassification($validated['inmate_type']);
+            $cell = $this->cellAllocationService->findAvailableCell($classification);
+
+            if (!$cell) {
+                abort(422, "No available {$classification} security cell could be found for automatic allocation.");
             }
 
-            if ($cell) {
-                $this->cellAllocationService->allocate($inmate->id, $admission->id, $cell->id);
-            }
+            $this->cellAllocationService->allocate($inmate->id, $admission->id, $cell->id);
 
             if (!empty($validated['activity_id'])) {
                 InmateActivity::create([

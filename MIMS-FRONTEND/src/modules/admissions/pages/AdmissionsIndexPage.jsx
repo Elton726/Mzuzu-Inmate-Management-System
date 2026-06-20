@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { useDebouncedValue } from '../../../utils/useDebouncedValue';
 import { searchInmates, listInmates } from '../services/inmateService';
 import { formatDate } from '../../../utils/helpers';
 
@@ -14,7 +15,8 @@ const getCurrentAdmission = (inmate) => inmate?.current_admission || inmate?.cur
 export default function AdmissionsIndexPage() {
   const [loading, setLoading] = useState(false);
   const [inmates, setInmates] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const debouncedSearchQuery = useDebouncedValue(searchInput, 300);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [sortBy, setSortBy] = useState('id');
@@ -33,8 +35,8 @@ export default function AdmissionsIndexPage() {
 
       // If there's a search query, use search endpoint; otherwise use index
       let data;
-      if (searchQuery.trim().length >= 2) {
-        data = await searchInmates({ q: searchQuery, ...params });
+      if (debouncedSearchQuery.trim().length >= 2) {
+        data = await searchInmates({ q: debouncedSearchQuery, ...params });
       } else {
         data = await listInmates(params);
       }
@@ -48,11 +50,11 @@ export default function AdmissionsIndexPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, sortBy, sortOrder, perPage, searchQuery]);
+  }, [currentPage, sortBy, sortOrder, perPage, debouncedSearchQuery]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, sortBy, sortOrder, perPage]);
+  }, [debouncedSearchQuery, sortBy, sortOrder, perPage]);
 
   useEffect(() => {
     loadInmates();
@@ -99,8 +101,8 @@ export default function AdmissionsIndexPage() {
             <label className="block text-sm font-semibold text-gray-700 mb-2">Search</label>
             <input
               type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search by prison number, name, or national ID..."
               className="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-malawiGold"
             />

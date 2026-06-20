@@ -18,6 +18,7 @@ class StoreInmateRequest extends FormRequest
             'last_name' => ['required', 'string', 'max:50'],
             'other_names' => ['nullable', 'string', 'max:100'],
             'date_of_birth' => ['required', 'date', 'before:today'],
+            'gender' => ['nullable', 'string', 'in:male,female,other'],
             'is_young_offender' => ['sometimes', 'boolean'],
             'place_of_birth' => ['nullable', 'string', 'max:100'],
             'nationality' => ['nullable', 'string', 'max:50'],
