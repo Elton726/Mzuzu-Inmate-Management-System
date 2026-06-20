@@ -17,7 +17,7 @@ const getAdmissionsCount = (inmate) => {
 
 const getAutomaticAdmissionType = (inmate) => (getAdmissionsCount(inmate) > 0 ? 'repeat' : 'first_time');
 
-const formatAdmissionType = (type) => (type === 'repeat' ? 'Repeat' : 'First time');
+const formatAdmissionType = (type) => (type === 'repeat' ? 'Not-first-time' : 'First time');
 
 const calculateRemandDurationDays = (admissionDate, nextCourtDate) => {
   if (!admissionDate || !nextCourtDate) return null;
