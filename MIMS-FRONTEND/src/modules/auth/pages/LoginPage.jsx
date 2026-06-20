@@ -50,11 +50,11 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-yellow-300 to-yellow-500 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-malawiGold flex items-center justify-center p-4">
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-yellow-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
-        <div className="absolute bottom-20 right-10 w-72 h-72 bg-yellow-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+        <div className="absolute top-20 left-10 w-72 h-72 bg-yellow-100 dark:bg-slate-600 rounded-full mix-blend-multiply filter blur-3xl opacity-30 dark:opacity-20"></div>
+        <div className="absolute bottom-20 right-10 w-72 h-72 bg-yellow-200 dark:bg-slate-500 rounded-full mix-blend-multiply filter blur-3xl opacity-25 dark:opacity-20"></div>
       </div>
 
       {/* Main login container */}

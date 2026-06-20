@@ -5,7 +5,7 @@
  * - Tailwind CSS directives for base styles, components, and utilities
  * - Custom utility classes for Malawi-themed colors
  * - Component-specific styles for consistent UI elements
- * - Global body styling with Malawi gold background
+ * - Global body styling with a softened Malawi gold background
  */
 
 /* Import Tailwind CSS layers */
@@ -19,13 +19,13 @@
  * These classes provide consistent access to the official Malawi color scheme:
  * - Black (#000000) - Primary text and borders
  * - Red (#D71920) - Error states and important actions
- * - Gold (#FFD700) - Primary brand color, backgrounds, accents
+ * - Gold (#FFD700) - Primary brand color and accents
  * - Green (#00843D) - Success states and positive actions
  */
 @layer utilities {
   /* Gold color utilities */
   .bg-malawiGold {
-    background-color: #FFD700;
+    background-color: #fef3c7;
   }
   .text-malawiBlack {
     color: #000000;
@@ -76,16 +76,21 @@
 /**
  * Global Body Styling
  *
- * Sets the default page background to Malawi gold
+ * Sets the default page background to a faded Malawi gold
  * Ensures consistent base styling across all pages
  */
 body {
-  @apply bg-yellow-400 text-black font-sans;
+  background-color: #fef3c7;
+  @apply text-black font-sans;
   /* For custom background, use .bg-malawiGold in JSX */
 }
 
 .dark body {
-  @apply bg-slate-950 text-white;
+  @apply bg-slate-800 text-white;
+}
+
+.dark .bg-malawiGold {
+  background-color: #1f2937;
 }
 
 .dark .bg-white {
@@ -93,6 +98,11 @@ body {
 }
 
 .dark .text-gray-900 {
+  color: #f8fafc;
+}
+
+.dark .text-black,
+.dark .text-malawiBlack {
   color: #f8fafc;
 }
 
@@ -126,6 +136,12 @@ body {
   border-color: #334155;
 }
 
+.dark .border-black,
+.dark .border-malawiBlack,
+.dark .border-gray-300 {
+  border-color: #64748b;
+}
+
 .dark .hover\:bg-white:hover,
 .dark .hover\:bg-gray-50:hover,
 .dark .hover\:bg-gray-100:hover,
@@ -142,6 +158,10 @@ body {
 .dark .hover\:text-gray-800:hover,
 .dark .hover\:text-malawiBlack:hover {
   color: #f8fafc;
+}
+
+.dark .hover\:bg-malawiBlack:hover {
+  background-color: #334155;
 }
 
 input,
