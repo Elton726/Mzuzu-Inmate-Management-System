@@ -85,10 +85,10 @@ class AdmissionModuleApiTest extends TestCase
 
         // Seed minimal cells/activities for list endpoints and allocations.
         Cell::create([
-            'cell_number' => 'C-301',
-            'block' => 'C',
-            'security_classification' => 'minimum',
-            'capacity' => 8,
+            'cell_number' => 'B-201',
+            'block' => 'B',
+            'security_classification' => 'medium',
+            'capacity' => 6,
             'current_occupancy' => 0,
             'status' => 'available',
         ]);
@@ -101,7 +101,7 @@ class AdmissionModuleApiTest extends TestCase
         ]);
 
         $cells = $this->actingAs($user, 'sanctum')->getJson('/api/cells/available');
-        $cells->assertStatus(200)->assertJsonFragment(['cell_number' => 'C-301']);
+        $cells->assertStatus(200)->assertJsonFragment(['cell_number' => 'B-201']);
 
         $activities = $this->actingAs($user, 'sanctum')->getJson('/api/activities');
         $activities->assertStatus(200)->assertJsonFragment(['name' => 'Kitchen']);

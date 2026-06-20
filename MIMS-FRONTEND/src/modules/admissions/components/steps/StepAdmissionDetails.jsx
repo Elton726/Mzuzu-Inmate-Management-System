@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { admissionSchema } from '../../schemas/admissionSchemas';
 import FormField from '../../../../components/common/FormField';
 import { listActivities } from '../../services/activityService';
-import { getAvailableCells } from '../../services/cellService';
 import { toast } from 'react-toastify';
 import { calculateProjectedReleaseDate } from '../../../../utils/helpers';
 
@@ -113,7 +112,6 @@ const labelFor = (key) => {
     sentenceMonths: 'Sentence months',
     sentenceStartDate: 'Sentence start date',
     remandNextCourtDate: 'Next court date',
-    cellId: 'Cell',
     activityId: 'Activity'
   };
   return map[key] || key;
@@ -142,7 +140,6 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
       sentenceStartDate: '',
       remandNextCourtDate: '',
       remandDurationDays: '',
-      cellId: '',
       activityId: '',
       ...(defaultValues || {})
     }
@@ -194,18 +191,13 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
   }, [inmateType, sentenceStartDate, sentenceYears, sentenceMonths]);
 
   const [loadingLookups, setLoadingLookups] = useState(true);
-  const [cells, setCells] = useState([]);
   const [activities, setActivities] = useState([]);
 
   useEffect(() => {
     const load = async () => {
       try {
         setLoadingLookups(true);
-        const [cellsRes, actsRes] = await Promise.all([
-          getAvailableCells({ security_classification: security }),
-          listActivities()
-        ]);
-        setCells(Array.isArray(cellsRes) ? cellsRes : []);
+        const actsRes = await listActivities();
         setActivities(Array.isArray(actsRes) ? actsRes : []);
       } catch (err) {
         toast.error(err?.response?.data?.message || err.message || 'Failed to load lookups');
@@ -214,7 +206,7 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
       }
     };
     load();
-  }, [security]);
+  }, []);
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -356,20 +348,12 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
         )}
 
         <div className={inmateType === 'convict' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : ''}>
-          <FormField label="Cell (optional)" error={errors.cellId?.message}>
-            <select
-              className={`w-full border rounded px-3 py-2 ${errors.cellId ? 'border-red-500' : ''}`}
-              disabled={loadingLookups}
-              {...register('cellId')}
-            >
-              <option value="">Auto-allocate</option>
-              {cells.map((c) => (
-                <option key={c.id} value={String(c.id)}>
-                  Block {c.block} · Cell {c.cell_number} · {c.security_classification} ({c.current_occupancy}/{c.capacity})
-                </option>
-              ))}
-            </select>
-          </FormField>
+          <div className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3">
+            <p className="text-sm font-semibold text-emerald-900">Cell allocation is automatic</p>
+            <p className="mt-1 text-sm text-emerald-800">
+              The system will assign the inmate to the least occupied available {security} security cell when the admission is submitted.
+            </p>
+          </div>
           {inmateType === 'convict' && (
             <FormField label="Activity (optional)" error={errors.activityId?.message}>
               <select

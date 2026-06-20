@@ -38,7 +38,6 @@ export const admissionSchema = z
     remandNextCourtDate: z.string().optional().or(z.literal('')),
     remandDurationDays: z.any().optional(),
 
-    cellId: z.string().optional().or(z.literal('')),
     activityId: z.string().optional().or(z.literal(''))
   })
   .superRefine((data, ctx) => {

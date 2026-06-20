@@ -30,7 +30,6 @@ class StoreAdmissionRequest extends FormRequest
             'remand_next_court_date' => ['nullable', 'date', 'required_if:inmate_type,remandee,murder_remandee'],
             'remand_duration_days' => ['nullable', 'integer', 'min:1'],
 
-            'cell_id' => ['nullable', 'exists:cells,id'],
             'activity_id' => [
                 'nullable',
                 Rule::exists('activities', 'id')->where(function ($query) {

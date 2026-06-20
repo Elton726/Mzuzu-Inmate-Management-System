@@ -25,7 +25,6 @@ const buildAdmissionPayload = ({ inmateId, admission, warrantDocId }) => {
     case_number: admission.caseNumber,
     court_name: admission.courtName || null,
     offence_description: admission.offenceDescription || null,
-    cell_id: admission.cellId ? Number(admission.cellId) : null,
     activity_id: admission.activityId ? Number(admission.activityId) : null
   };
 

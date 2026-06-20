@@ -1,11 +1,12 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { MdAssignment, MdCalendarToday, MdDescription, MdGavel, MdHomeWork, MdOpenInNew, MdRefresh } from 'react-icons/md';
 import apiService, { SERVER_BASE_URL } from '../../../services/apiService';
 import { useToast } from '../../../contexts/useToast';
 import { formatDate } from '../../../utils/helpers';
 
-const formatStatusLabel = (status) =>
-  String(status || '')
+const titleCase = (value) =>
+  String(value || '')
     .split('_')
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -14,15 +15,50 @@ const formatStatusLabel = (status) =>
 const statusBadgeClass = (status) => {
   switch (status) {
     case 'completed':
-      return 'bg-green-100 text-green-800';
+      return 'bg-emerald-100 text-emerald-800 ring-emerald-200';
     case 'in_progress':
-      return 'bg-blue-100 text-blue-800';
+      return 'bg-blue-100 text-blue-800 ring-blue-200';
     case 'cancelled':
-      return 'bg-red-100 text-red-800';
+      return 'bg-red-100 text-red-800 ring-red-200';
     default:
-      return 'bg-yellow-100 text-yellow-800';
+      return 'bg-amber-100 text-amber-800 ring-amber-200';
   }
 };
+
+const empty = (value) => value || '-';
+
+const cellLabel = (cell) => {
+  if (!cell?.cell_number) return '-';
+  return String(cell.cell_number).startsWith(`${cell.block}-`)
+    ? cell.cell_number
+    : `${cell.block}-${cell.cell_number}`;
+};
+
+function StatTile({ icon: Icon, label, value, helper }) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start gap-3">
+        <div className="rounded-lg bg-gray-100 p-2 text-gray-700">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase text-gray-500">{label}</p>
+          <p className="mt-1 text-lg font-bold text-gray-900">{value}</p>
+          {helper && <p className="mt-1 text-xs text-gray-500">{helper}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }) {
+  return (
+    <div className="border-b border-gray-100 py-3 last:border-b-0">
+      <p className="text-xs font-semibold uppercase text-gray-500">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-gray-900">{value}</p>
+    </div>
+  );
+}
 
 export default function AdmissionShowPage() {
   const { admissionId } = useParams();
@@ -33,8 +69,7 @@ export default function AdmissionShowPage() {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await apiService.getAdmission(admissionId);
-      setAdmission(data);
+      setAdmission(await apiService.getAdmission(admissionId));
     } catch (err) {
       toast.fromError(err);
     } finally {
@@ -46,12 +81,28 @@ export default function AdmissionShowPage() {
     load();
   }, [load]);
 
+  const inmate = admission?.inmate || {};
+  const allocations = useMemo(() => {
+    if (!admission) return [];
+    return Array.isArray(admission.cell_allocations)
+      ? admission.cell_allocations
+      : (Array.isArray(admission.cellAllocations) ? admission.cellAllocations : []);
+  }, [admission]);
+  const activities = useMemo(() => {
+    if (!admission) return [];
+    return Array.isArray(admission.inmate_activities)
+      ? admission.inmate_activities
+      : (Array.isArray(admission.inmateActivities) ? admission.inmateActivities : []);
+  }, [admission]);
+  const documents = Array.isArray(admission?.documents) ? admission.documents : [];
+  const currentCell = allocations[0]?.cell;
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-100">
+      <div className="flex min-h-[70vh] items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading admission…</p>
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-2 border-gray-300 border-b-malawiGreen" />
+          <p className="text-sm font-semibold text-gray-600">Loading admission...</p>
         </div>
       </div>
     );
@@ -59,264 +110,209 @@ export default function AdmissionShowPage() {
 
   if (!admission?.id) {
     return (
-      <div className="max-w-4xl mx-auto py-8 px-4">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">Admission not found</h1>
-        <Link className="text-malawiRed font-semibold hover:underline" to="/admissions/new">Back to admissions</Link>
+      <div className="mx-auto max-w-4xl px-4 py-8">
+        <h1 className="mb-2 text-2xl font-bold text-gray-900">Admission not found</h1>
+        <Link className="font-semibold text-malawiRed hover:underline" to="/admissions/new">Back to admissions</Link>
       </div>
     );
   }
 
-  const inmate = admission.inmate || {};
-  const allocations = Array.isArray(admission.cell_allocations) ? admission.cell_allocations : (Array.isArray(admission.cellAllocations) ? admission.cellAllocations : []);
-  const activities = Array.isArray(admission.inmate_activities) ? admission.inmate_activities : (Array.isArray(admission.inmateActivities) ? admission.inmateActivities : []);
-  const documents = Array.isArray(admission.documents) ? admission.documents : [];
-
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4">
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div className="flex items-start gap-4">
+    <div className="mx-auto max-w-7xl px-4 py-6">
+      <div className="mb-6 rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="grid gap-6 p-5 lg:grid-cols-[auto_1fr_auto]">
           {inmate.photo_path ? (
-            <div className="shrink-0">
-              <img
-                src={`${SERVER_BASE_URL}/storage/${inmate.photo_path}`}
-                alt={`${inmate.first_name} ${inmate.last_name}`}
-                className="w-32 h-40 object-cover rounded border border-gray-300"
-                onError={(e) => {
-                  console.error('Photo loading error:', { src: e.target.src, inmate });
-                  e.currentTarget.src = '';
-                }}
-              />
+            <img
+              src={`${SERVER_BASE_URL}/storage/${inmate.photo_path}`}
+              alt={`${inmate.first_name} ${inmate.last_name}`}
+              className="h-36 w-28 rounded-lg border border-gray-200 object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="flex h-36 w-28 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 text-xs font-semibold text-gray-500">
+              No photo
+            </div>
+          )}
+
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold text-gray-950 md:text-3xl">Admission #{admission.id}</h1>
+              <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase ring-1 ${statusBadgeClass(admission.status)}`}>
+                {titleCase(admission.status || (admission.is_current ? 'in_progress' : 'completed'))}
+              </span>
+            </div>
+            <p className="mt-2 text-lg font-semibold text-gray-800">
+              {inmate.first_name} {inmate.last_name}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2 text-sm text-gray-600">
+              <span>{empty(inmate.prison_number)}</span>
+              <span className="text-gray-300">|</span>
+              <span>{titleCase(admission.inmate_type)}</span>
+              <span className="text-gray-300">|</span>
+              <span>{admission.case_number}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-start gap-2 lg:justify-end">
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded bg-malawiGreen px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+              onClick={load}
+            >
+              <MdRefresh className="h-4 w-4" />
+              Refresh
+            </button>
+            {inmate?.id && (
+              <Link
+                className="inline-flex items-center gap-2 rounded border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-gray-50"
+                to={`/inmates/${inmate.id}`}
+              >
+                <MdOpenInNew className="h-4 w-4" />
+                Inmate profile
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatTile icon={MdCalendarToday} label="Admission Date" value={formatDate(admission.admission_date)} helper={titleCase(admission.admission_type)} />
+        <StatTile icon={MdHomeWork} label="Cell" value={cellLabel(currentCell)} helper={currentCell ? titleCase(currentCell.security_classification) : 'Automatic allocation pending'} />
+        <StatTile icon={MdGavel} label="Court" value={empty(admission.court_name)} helper="Case jurisdiction" />
+        <StatTile icon={MdAssignment} label="Activities" value={activities.length} helper={admission.inmate_type === 'convict' ? 'Assigned work activities' : 'Not required for remand'} />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1.35fr_0.9fr]">
+        <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-lg font-bold text-gray-950">Admission Details</h2>
+            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold uppercase text-gray-700">
+              {titleCase(admission.inmate_type)}
+            </span>
+          </div>
+
+          <div className="grid gap-x-8 md:grid-cols-2">
+            <DetailRow label="Case number" value={empty(admission.case_number)} />
+            <DetailRow label="Admitted by" value={empty(admission.admitted_by?.name || admission.admittedBy?.name)} />
+            <DetailRow label="Court" value={empty(admission.court_name)} />
+            <DetailRow label="Young offender" value={typeof inmate.is_young_offender === 'boolean' ? (inmate.is_young_offender ? 'Yes' : 'No') : '-'} />
+            <div className="md:col-span-2">
+              <DetailRow label="Offence" value={empty(admission.offence_description)} />
+            </div>
+          </div>
+
+          {admission.inmate_type === 'convict' ? (
+            <div className="mt-6 rounded-lg border border-blue-100 bg-blue-50 p-4">
+              <h3 className="mb-3 text-sm font-bold uppercase text-blue-900">Sentence</h3>
+              <div className="grid gap-4 md:grid-cols-3">
+                <DetailRow label="Sentence length" value={`${admission.sentence_years ?? 0} year(s), ${admission.sentence_months ?? 0} month(s)`} />
+                <DetailRow label="Start date" value={admission.sentence_start_date ? formatDate(admission.sentence_start_date) : '-'} />
+                <DetailRow label="Projected release" value={admission.projected_release_date ? formatDate(admission.projected_release_date) : '-'} />
+              </div>
             </div>
           ) : (
-            <div className="w-32 h-40 rounded border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center shrink-0">
-              <p className="text-xs text-gray-500 text-center px-2">No photo</p>
-            </div>
-          )}
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold text-gray-800">Admission #{admission.id}</h1>
-              {admission.status && (
-                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-gray-700">
-                  {formatStatusLabel(admission.status)}
-                </span>
-              )}
-            </div>
-            <p className="text-gray-600">
-              {inmate.prison_number ? `${inmate.prison_number} — ` : ''}{inmate.first_name} {inmate.last_name}
-            </p>
-            {typeof inmate.is_young_offender === 'boolean' && (
-              <p className="text-sm text-gray-600 mt-1">
-                Young offender: <span className={`font-semibold ${inmate.is_young_offender ? 'text-malawiRed' : 'text-gray-800'}`}>{inmate.is_young_offender ? 'Yes' : 'No'}</span>
-              </p>
-            )}
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <button
-            type="button"
-            className="bg-malawiGreen text-white px-4 py-2 rounded hover:opacity-90 transition"
-            onClick={load}
-          >
-            Refresh
-          </button>
-          {inmate?.id && (
-            <Link
-              className="bg-malawiGold text-malawiBlack px-4 py-2 rounded hover:bg-malawiRed hover:text-malawiGold transition"
-              to={`/inmates/${inmate.id}`}
-            >
-              View inmate profile
-            </Link>
-          )}
-          <Link
-            className="bg-malawiBlack text-malawiGold px-4 py-2 rounded hover:opacity-90 transition"
-            to="/admissions/new"
-          >
-            New admission
-          </Link>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Admission details</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-semibold text-gray-600 uppercase">Admission date</p>
-              <p className="text-lg font-semibold text-gray-800 mt-1">{formatDate(admission.admission_date)}</p>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-600 uppercase">Type</p>
-              <p className="text-lg font-semibold text-gray-800 mt-1">{admission.admission_type}</p>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-600 uppercase">Inmate type</p>
-              <p className="text-lg font-semibold text-gray-800 mt-1">{admission.inmate_type}</p>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-600 uppercase">Case number</p>
-              <p className="text-lg font-semibold text-gray-800 mt-1">{admission.case_number || '—'}</p>
-            </div>
-            <div className="md:col-span-2">
-              <p className="text-sm font-semibold text-gray-600 uppercase">Court</p>
-              <p className="text-lg font-semibold text-gray-800 mt-1">{admission.court_name || '—'}</p>
-            </div>
-            <div className="md:col-span-2">
-              <p className="text-sm font-semibold text-gray-600 uppercase">Offence</p>
-              <p className="text-lg font-semibold text-gray-800 mt-1">{admission.offence_description || '—'}</p>
-            </div>
-          </div>
-
-          {(admission.inmate_type === 'convict') && (
-            <div className="mt-6 border-t pt-4">
-              <h3 className="font-semibold text-gray-800 mb-3">Sentence</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-gray-600 uppercase">Years</p>
-                  <p className="text-lg font-semibold text-gray-800 mt-1">{admission.sentence_years ?? '—'}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-600 uppercase">Months</p>
-                  <p className="text-lg font-semibold text-gray-800 mt-1">{admission.sentence_months ?? '—'}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-600 uppercase">Start date</p>
-                  <p className="text-lg font-semibold text-gray-800 mt-1">{admission.sentence_start_date ? formatDate(admission.sentence_start_date) : '—'}</p>
-                </div>
+            <div className="mt-6 rounded-lg border border-amber-100 bg-amber-50 p-4">
+              <h3 className="mb-3 text-sm font-bold uppercase text-amber-900">Remand</h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <DetailRow label="Next court date" value={admission.remand_next_court_date ? formatDate(admission.remand_next_court_date) : '-'} />
+                <DetailRow label="Remand duration" value={admission.remand_duration_days ? `${admission.remand_duration_days} day(s)` : '-'} />
               </div>
             </div>
           )}
+        </section>
 
-          {(admission.inmate_type !== 'convict') && (
-            <div className="mt-6 border-t pt-4">
-              <h3 className="font-semibold text-gray-800 mb-2">Remand</h3>
-              <p className="text-gray-800">
-                Next court date: <span className="font-semibold">{admission.remand_next_court_date ? formatDate(admission.remand_next_court_date) : '—'}</span>
-              </p>
-              <p className="text-gray-800 mt-1">
-                Remand duration: <span className="font-semibold">{admission.remand_duration_days ? `${admission.remand_duration_days} day${admission.remand_duration_days === 1 ? '' : 's'}` : '—'}</span>
-              </p>
+        <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-4 text-lg font-bold text-gray-950">Allocation</h2>
+          {allocations.length === 0 ? (
+            <p className="rounded-lg bg-gray-50 p-4 text-sm text-gray-600">No cell allocation has been recorded.</p>
+          ) : (
+            <div className="space-y-3">
+              {allocations.map((allocation) => (
+                <div key={allocation.id} className="rounded-lg border border-gray-200 p-4">
+                  <p className="text-sm font-bold text-gray-950">
+                    Block {allocation.cell?.block ?? '-'} | Cell {allocation.cell?.cell_number ?? '-'}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600">
+                    {titleCase(allocation.cell?.security_classification)} security
+                  </p>
+                  <p className="mt-2 text-xs font-semibold uppercase text-gray-500">
+                    Assigned {allocation.allocated_date ? formatDate(allocation.allocated_date) : '-'}
+                  </p>
+                </div>
+              ))}
             </div>
           )}
-        </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Allocation & activities</h2>
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm font-semibold text-gray-600 uppercase">Cell allocations</p>
-              {allocations.length === 0 ? (
-                <p className="text-gray-700 mt-1">—</p>
+          {admission.inmate_type === 'convict' && (
+            <div className="mt-6">
+              <h3 className="mb-3 text-sm font-bold uppercase text-gray-700">Activities</h3>
+              {activities.length === 0 ? (
+                <p className="rounded-lg bg-gray-50 p-4 text-sm text-gray-600">No activity assigned.</p>
               ) : (
-                <ul className="mt-2 space-y-2">
-                  {allocations.map((a) => (
-                    <li key={a.id} className="border rounded p-3">
-                      <div className="font-semibold text-gray-800">
-                        Block {a.cell?.block ?? a.cell?.block_name ?? '—'} · Cell {a.cell?.cell_number ?? '—'}
+                <div className="space-y-3">
+                  {activities.map((item) => {
+                    const latest = item.activity?.latest_session || item.activity?.latestSession;
+                    return (
+                      <div key={item.id} className="rounded-lg border border-gray-200 p-4">
+                        <p className="font-bold text-gray-950">{item.activity?.name || '-'}</p>
+                        <p className="mt-1 text-sm text-gray-600">Assigned {item.assigned_date ? formatDate(item.assigned_date) : '-'}</p>
+                        {latest && (
+                          <div className="mt-3 rounded bg-gray-50 p-3 text-sm text-gray-700">
+                            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-bold ${statusBadgeClass(latest.status)}`}>
+                              {titleCase(latest.status)}
+                            </span>
+                            <p className="mt-2">{latest.session_date ? formatDate(latest.session_date) : '-'} | {latest.session_time || '-'}</p>
+                          </div>
+                        )}
                       </div>
-                      <div className="text-sm text-gray-600">
-                        Assigned: {a.allocation_date ? formatDate(a.allocation_date) : '—'}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                    );
+                  })}
+                </div>
               )}
             </div>
-
-            {admission.inmate_type === 'convict' && (
-              <div>
-                <p className="text-sm font-semibold text-gray-600 uppercase">Activities</p>
-                {activities.length === 0 ? (
-                  <p className="text-gray-700 mt-1">—</p>
-                ) : (
-                  <ul className="mt-2 space-y-2">
-                    {activities.map((ia) => (
-                      <li key={ia.id} className="border rounded p-3">
-                        <div className="font-semibold text-gray-800">{ia.activity?.name || '—'}</div>
-                        <div className="text-sm text-gray-600">
-                          Assigned: {ia.assigned_date ? formatDate(ia.assigned_date) : '—'}
-                        </div>
-                        <div className="mt-3 border-t pt-3">
-                          <p className="text-xs font-semibold text-gray-600 uppercase">Session handoff</p>
-                          {ia.activity?.latest_session || ia.activity?.latestSession ? (
-                            <div className="mt-2 space-y-1 text-sm text-gray-700">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-medium">Latest session</span>
-                                <span
-                                  className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${
-                                    statusBadgeClass((ia.activity?.latest_session || ia.activity?.latestSession)?.status)
-                                  }`}
-                                >
-                                  {formatStatusLabel((ia.activity?.latest_session || ia.activity?.latestSession)?.status)}
-                                </span>
-                              </div>
-                              <div>
-                                Date: {(() => {
-                                  const latest = ia.activity?.latest_session || ia.activity?.latestSession;
-                                  return latest?.session_date ? formatDate(latest.session_date) : '—';
-                                })()}
-                              </div>
-                              <div>
-                                Time: {(() => {
-                                  const latest = ia.activity?.latest_session || ia.activity?.latestSession;
-                                  return latest?.session_time || '—';
-                                })()}
-                              </div>
-                              <div>
-                                Supervising officer: {(() => {
-                                  const latest = ia.activity?.latest_session || ia.activity?.latestSession;
-                                  return latest?.supervising_officer?.name || latest?.supervisingOfficer?.name || '—';
-                                })()}
-                              </div>
-                            </div>
-                          ) : (
-                            <p className="mt-2 text-sm text-gray-600">
-                              No activity session has been created for this assigned activity yet.
-                            </p>
-                          )}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+          )}
+        </section>
       </div>
 
-      <div className="mt-6 bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Documents</h2>
+      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-center gap-2">
+          <MdDescription className="h-5 w-5 text-gray-700" />
+          <h2 className="text-lg font-bold text-gray-950">Documents</h2>
+        </div>
         {documents.length === 0 ? (
-          <p className="text-gray-700">—</p>
+          <p className="rounded-lg bg-gray-50 p-4 text-sm text-gray-600">No documents linked to this admission.</p>
         ) : (
-          <div className="border rounded divide-y">
-            {documents.map((d) => {
-              const filePath = d.file_path || d.filePath || d.path || null;
+          <div className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+            {documents.map((document) => {
+              const filePath = document.file_path || document.filePath || document.path || null;
               const fileUrl = filePath ? `${SERVER_BASE_URL}/storage/${filePath}` : null;
               return (
-                <div key={d.id} className="px-4 py-3 grid gap-2 md:grid-cols-[1fr_auto] items-start">
+                <div key={document.id} className="grid gap-3 px-4 py-3 md:grid-cols-[1fr_auto] md:items-center">
                   <div>
-                    <div className="font-semibold text-gray-800">{d.document_type}</div>
-                    <div className="text-sm text-gray-600">{d.description || '—'}</div>
+                    <p className="font-bold text-gray-950">{titleCase(document.document_type)}</p>
+                    <p className="text-sm text-gray-600">{empty(document.description)}</p>
                   </div>
                   {fileUrl ? (
                     <a
                       href={fileUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center rounded bg-malawiGold px-3 py-2 text-sm font-semibold text-malawiBlack hover:opacity-90 transition"
+                      className="inline-flex items-center justify-center gap-2 rounded bg-malawiGold px-3 py-2 text-sm font-bold text-malawiBlack transition hover:opacity-90"
                     >
-                      View document
+                      <MdOpenInNew className="h-4 w-4" />
+                      View
                     </a>
                   ) : (
-                    <span className="rounded-full bg-gray-100 px-3 py-2 text-xs text-gray-700">No file link</span>
+                    <span className="rounded-full bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-600">No file link</span>
                   )}
                 </div>
               );
             })}
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }
