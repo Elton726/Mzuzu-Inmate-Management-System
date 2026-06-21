@@ -16,6 +16,18 @@ import { getInmate } from '../services/inmateService';
 import { SERVER_BASE_URL } from '../../../services/apiService';
 import { formatDate } from '../../../utils/helpers';
 
+const daysUntil = (dateValue) => {
+  if (!dateValue) return null;
+  const d = new Date(dateValue);
+  if (Number.isNaN(d.getTime())) return null;
+  const today = new Date();
+  const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const startTarget = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diffMs = startTarget.getTime() - startToday.getTime();
+  return Math.round(diffMs / (1000 * 60 * 60 * 24));
+};
+
+
 const formatLabel = (value) => {
   if (value === null || value === undefined || value === '') return '—';
   return String(value)
@@ -315,10 +327,24 @@ export default function InmateDetailPage() {
                     <DetailItem label="Sentence" value={`${admission.sentence_years ?? 0} years ${admission.sentence_months ?? 0} months`} />
                   ) : (
                     <>
-                      <DetailItem label="Next court" value={admission.remand_next_court_date ? formatDate(admission.remand_next_court_date) : '—'} />
-                      <DetailItem label="Remand duration" value={admission.remand_duration_days ? `${admission.remand_duration_days} days` : '—'} />
+                      <DetailItem
+                        label="Next court"
+                        value={admission.remand_next_court_date ? formatDate(admission.remand_next_court_date) : '—'}
+                      />
+                      <DetailItem
+                        label="Days remaining"
+                        value={admission.remand_next_court_date != null && daysUntil(admission.remand_next_court_date) != null
+                          ? `${daysUntil(admission.remand_next_court_date)} day(s)`
+                          : '—'}
+                        highlight={admission.remand_next_court_date && daysUntil(admission.remand_next_court_date) === 0}
+                      />
+                      <DetailItem
+                        label="Remand duration"
+                        value={admission.remand_duration_days ? `${admission.remand_duration_days} days` : '—'}
+                      />
                     </>
                   )}
+
                   <Link to={`/admissions/${admission.id}`} className="inline-flex items-center gap-2 text-malawiRed font-semibold hover:underline">
                     <MdOpenInNew className="h-4 w-4" />
                     View admission

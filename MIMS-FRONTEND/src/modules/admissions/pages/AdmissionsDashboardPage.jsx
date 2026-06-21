@@ -4,9 +4,11 @@ import Spinner from '../../../components/common/Spinner';
 import Button from '../../../components/common/Button';
 import Card from '../../../components/common/Card';
 import { useToast } from '../../../contexts/useToast';
+import { useNotification } from '../../../contexts/useNotification';
 import { getAvailableCells } from '../services/cellService';
 import { listInmates } from '../services/inmateService';
 import { formatDate } from '../../../utils/helpers';
+
 
 const getAdmissionsCount = (inmate) => {
   const n = inmate?.admissions_count ?? inmate?.admissionsCount;
@@ -47,9 +49,11 @@ function QueueCard({ title, subtitle, emptyText, children }) {
 
 export default function AdmissionsDashboardPage() {
   const toast = useToast();
+  const { addNotification } = useNotification();
   const [loading, setLoading] = useState(true);
   const [inmates, setInmates] = useState([]);
   const [cells, setCells] = useState([]);
+
 
   const load = async () => {
     try {
@@ -73,18 +77,86 @@ export default function AdmissionsDashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Court-date arrived reminders (computed on dashboard load, per your request)
+  useEffect(() => {
+    if (!inmates?.length) return;
+
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const dueAdmissions = [];
+    const notifiedKeySet = new Set();
+
+    inmates.forEach((inmate) => {
+      const admission = inmate?.current_admission || inmate?.currentAdmission;
+      if (!admission?.id) return;
+
+      const inmateType = admission.inmate_type || admission.inmateType;
+      if (inmateType !== 'remandee' && inmateType !== 'murder_remandee') return;
+
+      const courtDate = admission.remand_next_court_date || admission.remandNextCourtDate;
+      if (!courtDate) return;
+
+      const courtIso = String(courtDate).slice(0, 10);
+      if (courtIso !== todayIso) return;
+
+      const key = `${admission.id}:${courtIso}`;
+      if (notifiedKeySet.has(key)) return;
+      notifiedKeySet.add(key);
+
+      dueAdmissions.push({
+        admissionId: admission.id,
+        inmateName: `${inmate.first_name || ''} ${inmate.last_name || ''}`.trim() || inmate.prison_number || 'Inmate',
+        courtIso,
+      });
+    });
+
+      dueAdmissions.forEach(({ admissionId, inmateName, courtIso }) => {
+      addNotification({
+        title: 'Court date arrived',
+        message: `${inmateName}'s court date is today (${courtIso}).`,
+        type: 'warning',
+        duration: 0,
+        action: { label: 'Open admission', url: `/admissions/${admissionId}` },
+      });
+
+      // If multiple admissions trigger, addNotification handles each item.
+    });
+  }, [inmates, addNotification]);
+
+
   const enrichedInmates = useMemo(
     () => inmates.map((inmate) => {
       const currentAdmission = getCurrentAdmission(inmate);
+
+      // Remaining days until next court (only for remandee types)
+      const inmateType = currentAdmission?.inmate_type || currentAdmission?.inmateType;
+      const courtDate = currentAdmission?.remand_next_court_date || currentAdmission?.remandNextCourtDate;
+      const todayStart = new Date();
+      const startToday = new Date(todayStart.getFullYear(), todayStart.getMonth(), todayStart.getDate());
+
+      let daysRemaining = null;
+      if (
+        (inmateType === 'remandee' || inmateType === 'murder_remandee') &&
+        courtDate
+      ) {
+        const d = new Date(courtDate);
+        if (!Number.isNaN(d.getTime())) {
+          const startTarget = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+          const diffMs = startTarget.getTime() - startToday.getTime();
+          daysRemaining = Math.round(diffMs / (1000 * 60 * 60 * 24));
+        }
+      }
+
       return {
         ...inmate,
         currentAdmission,
         neverAdmitted: getAdmissionsCount(inmate) === 0 && !currentAdmission?.id,
         readyForAdmission: !currentAdmission?.id,
+        daysRemaining,
       };
     }),
     [inmates]
   );
+
 
   const readyForAdmission = useMemo(
     () => enrichedInmates.filter((inmate) => inmate.readyForAdmission),
@@ -345,6 +417,14 @@ export default function AdmissionsDashboardPage() {
                       <span className="rounded-full bg-white px-3 py-1 font-semibold text-gray-700">
                         {inmate.currentAdmission?.admission_date ? formatDate(inmate.currentAdmission.admission_date) : 'No date'}
                       </span>
+                      {inmate.daysRemaining != null && (
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${inmate.daysRemaining === 0 ? 'bg-malawiGold text-malawiBlack ring-malawiGold' : 'bg-gray-100 text-gray-800 ring-gray-200'}`}>
+                          {inmate.daysRemaining === 0
+                            ? 'Court today'
+                            : `${inmate.daysRemaining} day(s) left`}
+                        </span>
+                      )}
+
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">

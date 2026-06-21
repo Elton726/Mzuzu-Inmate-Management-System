@@ -33,6 +33,10 @@ const formatBytes = (bytes) => {
   return `${value.toFixed(precision)} ${units[i]}`;
 };
 
+const inputCls = (hasError) =>
+  `w-full px-3 py-2.5 border ${hasError ? 'border-red-400' : 'border-gray-300'} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-malawiGreen focus:border-malawiGreen transition`;
+
+const labelCls = 'block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5';
 
 function DropzoneField({ label, accept, onFile, value, hint }) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -43,23 +47,26 @@ function DropzoneField({ label, accept, onFile, value, hint }) {
 
   return (
     <div>
-      <p className="block text-sm font-semibold text-gray-700 mb-1">{label}</p>
+      {label && <p className={labelCls}>{label}</p>}
       <div
         {...getRootProps()}
         className={[
-          'border-2 border-dashed rounded-lg p-4 cursor-pointer transition',
-          isDragActive ? 'border-malawiRed bg-malawiGold/20' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'
+          'border-2 border-dashed rounded-xl p-6 cursor-pointer transition flex flex-col items-center justify-center gap-2 text-center',
+          isDragActive
+            ? 'border-malawiGreen bg-emerald-50'
+            : 'border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-malawiGreen'
         ].join(' ')}
       >
         <input {...getInputProps()} />
-        <p className="text-sm text-gray-700">
-          {value ? (
-            <span className="font-semibold">{value.name}</span>
-          ) : (
-            'Drag & drop a file here, or click to select'
-          )}
-        </p>
-        {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
+        <MdCloudUpload className={`text-3xl ${isDragActive ? 'text-malawiGreen' : 'text-gray-400'}`} />
+        {value ? (
+          <span className="text-sm font-semibold text-malawiGreen truncate max-w-full px-2">{value.name}</span>
+        ) : (
+          <p className="text-sm text-gray-500">
+            Drag &amp; drop a file here, or <span className="font-semibold text-malawiGreen">click to select</span>
+          </p>
+        )}
+        {hint && <p className="text-xs text-gray-400">{hint}</p>}
       </div>
     </div>
   );
@@ -171,69 +178,129 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-3">Create new inmate</h2>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-6">Create New Inmate</h2>
 
-        <form onSubmit={handleSubmit(onCreate)} className="space-y-4">
+        <form onSubmit={handleSubmit(onCreate)} className="space-y-8">
           <input type="hidden" {...register('isYoungOffender')} />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField label="First name *" error={errors.firstName?.message}>
-              <input className="w-full border rounded px-3 py-2" {...register('firstName')} />
-            </FormField>
-            <FormField label="Last name *" error={errors.lastName?.message}>
-              <input className="w-full border rounded px-3 py-2" {...register('lastName')} />
-            </FormField>
-            <FormField label="Other names" error={errors.otherNames?.message}>
-              <input className="w-full border rounded px-3 py-2" {...register('otherNames')} />
-            </FormField>
-            <FormField label="Gender" error={errors.gender?.message}>
-              <select className="w-full border rounded px-3 py-2" {...register('gender')}>
-                <option value="">Select gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </select>
-            </FormField>
-            <FormField label="Date of birth *" error={errors.dateOfBirth?.message}>
-              <input type="date" className="w-full border rounded px-3 py-2" {...register('dateOfBirth')} />
-            </FormField>
-            <FormField label="National ID" error={errors.nationalId?.message}>
-              <input className="w-full border rounded px-3 py-2" {...register('nationalId')} />
-            </FormField>
-            <FormField label="Nationality" error={errors.nationality?.message}>
-              <input className="w-full border rounded px-3 py-2" {...register('nationality')} />
-            </FormField>
-            <FormField label="Marital status" error={errors.maritalStatus?.message}>
-              <select className="w-full border rounded px-3 py-2" {...register('maritalStatus')}>
-                <option value="">Select marital status</option>
-                <option value="single">Single</option>
-                <option value="married">Married</option>
-                <option value="divorced">Divorced</option>
-                <option value="widowed">Widowed</option>
-              </select>
-            </FormField>
-            <FormField label="Next of kin name" error={errors.nextOfKinName?.message}>
-              <input className="w-full border rounded px-3 py-2" {...register('nextOfKinName')} />
-            </FormField>
-            <FormField label="Next of kin contact" error={errors.nextOfKinContact?.message}>
-              <input className="w-full border rounded px-3 py-2" {...register('nextOfKinContact')} />
-            </FormField>
-            <FormField label="Personal belongings" error={errors.personalBelongings?.message}>
-              <textarea className="w-full border rounded px-3 py-2" {...register('personalBelongings')} rows={3} />
-            </FormField>
+
+          {/* ── Section 1: Personal Information ── */}
+          <div className="space-y-4">
+            <h3 className="border-l-4 border-malawiGreen pl-3 text-sm font-bold text-gray-800 uppercase tracking-wide">
+              Personal Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className={labelCls}>First Name *</label>
+                <input className={inputCls(!!errors.firstName)} {...register('firstName')} />
+                {errors.firstName && <p className="mt-1 text-xs text-red-500">{errors.firstName.message}</p>}
+              </div>
+              <div>
+                <label className={labelCls}>Last Name *</label>
+                <input className={inputCls(!!errors.lastName)} {...register('lastName')} />
+                {errors.lastName && <p className="mt-1 text-xs text-red-500">{errors.lastName.message}</p>}
+              </div>
+              <div>
+                <label className={labelCls}>Other Names</label>
+                <input className={inputCls(!!errors.otherNames)} {...register('otherNames')} />
+                {errors.otherNames && <p className="mt-1 text-xs text-red-500">{errors.otherNames.message}</p>}
+              </div>
+              <div>
+                <label className={labelCls}>Gender</label>
+                <select className={inputCls(!!errors.gender)} {...register('gender')}>
+                  <option value="">Select gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+                {errors.gender && <p className="mt-1 text-xs text-red-500">{errors.gender.message}</p>}
+              </div>
+              <div>
+                <label className={labelCls}>Date of Birth *</label>
+                <input type="date" className={inputCls(!!errors.dateOfBirth)} {...register('dateOfBirth')} />
+                {errors.dateOfBirth && <p className="mt-1 text-xs text-red-500">{errors.dateOfBirth.message}</p>}
+              </div>
+              <div>
+                <label className={labelCls}>National ID</label>
+                <input className={inputCls(!!errors.nationalId)} {...register('nationalId')} />
+                {errors.nationalId && <p className="mt-1 text-xs text-red-500">{errors.nationalId.message}</p>}
+              </div>
+              <div>
+                <label className={labelCls}>Nationality</label>
+                <input className={inputCls(!!errors.nationality)} {...register('nationality')} />
+                {errors.nationality && <p className="mt-1 text-xs text-red-500">{errors.nationality.message}</p>}
+              </div>
+              <div>
+                <label className={labelCls}>Marital Status</label>
+                <select className={inputCls(!!errors.maritalStatus)} {...register('maritalStatus')}>
+                  <option value="">Select marital status</option>
+                  <option value="single">Single</option>
+                  <option value="married">Married</option>
+                  <option value="divorced">Divorced</option>
+                  <option value="widowed">Widowed</option>
+                </select>
+                {errors.maritalStatus && <p className="mt-1 text-xs text-red-500">{errors.maritalStatus.message}</p>}
+              </div>
+            </div>
+
+            {watchDob && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm text-gray-700 flex items-center gap-2">
+                <span>Young offender (auto):</span>
+                <span className={watchYoungOffender ? 'font-semibold text-malawiRed' : 'font-semibold text-gray-800'}>
+                  {watchYoungOffender ? 'Yes' : 'No'}
+                </span>
+                <span className="text-xs text-gray-500 ml-1">
+                  (Age: {typeof watchAge === 'number' ? watchAge : '—'} · Under {YOUNG_OFFENDER_AGE_YEARS})
+                </span>
+              </div>
+            )}
           </div>
 
-          <div className="space-y-3">
-            <label className="block text-sm font-semibold text-gray-700">Inmate photo *</label>
+          {/* ── Section 2: Contact & Family ── */}
+          <div className="space-y-4">
+            <h3 className="border-l-4 border-malawiGreen pl-3 text-sm font-bold text-gray-800 uppercase tracking-wide">
+              Contact &amp; Family
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className={labelCls}>Next of Kin Name</label>
+                <input className={inputCls(!!errors.nextOfKinName)} {...register('nextOfKinName')} />
+                {errors.nextOfKinName && <p className="mt-1 text-xs text-red-500">{errors.nextOfKinName.message}</p>}
+              </div>
+              <div>
+                <label className={labelCls}>Next of Kin Contact</label>
+                <input className={inputCls(!!errors.nextOfKinContact)} {...register('nextOfKinContact')} />
+                {errors.nextOfKinContact && <p className="mt-1 text-xs text-red-500">{errors.nextOfKinContact.message}</p>}
+              </div>
+              <div className="md:col-span-2">
+                <label className={labelCls}>Personal Belongings</label>
+                <textarea
+                  className={inputCls(!!errors.personalBelongings)}
+                  {...register('personalBelongings')}
+                  rows={3}
+                />
+                {errors.personalBelongings && (
+                  <p className="mt-1 text-xs text-red-500">{errors.personalBelongings.message}</p>
+                )}
+              </div>
+            </div>
+          </div>
 
-            <div className="flex gap-2 p-1 bg-gray-100 rounded-lg max-w-xs">
+          {/* ── Section 3: Photo ── */}
+          <div className="space-y-4">
+            <h3 className="border-l-4 border-malawiGreen pl-3 text-sm font-bold text-gray-800 uppercase tracking-wide">
+              Inmate Photo *
+            </h3>
+
+            {/* Mode toggle */}
+            <div className="flex gap-1.5 p-1 bg-gray-100 rounded-xl max-w-xs">
               <button
                 type="button"
                 onClick={() => {
                   setPhotoMode('upload');
                   setIsCameraActive(false);
                 }}
-                className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-md transition-all ${
+                className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-lg transition-all ${
                   photoMode === 'upload'
                     ? 'bg-white text-gray-800 shadow-sm font-semibold'
                     : 'text-gray-500 hover:text-gray-800'
@@ -245,7 +312,7 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
               <button
                 type="button"
                 onClick={() => setPhotoMode('camera')}
-                className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-md transition-all ${
+                className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-lg transition-all ${
                   photoMode === 'camera'
                     ? 'bg-white text-gray-800 shadow-sm font-semibold'
                     : 'text-gray-500 hover:text-gray-800'
@@ -265,10 +332,10 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
                   setPhoto(f);
                   setValue('photo', f, { shouldDirty: true, shouldValidate: true });
                 }}
-                hint="JPG/PNG"
+                hint="JPG / PNG accepted"
               />
             ) : (
-              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 flex flex-col items-center justify-center min-h-[160px]">
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 bg-gray-50 flex flex-col items-center justify-center min-h-[160px]">
                 {isCameraActive ? (
                   <div className="w-full max-w-md">
                     <CameraCapture
@@ -287,8 +354,9 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
                     <button
                       type="button"
                       onClick={() => setIsCameraActive(true)}
-                      className="px-4 py-2 bg-malawiGold hover:bg-opacity-90 text-gray-900 font-semibold rounded text-sm shadow transition"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-malawiGold hover:bg-yellow-400 text-gray-900 font-semibold rounded-xl text-sm shadow transition"
                     >
+                      <MdCameraAlt />
                       Open Camera
                     </button>
                   </div>
@@ -297,8 +365,8 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
             )}
 
             {photoPreview && (
-              <div className="flex items-center gap-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                <div className="relative w-16 h-16 rounded overflow-hidden border border-gray-300 bg-white flex-shrink-0">
+              <div className="flex items-center gap-4 p-3 bg-gray-50 border border-gray-200 rounded-xl">
+                <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-gray-300 bg-white flex-shrink-0">
                   <img src={photoPreview} alt="Inmate Thumbnail" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -319,33 +387,20 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
               </div>
             )}
 
-            {errors.photo && <p className="text-sm text-red-600">{errors.photo.message}</p>}
+            {errors.photo && <p className="mt-1 text-xs text-red-500">{errors.photo.message}</p>}
           </div>
 
-          {watchDob && (
-            <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
-              Young offender (auto):{' '}
-              <span
-                className={watchYoungOffender ? 'font-semibold text-malawiRed' : 'font-semibold text-gray-800'}
-              >
-                {watchYoungOffender ? 'Yes' : 'No'}
-              </span>
-              <span className="text-xs text-gray-500 ml-2">
-                (Age: {typeof watchAge === 'number' ? watchAge : '—'} · Under {YOUNG_OFFENDER_AGE_YEARS})
-              </span>
-            </div>
-          )}
-
+          {/* ── Duplicate warning ── */}
           {dupes?.has_duplicates && Array.isArray(dupes?.matches) && (
-            <div className="border border-yellow-200 bg-yellow-50 rounded p-3">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3">
               <p className="font-semibold text-yellow-900 mb-2 flex items-center gap-2">
                 <span>⚠️ Possible matches found</span>
-                {checking && <span className="text-xs">(checking…)</span>}
+                {checking && <span className="text-xs font-normal">(checking…)</span>}
               </p>
               <p className="text-sm text-yellow-900 mb-2">
                 An inmate with similar details may already exist. Please review the matches below before creating a new record:
               </p>
-              <ul className="list-disc ml-5 text-sm text-yellow-900">
+              <ul className="list-disc ml-5 text-sm text-yellow-900 space-y-0.5">
                 {dupes.matches.slice(0, 5).map((m) => (
                   <li key={m.id}>
                     {m.prison_number ? `${m.prison_number} — ` : ''}{m.first_name} {m.last_name} (DOB: {m.date_of_birth || '--'})
@@ -355,13 +410,26 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={creating}
-            className="bg-malawiGreen text-white px-5 py-2 rounded hover:opacity-90 transition disabled:opacity-60"
-          >
-            {creating ? 'Creating…' : 'Create inmate'}
-          </button>
+          {/* ── Submit ── */}
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={creating}
+              className="inline-flex items-center gap-2 bg-malawiGreen hover:bg-green-800 text-white font-semibold text-sm px-5 py-2.5 rounded-xl shadow transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {creating ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  </svg>
+                  Creating…
+                </>
+              ) : (
+                'Create Inmate'
+              )}
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -372,4 +440,3 @@ StepInmateSelect.propTypes = {
   defaultValues: PropTypes.object,
   onSelected: PropTypes.func.isRequired
 };
-

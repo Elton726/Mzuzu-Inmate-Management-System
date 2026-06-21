@@ -94,15 +94,18 @@ const AppContent = () => {
     );
   }
 
+  const handleSidebarClose = () => setSidebarOpen(false);
+
   return (
     <div className="flex">
       {/* Sidebar - only shown for authenticated users when open */}
       {isAuthenticated && sidebarOpen && (
-        <Sidebar onClose={() => setSidebarOpen(false)} />
+        <Sidebar onClose={handleSidebarClose} />
       )}
 
       {/* Main content area - adjusts margin based on sidebar state */}
-      <div className={isAuthenticated && sidebarOpen ? "ml-64 flex-1" : "flex-1"}>
+      <div className={isAuthenticated && sidebarOpen ? 'ml-64 flex-1 min-w-0' : 'flex-1 min-w-0'}>
+
         {/* Top Navigation Bar - shows for authenticated users */}
         {isAuthenticated && <Navigation />}
         {/* Theme toggle button */}

@@ -12,6 +12,7 @@ const navLinkClass = ({ isActive }) =>
       : 'text-malawiGold hover:bg-malawiGreen/25 hover:text-white'
   }`;
 
+
 /**
  * Sidebar Navigation Component
  *
@@ -32,9 +33,12 @@ const navLinkClass = ({ isActive }) =>
  * - Admin: Admin Dashboard, User Management
  *
  */
-const Sidebar = () => {
+const Sidebar = ({ onClose } = {}) => {
   const { isAdmin, getRoleName, loading } = useAuth();
+
   const role = getRoleName();
+
+
 
   // Show loading skeleton while auth is initializing
   if (loading) {
@@ -54,17 +58,24 @@ const Sidebar = () => {
 
   return (
     <aside className="w-64 h-screen bg-malawiBlack text-malawiGold flex flex-col shadow-lg fixed top-0 left-0 z-50 transition-transform duration-300">
+
       {/* Header with cuffs logo */}
-      <div className="flex items-center h-24 border-b border-malawiGold px-4">
-        <div className="flex items-center">
-          <img src={logo} alt="Cuffs logo" className="h-16 w-16 rounded-full border-4 border-malawiRed" />
-          <span className="ml-4 text-xl font-bold">Inmate Management System</span>
+      <div className="flex items-center h-24 border-b border-malawiGold px-4 gap-3">
+
+        <div className="flex items-center gap-3 min-w-0">
+          <img
+            src={logo}
+            alt="Cuffs logo"
+            className="h-16 w-16 rounded-full border-4 border-malawiRed flex-shrink-0"
+          />
+          <span className="ml-0 text-xl font-bold truncate">Inmate Management System</span>
         </div>
       </div>
 
       {/* Main navigation menu */}
-      <nav className="flex-1 mt-8">
+      <nav className="flex-1 mt-8" onClick={() => onClose?.()}>
         <ul className="space-y-4 px-6">
+
           {/* Home link for non-admin users */}
           {!isAdmin && (
             <li>
