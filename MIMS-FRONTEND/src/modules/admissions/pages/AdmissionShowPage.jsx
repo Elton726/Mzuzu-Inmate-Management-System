@@ -34,6 +34,7 @@ const cellLabel = (cell) => {
     : `${cell.block}-${cell.cell_number}`;
 };
 
+// eslint-disable-next-line no-unused-vars
 function StatTile({ icon: Icon, label, value, helper }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">

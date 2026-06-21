@@ -67,6 +67,20 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
   const [dupes, setDupes] = useState(null);
   const [creating, setCreating] = useState(false);
   const [photo, setPhoto] = useState(null);
+  const [photoMode, setPhotoMode] = useState('upload'); // 'upload' | 'camera'
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState(null);
+
+  useEffect(() => {
+    if (!photo) {
+      setPhotoPreview(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(photo);
+    setPhotoPreview(objectUrl);
+
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [photo]);
 
   const {
     register,
@@ -201,17 +215,107 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
             </FormField>
           </div>
 
-          <DropzoneField
-            label="Inmate photo *"
-            accept={{ 'image/*': ['.png', '.jpg', '.jpeg'] }}
-            value={photo}
-            onFile={(f) => {
-              setPhoto(f);
-              setValue('photo', f, { shouldDirty: true });
-            }}
-            hint="JPG/PNG"
-          />
-          {errors.photo && <p className="text-sm text-red-600">{errors.photo.message}</p>}
+          <div className="space-y-3">
+            <label className="block text-sm font-semibold text-gray-700">Inmate photo *</label>
+            
+            {/* Tabs for select method */}
+            <div className="flex gap-2 p-1 bg-gray-100 rounded-lg max-w-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setPhotoMode('upload');
+                  setIsCameraActive(false);
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-md transition-all ${
+                  photoMode === 'upload'
+                    ? 'bg-white text-gray-800 shadow-sm font-semibold'
+                    : 'text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                <MdCloudUpload className="text-base" />
+                Upload File
+              </button>
+              <button
+                type="button"
+                onClick={() => setPhotoMode('camera')}
+                className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-md transition-all ${
+                  photoMode === 'camera'
+                    ? 'bg-white text-gray-800 shadow-sm font-semibold'
+                    : 'text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                <MdCameraAlt className="text-base" />
+                Take Photo
+              </button>
+            </div>
+
+            {/* Photo Mode Viewports */}
+            {photoMode === 'upload' ? (
+              <DropzoneField
+                label=""
+                accept={{ 'image/*': ['.png', '.jpg', '.jpeg'] }}
+                value={photo}
+                onFile={(f) => {
+                  setPhoto(f);
+                  setValue('photo', f, { shouldDirty: true, shouldValidate: true });
+                }}
+                hint="JPG/PNG"
+              />
+            ) : (
+              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 flex flex-col items-center justify-center min-h-[160px]">
+                {isCameraActive ? (
+                  <div className="w-full max-w-md">
+                    <CameraCapture
+                      onCapture={(file) => {
+                        setPhoto(file);
+                        setValue('photo', file, { shouldDirty: true, shouldValidate: true });
+                        setIsCameraActive(false);
+                      }}
+                      onCancel={() => setIsCameraActive(false)}
+                    />
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <MdCameraAlt className="text-4xl text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600 mb-3">Use your system's camera to capture a live photo</p>
+                    <button
+                      type="button"
+                      onClick={() => setIsCameraActive(true)}
+                      className="px-4 py-2 bg-malawiGold hover:bg-opacity-90 text-gray-900 font-semibold rounded text-sm shadow transition"
+                    >
+                      Open Camera
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Interactive Preview & Details */}
+            {photoPreview && (
+              <div className="flex items-center gap-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <div className="relative w-16 h-16 rounded overflow-hidden border border-gray-300 bg-white flex-shrink-0">
+                  <img src={photoPreview} alt="Inmate Thumbnail" className="w-full h-full object-cover" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">{photo?.name || 'Captured Photo'}</p>
+                  <p className="text-xs text-gray-500">{photo?.size ? formatBytes(photo.size) : 'Unknown size'}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhoto(null);
+                    setValue('photo', null, { shouldDirty: true, shouldValidate: true });
+                  }}
+                  className="p-2 text-gray-400 hover:text-red-500 transition rounded-full hover:bg-gray-100"
+                  title="Remove Photo"
+                >
+                  <MdDelete className="text-xl" />
+                </button>
+              </div>
+            )}
+
+            {errors.photo && <p className="text-sm text-red-600">{errors.photo.message}</p>}
+          </div>
 
           {watchDob && (
             <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
