@@ -3,10 +3,12 @@ import PropTypes from 'prop-types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useDropzone } from 'react-dropzone';
+import { MdCameraAlt, MdCloudUpload, MdDelete } from 'react-icons/md';
 import FormField from '../../../../components/common/FormField';
 import { inmateSchema } from '../../schemas/admissionSchemas';
 import { checkDuplicate, createInmate } from '../../services/inmateService';
 import { toast } from 'react-toastify';
+import CameraCapture from '../CameraCapture';
 
 const toIsoDate = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '');
 const YOUNG_OFFENDER_AGE_YEARS = 18;
@@ -21,6 +23,16 @@ const computeAgeYears = (dobIso) => {
   if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age -= 1;
   return age;
 };
+
+const formatBytes = (bytes) => {
+  if (typeof bytes !== 'number' || Number.isNaN(bytes) || bytes < 0) return '—';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / Math.pow(1024, i);
+  const precision = i === 0 ? 0 : 1;
+  return `${value.toFixed(precision)} ${units[i]}`;
+};
+
 
 function DropzoneField({ label, accept, onFile, value, hint }) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -60,7 +72,6 @@ DropzoneField.propTypes = {
   onFile: PropTypes.func.isRequired,
   value: PropTypes.any
 };
-
 
 export default function StepInmateSelect({ defaultValues, onSelected }) {
   const [checking, setChecking] = useState(false);
@@ -102,8 +113,6 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
     const isYoung = typeof age === 'number' ? age < YOUNG_OFFENDER_AGE_YEARS : false;
     setValue('isYoungOffender', isYoung, { shouldDirty: true, shouldValidate: true });
   }, [watchDob, setValue]);
-
-  // search removed: creation flow now always starts with fresh inmate creation
 
   const onCreate = async (form) => {
     try {
@@ -148,6 +157,7 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
         personal_belongings: form.personalBelongings || null,
         gender: form.gender || null
       };
+
       const created = await createInmate(payload);
       toast.success(`Inmate created (${created?.prison_number || created?.id})`);
       onSelected({ inmate: created, created: true, inmateDraft: form, photo });
@@ -161,8 +171,6 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
 
   return (
     <div className="space-y-6">
-      {/* Select-existing functionality removed: creation flow starts with the form below */}
-
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-semibold text-gray-800 mb-3">Create new inmate</h2>
 
@@ -217,8 +225,7 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
 
           <div className="space-y-3">
             <label className="block text-sm font-semibold text-gray-700">Inmate photo *</label>
-            
-            {/* Tabs for select method */}
+
             <div className="flex gap-2 p-1 bg-gray-100 rounded-lg max-w-xs">
               <button
                 type="button"
@@ -249,7 +256,6 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
               </button>
             </div>
 
-            {/* Photo Mode Viewports */}
             {photoMode === 'upload' ? (
               <DropzoneField
                 label=""
@@ -290,7 +296,6 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
               </div>
             )}
 
-            {/* Interactive Preview & Details */}
             {photoPreview && (
               <div className="flex items-center gap-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
                 <div className="relative w-16 h-16 rounded overflow-hidden border border-gray-300 bg-white flex-shrink-0">
@@ -320,7 +325,9 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
           {watchDob && (
             <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
               Young offender (auto):{' '}
-              <span className={watchYoungOffender ? 'font-semibold text-malawiRed' : 'font-semibold text-gray-800'}>
+              <span
+                className={watchYoungOffender ? 'font-semibold text-malawiRed' : 'font-semibold text-gray-800'}
+              >
                 {watchYoungOffender ? 'Yes' : 'No'}
               </span>
               <span className="text-xs text-gray-500 ml-2">
@@ -335,7 +342,9 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
                 <span>⚠️ Possible matches found</span>
                 {checking && <span className="text-xs">(checking…)</span>}
               </p>
-              <p className="text-sm text-yellow-900 mb-2">An inmate with similar details may already exist. Please review the matches below before creating a new record:</p>
+              <p className="text-sm text-yellow-900 mb-2">
+                An inmate with similar details may already exist. Please review the matches below before creating a new record:
+              </p>
               <ul className="list-disc ml-5 text-sm text-yellow-900">
                 {dupes.matches.slice(0, 5).map((m) => (
                   <li key={m.id}>
@@ -363,3 +372,4 @@ StepInmateSelect.propTypes = {
   defaultValues: PropTypes.object,
   onSelected: PropTypes.func.isRequired
 };
+
