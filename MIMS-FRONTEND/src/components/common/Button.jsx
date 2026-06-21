@@ -3,7 +3,7 @@ import React from 'react';
 const variants = {
   primary: 'bg-malawiGreen text-white hover:opacity-90',
   danger: 'bg-malawiRed text-malawiGold hover:opacity-90',
-  outline: 'border border-malawiBlack text-malawiBlack hover:bg-malawiBlack hover:text-malawiGold',
+  outline: 'border border-malawiBlack text-malawiBlack hover:bg-malawiBlack hover:text-malawiGold dark:border-slate-400 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-white',
 };
 
 export default function Button({
