@@ -81,6 +81,7 @@ const AppContent = () => {
   const { isAuthenticated, loading } = useAuth();
   const { theme, toggleTheme } = useContext(ThemeContext);
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 
   // Show loading spinner during authentication verification
   if (loading) {
@@ -96,39 +97,29 @@ const AppContent = () => {
 
   const handleSidebarClose = () => setSidebarOpen(false);
 
+  const contentMarginClass = isAuthenticated && sidebarOpen
+    ? (sidebarCollapsed ? 'ml-20' : 'ml-64')
+    : 'ml-0';
+
   return (
     <div className="flex">
       {/* Sidebar - only shown for authenticated users when open */}
       {isAuthenticated && sidebarOpen && (
-        <Sidebar onClose={handleSidebarClose} />
+        <Sidebar
+          onClose={handleSidebarClose}
+          isCollapsed={sidebarCollapsed}
+          setIsCollapsed={setSidebarCollapsed}
+        />
       )}
 
       {/* Main content area - adjusts margin based on sidebar state */}
-      <div className={isAuthenticated && sidebarOpen ? 'ml-64 flex-1 min-w-0' : 'flex-1 min-w-0'}>
+      <div className={`${contentMarginClass} flex-1 min-w-0 transition-all duration-300`}>
 
         {/* Top Navigation Bar - shows for authenticated users */}
-        {isAuthenticated && <Navigation />}
-        {/* Theme toggle button */}
-        {isAuthenticated && (
-          <button
-            className="fixed top-5 right-4 z-50 inline-flex h-8 w-8 items-center justify-center rounded-full bg-malawiGreen text-white shadow hover:bg-green-700 transition"
-            onClick={toggleTheme}
-            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {theme === 'dark' ? <MdDarkMode className="h-4 w-4" /> : <MdLightMode className="h-4 w-4" />}
-          </button>
-        )}
+        {isAuthenticated && <Navigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />}
 
-        {/* Sidebar toggle button - shown when sidebar is closed */}
-        {isAuthenticated && !sidebarOpen && (
-          <button
-            className="fixed top-4 left-4 z-50 bg-malawiGold text-malawiBlack p-2 rounded shadow hover:bg-malawiRed hover:text-malawiGold transition"
-            onClick={() => setSidebarOpen(true)}
-          >
-            ☰ Open Sidebar
-          </button>
-        )}
+
+
 
         {/* Application Routes */}
         <Routes>

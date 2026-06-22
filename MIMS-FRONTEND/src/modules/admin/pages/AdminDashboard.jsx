@@ -64,6 +64,7 @@ const fetchAllDashboardInmates = async () => {
   }, firstRows);
 };
 
+// eslint-disable-next-line no-unused-vars
 function PopulationStatCard({ icon: Icon, title, value, tone, active, onClick }) {
   const iconColors = {
     red: 'text-malawiRed',
