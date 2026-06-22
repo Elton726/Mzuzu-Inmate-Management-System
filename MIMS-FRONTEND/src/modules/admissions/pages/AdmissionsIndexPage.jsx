@@ -18,6 +18,8 @@ import {
   MdChevronRight,
   MdWarning,
   MdFilterList,
+  MdGavel,
+  MdSchedule,
 } from 'react-icons/md';
 
 /* ─── helpers ───────────────────────────────────────────────────────── */
@@ -73,6 +75,92 @@ const InmateAvatar = ({ first, last }) => {
 
 /* ─── main component ────────────────────────────────────────────────── */
 
+const InmateTypeBadge = ({ type }) => {
+  const labels = {
+    convict: 'Convict',
+    remandee: 'General remandee',
+    murder_remandee: 'Murder remandee',
+  };
+
+  if (!type || !labels[type]) return null;
+
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+      {labels[type]}
+    </span>
+  );
+};
+
+const InmateRow = ({ inmate }) => {
+  const admission = getCurrentAdmission(inmate);
+  const isAdmitted = !!admission?.id;
+  const count = getAdmissionsCount(inmate) ?? 0;
+
+  return (
+    <div
+      className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4 transition-colors duration-150
+        ${inmate.neverAdmitted ? 'bg-yellow-50/60' : 'hover:bg-gray-50/70'}`}
+    >
+      <div className="flex items-start sm:items-center gap-4 flex-1 min-w-0">
+        <InmateAvatar first={inmate.first_name} last={inmate.last_name} />
+
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-gray-900 text-sm">
+              {inmate.first_name} {inmate.last_name}
+            </span>
+            <StatusBadge admitted={isAdmitted} />
+            <InmateTypeBadge type={admission?.inmate_type} />
+          </div>
+
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+            {inmate.prison_number && (
+              <MetaItem icon={<MdBadge />} text={inmate.prison_number} />
+            )}
+            {inmate.national_id && (
+              <MetaItem icon={<MdFingerprint />} text={inmate.national_id} />
+            )}
+            {inmate.date_of_birth && (
+              <MetaItem icon={<MdCake />} text={formatDate(inmate.date_of_birth)} />
+            )}
+            <MetaItem
+              icon={<MdBadge />}
+              text={`${count} admission${count !== 1 ? 's' : ''}`}
+            />
+          </div>
+
+          {admission?.id && (
+            <p className="text-xs text-gray-400 mt-1">
+              Current admission: <span className="font-semibold text-gray-600">#{admission.id}</span>
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 shrink-0 pl-14 sm:pl-0">
+        <Link
+          to={`/inmates/${inmate.id}`}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg
+            border border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400 transition"
+        >
+          <MdOpenInNew className="text-base" />
+          View
+        </Link>
+        {!isAdmitted && (
+          <Link
+            to={`/admissions/new?inmateId=${inmate.id}`}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg
+              bg-malawiGreen text-white hover:bg-green-800 transition shadow-sm"
+          >
+            <MdPlayArrow className="text-base" />
+            Admit
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export default function AdmissionsIndexPage() {
   const [loading, setLoading] = useState(false);
   const [inmates, setInmates] = useState([]);
@@ -83,6 +171,7 @@ export default function AdmissionsIndexPage() {
   const [sortBy, setSortBy] = useState('id');
   const [sortOrder, setSortOrder] = useState('desc');
   const [perPage, setPerPage] = useState(25);
+  const [activeCategory, setActiveCategory] = useState('convicts');
 
   const loadInmates = useCallback(async () => {
     try {
@@ -134,6 +223,42 @@ export default function AdmissionsIndexPage() {
     () => filteredInmates.filter((i) => i.neverAdmitted).length,
     [filteredInmates]
   );
+
+  const inmateGroups = useMemo(
+    () => [
+      {
+        key: 'convicts',
+        title: 'Convicts',
+        description: 'Sentenced inmates currently admitted.',
+        icon: MdGavel,
+        tone: 'text-malawiGreen',
+        inmates: filteredInmates.filter((inmate) => getCurrentAdmission(inmate)?.inmate_type === 'convict'),
+      },
+      {
+        key: 'general_remandees',
+        title: 'General Remandees',
+        description: 'Remand inmates awaiting court outcomes.',
+        icon: MdSchedule,
+        tone: 'text-amber-600',
+        inmates: filteredInmates.filter((inmate) => getCurrentAdmission(inmate)?.inmate_type === 'remandee'),
+      },
+      {
+        key: 'murder_remandees',
+        title: 'Murder Remandees',
+        description: 'Remand inmates registered under murder cases.',
+        icon: MdPerson,
+        tone: 'text-malawiRed',
+        inmates: filteredInmates.filter((inmate) => getCurrentAdmission(inmate)?.inmate_type === 'murder_remandee'),
+      },
+    ],
+    [filteredInmates]
+  );
+
+  const activeGroup = useMemo(
+    () => inmateGroups.find((group) => group.key === activeCategory) || inmateGroups[0],
+    [activeCategory, inmateGroups]
+  );
+  const ActiveCategoryIcon = activeGroup.icon;
 
   return (
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 space-y-6">
@@ -258,78 +383,65 @@ export default function AdmissionsIndexPage() {
             )}
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
-            {filteredInmates.map((inmate) => {
-              const admission = getCurrentAdmission(inmate);
-              const isAdmitted = !!admission?.id;
-              const count = getAdmissionsCount(inmate) ?? 0;
+          <div>
+            <div className="overflow-x-auto border-b border-gray-200 bg-white">
+              <div className="flex min-w-max gap-1 px-4 py-3" role="tablist" aria-label="Inmate register categories">
+                {inmateGroups.map((group) => {
+                  const Icon = group.icon;
+                  const selected = group.key === activeGroup.key;
 
-              return (
-                <div
-                  key={inmate.id}
-                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4 transition-colors duration-150
-                    ${inmate.neverAdmitted ? 'bg-yellow-50/60' : 'hover:bg-gray-50/70'}`}
-                >
-                  {/* Left: avatar + details */}
-                  <div className="flex items-start sm:items-center gap-4 flex-1 min-w-0">
-                    <InmateAvatar first={inmate.first_name} last={inmate.last_name} />
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold text-gray-900 text-sm">
-                          {inmate.first_name} {inmate.last_name}
-                        </span>
-                        <StatusBadge admitted={isAdmitted} />
-                      </div>
-
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
-                        {inmate.prison_number && (
-                          <MetaItem icon={<MdBadge />} text={inmate.prison_number} />
-                        )}
-                        {inmate.national_id && (
-                          <MetaItem icon={<MdFingerprint />} text={inmate.national_id} />
-                        )}
-                        {inmate.date_of_birth && (
-                          <MetaItem icon={<MdCake />} text={formatDate(inmate.date_of_birth)} />
-                        )}
-                        <MetaItem
-                          icon={<MdBadge />}
-                          text={`${count} admission${count !== 1 ? 's' : ''}`}
-                        />
-                      </div>
-
-                      {admission?.id && (
-                        <p className="text-xs text-gray-400 mt-1">
-                          Current admission: <span className="font-semibold text-gray-600">#{admission.id}</span>
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right: action buttons */}
-                  <div className="flex items-center gap-2 shrink-0 pl-14 sm:pl-0">
-                    <Link
-                      to={`/inmates/${inmate.id}`}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg
-                        border border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400 transition"
+                  return (
+                    <button
+                      key={group.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={selected}
+                      onClick={() => setActiveCategory(group.key)}
+                      className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition
+                        ${selected
+                          ? 'bg-malawiGreen text-white shadow-sm'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
                     >
-                      <MdOpenInNew className="text-base" />
-                      View
-                    </Link>
-                    {!isAdmitted && (
-                      <Link
-                        to={`/admissions/new?inmateId=${inmate.id}`}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg
-                          bg-malawiGreen text-white hover:bg-green-800 transition shadow-sm"
+                      <Icon className={`text-lg ${selected ? 'text-white' : group.tone}`} />
+                      <span>{group.title}</span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs
+                          ${selected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}
                       >
-                        <MdPlayArrow className="text-base" />
-                        Admit
-                      </Link>
-                    )}
+                        {group.inmates.length}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <section>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-5 py-4 bg-gray-50 border-b border-gray-100">
+                <div className="flex items-start gap-3">
+                  <ActiveCategoryIcon className={`${activeGroup.tone} text-2xl mt-0.5 shrink-0`} />
+                  <div>
+                    <h2 className="text-sm font-bold text-gray-900">{activeGroup.title}</h2>
+                    <p className="text-xs text-gray-500">{activeGroup.description}</p>
                   </div>
                 </div>
-              );
-            })}
+                <span className="inline-flex self-start sm:self-center items-center rounded-full bg-white border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-700">
+                  {activeGroup.inmates.length} record{activeGroup.inmates.length === 1 ? '' : 's'}
+                </span>
+              </div>
+
+              {activeGroup.inmates.length === 0 ? (
+                <div className="px-5 py-16 text-center text-sm text-gray-400">
+                  No {activeGroup.title.toLowerCase()} found.
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {activeGroup.inmates.map((inmate) => (
+                    <InmateRow key={inmate.id} inmate={inmate} />
+                  ))}
+                </div>
+              )}
+            </section>
           </div>
         )}
       </div>

@@ -103,6 +103,13 @@ class AdmissionModuleApiTest extends TestCase
         $cells = $this->actingAs($user, 'sanctum')->getJson('/api/cells/available');
         $cells->assertStatus(200)->assertJsonFragment(['cell_number' => 'B-201']);
 
+        $allCells = $this->actingAs($user, 'sanctum')->getJson('/api/cells');
+        $allCells->assertStatus(200)->assertJsonFragment([
+            'cell_number' => 'B-201',
+            'current_occupancy' => 0,
+            'capacity' => 6,
+        ]);
+
         $activities = $this->actingAs($user, 'sanctum')->getJson('/api/activities');
         $activities->assertStatus(200)->assertJsonFragment(['name' => 'Kitchen']);
 

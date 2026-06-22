@@ -13,6 +13,21 @@ class CellController extends Controller
         $this->middleware('auth:sanctum');
     }
 
+    public function index(Request $request)
+    {
+        $validated = $request->validate([
+            'security_classification' => ['nullable', 'in:maximum,medium,minimum'],
+        ]);
+
+        $query = Cell::query();
+
+        if (!empty($validated['security_classification'])) {
+            $query->where('security_classification', $validated['security_classification']);
+        }
+
+        return response()->json($query->orderBy('block')->orderBy('cell_number')->get());
+    }
+
     public function available(Request $request)
     {
         $validated = $request->validate([

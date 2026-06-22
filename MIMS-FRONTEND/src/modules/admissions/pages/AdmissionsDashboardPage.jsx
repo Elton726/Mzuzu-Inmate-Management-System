@@ -5,9 +5,10 @@ import Button from '../../../components/common/Button';
 import Card from '../../../components/common/Card';
 import { useToast } from '../../../contexts/useToast';
 import { useNotification } from '../../../contexts/useNotification';
-import { getAvailableCells } from '../services/cellService';
+import { listCells } from '../services/cellService';
 import { listInmates } from '../services/inmateService';
 import { formatDate } from '../../../utils/helpers';
+import apiService from '../../../services/apiService';
 import {
   MdAssignment,
   MdCheckCircle,
@@ -21,7 +22,8 @@ import {
 
 const getAdmissionsCount = (inmate) => {
   const n = inmate?.admissions_count ?? inmate?.admissionsCount;
-  return typeof n === 'number' ? n : 0;
+  const parsed = Number(n);
+  return Number.isFinite(parsed) ? parsed : 0;
 };
 
 const getCurrentAdmission = (inmate) => inmate?.current_admission || inmate?.currentAdmission || null;
@@ -34,9 +36,53 @@ const getInmateInitials = (inmate) => {
   return (f + l).toUpperCase() || 'IN';
 };
 
+const getCellOccupancyPercent = (cell) => {
+  const capacity = Number(cell?.capacity || 0);
+  const occupied = Number(cell?.current_occupancy || 0);
+  if (capacity <= 0) return 0;
+  return Math.min(100, Math.max(0, Math.round((occupied / capacity) * 100)));
+};
+
+const hasSystemReleaseHistory = (inmate) => Boolean(
+  inmate?.last_release_date ||
+  inmate?.lastReleaseDate ||
+  inmate?.last_release_at ||
+  inmate?.lastReleaseAt
+);
+
+const fetchAllInmates = async () => {
+  const firstPage = await listInmates({
+    page: 1,
+    per_page: 100,
+    sort_by: 'id',
+    sort_order: 'desc',
+  });
+  const firstRows = Array.isArray(firstPage?.data) ? firstPage.data : [];
+  const lastPage = Number(firstPage?.last_page || 1);
+
+  if (lastPage <= 1) return firstRows;
+
+  const remainingPages = Array.from({ length: lastPage - 1 }, (_, index) => index + 2);
+  const pageResponses = await Promise.all(
+    remainingPages.map((page) =>
+      listInmates({
+        page,
+        per_page: 100,
+        sort_by: 'id',
+        sort_order: 'desc',
+      })
+    )
+  );
+
+  return pageResponses.reduce((rows, page) => {
+    const pageRows = Array.isArray(page?.data) ? page.data : [];
+    return rows.concat(pageRows);
+  }, firstRows);
+};
+
 function MetricCard({ label, value, helper, icon: Icon, accent }) {
   return (
-    <div className={`rounded-2xl border p-5 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all duration-300 flex flex-col justify-between min-h-[140px] ${accent.card}`}>
+    <div className={`rounded-2xl border p-5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between min-h-[140px] ${accent.card}`}>
       <div className="flex justify-between items-start">
         <div className={`text-[10px] font-bold uppercase tracking-widest ${accent.label}`}>{label}</div>
         {Icon && <Icon className={`text-xl ${accent.icon}`} />}
@@ -51,14 +97,14 @@ function MetricCard({ label, value, helper, icon: Icon, accent }) {
 
 function QueueCard({ title, subtitle, emptyText, children }) {
   return (
-    <Card className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm p-6">
+    <Card className="rounded-2xl border border-gray-200 bg-white shadow-sm p-6">
       <div>
-        <h2 className="text-lg font-bold text-zinc-900 dark:text-white">{title}</h2>
-        <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{subtitle}</p>
+        <h2 className="text-lg font-bold text-gray-900">{title}</h2>
+        <p className="mt-0.5 text-xs text-gray-500">{subtitle}</p>
       </div>
       <div className="mt-4 space-y-3">
         {children?.length ? children : (
-          <div className="rounded-xl border border-dashed border-zinc-250 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 px-4 py-8 text-center text-sm text-zinc-500">
+          <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
             {emptyText}
           </div>
         )}
@@ -73,17 +119,20 @@ export default function AdmissionsDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [inmates, setInmates] = useState([]);
   const [cells, setCells] = useState([]);
+  const [populationStats, setPopulationStats] = useState(null);
 
   const load = async () => {
     try {
       setLoading(true);
-      const [inmateData, cellData] = await Promise.all([
-        listInmates({ per_page: 100, sort_by: 'id', sort_order: 'desc' }),
-        getAvailableCells(),
+      const [inmateRows, cellData, populationData] = await Promise.all([
+        fetchAllInmates(),
+        listCells(),
+        apiService.getPopulationStatistics(),
       ]);
 
-      setInmates(Array.isArray(inmateData?.data) ? inmateData.data : []);
+      setInmates(Array.isArray(inmateRows) ? inmateRows : []);
       setCells(Array.isArray(cellData) ? cellData : []);
+      setPopulationStats(populationData ?? null);
     } catch (err) {
       toast.error(err?.message || 'Failed to load admissions dashboard');
     } finally {
@@ -164,7 +213,7 @@ export default function AdmissionsDashboardPage() {
       return {
         ...inmate,
         currentAdmission,
-        neverAdmitted: getAdmissionsCount(inmate) === 0 && !currentAdmission?.id,
+        neverAdmitted: !hasSystemReleaseHistory(inmate),
         readyForAdmission: !currentAdmission?.id,
         daysRemaining,
       };
@@ -185,7 +234,19 @@ export default function AdmissionsDashboardPage() {
   const recentlyAdded = useMemo(() => enrichedInmates.slice(0, 5), [enrichedInmates]);
   const admissionQueue = useMemo(() => readyForAdmission.slice(0, 5), [readyForAdmission]);
   const activeAdmissionQueue = useMemo(() => activeAdmissions.slice(0, 5), [activeAdmissions]);
-  const availableCells = useMemo(() => cells.slice(0, 6), [cells]);
+  const sampleCells = useMemo(() => cells.slice(0, 6), [cells]);
+  const firstTimeCases = useMemo(
+    () => enrichedInmates.filter((inmate) => !hasSystemReleaseHistory(inmate)).length,
+    [enrichedInmates]
+  );
+  const activeAdmissionsTotal = useMemo(() => {
+    const statsTotal =
+      Number(populationStats?.convict_count || 0) +
+      Number(populationStats?.remandee_count || 0) +
+      Number(populationStats?.murder_remandee_count || 0);
+
+    return statsTotal || activeAdmissions.length;
+  }, [activeAdmissions.length, populationStats]);
 
   const cellBySecurity = useMemo(() => ({
     minimum: cells.filter((cell) => cell.security_classification === 'minimum').length,
@@ -195,7 +256,7 @@ export default function AdmissionsDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 px-4 py-8 md:px-8 flex items-center justify-center transition-colors duration-200">
+      <div className="min-h-screen bg-gray-50 px-4 py-8 md:px-8 flex items-center justify-center transition-colors duration-200">
         <div className="mx-auto max-w-7xl">
           <Spinner label="Loading admissions dashboard..." />
         </div>
@@ -204,66 +265,69 @@ export default function AdmissionsDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 px-4 py-8 md:px-8 text-zinc-900 dark:text-zinc-100 transition-colors duration-200">
+    <div className="min-h-screen bg-gray-50 px-4 py-8 md:px-8 text-gray-900 transition-colors duration-200">
       <div className="mx-auto max-w-7xl space-y-6">
         
         {/* Spotlight / Hero Area */}
-        <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 to-black text-white shadow-xl border border-zinc-800">
+        <section className="overflow-hidden rounded-2xl bg-white shadow-sm border border-gray-200">
           <div className="grid gap-8 px-6 py-8 md:grid-cols-[1.35fr_0.95fr] md:px-8">
             <div className="flex flex-col justify-between">
               <div>
-                <div className="inline-flex rounded-full bg-malawiGreen/25 border border-malawiGreen/30 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-green-400">
+                <div className="inline-flex rounded-full bg-green-50 border border-green-200 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-malawiGreen">
                   Reception Officer
                 </div>
-                <h1 className="mt-4 text-3xl font-extrabold tracking-tight md:text-5xl bg-gradient-to-r from-white via-zinc-100 to-zinc-400 bg-clip-text text-transparent">
+                <h1 className="mt-4 text-3xl font-extrabold tracking-tight md:text-5xl text-gray-900">
                   Admissions Dashboard
                 </h1>
-                <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-400 md:text-base">
-                  Start new admissions, review inmates who are still waiting, and keep an eye on available cells from one operational home screen.
+                <p className="mt-4 max-w-2xl text-sm leading-relaxed text-gray-500 md:text-base">
+                  Start new admissions, review inmates who are still waiting, and keep an eye on cell occupancy from one operational home screen.
                 </p>
               </div>
 
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link to="/admissions/new">
-                  <Button className="bg-malawiGold hover:bg-yellow-400 text-zinc-950 font-bold border-0 shadow transition hover:scale-[1.02] duration-200">
+                  <Button className="bg-malawiGreen hover:bg-green-800 text-white font-bold border-0 shadow transition duration-200">
                     New Admission
                   </Button>
                 </Link>
                 <Link to="/admissions">
-                  <Button variant="outline" className="!border-zinc-700 hover:!border-zinc-500 !text-white hover:!bg-white/5 transition hover:scale-[1.02] duration-200">
+                  <Button variant="outline" className="!border-gray-300 hover:!border-malawiGreen !text-gray-700 hover:!bg-green-50 transition duration-200">
                     Open Admissions Register
                   </Button>
                 </Link>
               </div>
             </div>
 
-            <div className="rounded-2xl bg-white/5 border border-white/10 p-6 backdrop-blur-md shadow-lg flex flex-col justify-between min-h-[220px]">
+            <div className="rounded-2xl bg-gray-50 border border-gray-200 p-6 shadow-sm flex flex-col justify-between min-h-[220px]">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-widest text-malawiGold flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-malawiGold animate-pulse"></span>
+                <div className="text-xs font-semibold uppercase tracking-widest text-malawiGreen flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-malawiGreen animate-pulse"></span>
                   Admission spotlight
                 </div>
                 {admissionQueue[0] ? (
                   <div className="mt-4 space-y-3">
-                    <div className="text-2xl font-bold text-white">
+                    <div className="text-2xl font-bold text-gray-900">
                       {admissionQueue[0].first_name} {admissionQueue[0].last_name}
                     </div>
-                    <div className="text-sm text-zinc-400">
+                    <div className="text-sm text-gray-500">
                       {admissionQueue[0].prison_number || 'No prison number yet'} • National ID {admissionQueue[0].national_id || 'Not recorded'}
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <span className="rounded-full bg-zinc-800 border border-zinc-700 px-3 py-0.5 text-xs font-semibold text-zinc-300">
+                      <span className="rounded-full bg-white border border-gray-200 px-3 py-0.5 text-xs font-semibold text-gray-700">
                         Awaiting admission
                       </span>
+                      <span className="rounded-full bg-white border border-gray-200 px-3 py-0.5 text-xs font-semibold text-gray-700">
+                        Admitted {getAdmissionsCount(admissionQueue[0])} time{getAdmissionsCount(admissionQueue[0]) === 1 ? '' : 's'} before
+                      </span>
                       {admissionQueue[0].neverAdmitted && (
-                        <span className="rounded-full bg-malawiGold/20 border border-malawiGold/30 px-3 py-0.5 text-xs font-bold text-malawiGold">
-                          First admission
+                        <span className="rounded-full bg-yellow-50 border border-yellow-200 px-3 py-0.5 text-xs font-bold text-yellow-700">
+                          No system release history
                         </span>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-4 rounded-xl border border-dashed border-zinc-800 px-4 py-8 text-sm text-zinc-500 text-center">
+                  <div className="mt-4 rounded-xl border border-dashed border-gray-300 bg-white px-4 py-8 text-sm text-gray-500 text-center">
                     No inmates are currently waiting for admission.
                   </div>
                 )}
@@ -272,12 +336,12 @@ export default function AdmissionsDashboardPage() {
               {admissionQueue[0] && (
                 <div className="mt-6 flex flex-wrap gap-2.5">
                   <Link to={`/admissions/new?inmateId=${admissionQueue[0].id}`} className="flex-1 min-w-[120px]">
-                    <button className="w-full bg-malawiGold hover:bg-yellow-400 active:scale-95 text-zinc-950 font-bold py-2 px-4 rounded-lg shadow-sm transition text-sm">
+                    <button className="w-full bg-malawiGreen hover:bg-green-800 active:scale-95 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition text-sm">
                       Start Admission
                     </button>
                   </Link>
                   <Link to={`/inmates/${admissionQueue[0].id}`} className="flex-1 min-w-[120px]">
-                    <button className="w-full bg-transparent hover:bg-white/5 active:scale-95 border border-zinc-700 hover:border-zinc-500 text-white font-medium py-2 px-4 rounded-lg transition text-sm">
+                    <button className="w-full bg-white hover:bg-gray-100 active:scale-95 border border-gray-300 hover:border-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition text-sm">
                       View Inmate
                     </button>
                   </Link>
@@ -295,63 +359,63 @@ export default function AdmissionsDashboardPage() {
             helper="Inmates without a current admission"
             icon={MdAssignment}
             accent={{
-              card: 'border-emerald-205 bg-emerald-50/50 dark:border-emerald-950/30 dark:bg-emerald-950/20',
-              label: 'text-emerald-800 dark:text-emerald-400',
-              value: 'text-emerald-900 dark:text-emerald-100',
-              helper: 'text-emerald-700/80 dark:text-emerald-400/80',
-              icon: 'text-emerald-600 dark:text-emerald-500'
+              card: 'border-green-200 bg-green-50/70',
+              label: 'text-malawiGreen',
+              value: 'text-gray-900',
+              helper: 'text-green-700/80',
+              icon: 'text-malawiGreen'
             }}
           />
           <MetricCard
             label="Active Admissions"
-            value={activeAdmissions.length}
+            value={activeAdmissionsTotal}
             helper="Inmates currently admitted in queue"
             icon={MdCheckCircle}
             accent={{
-              card: 'border-blue-205 bg-blue-50/50 dark:border-blue-950/30 dark:bg-blue-950/20',
-              label: 'text-blue-800 dark:text-blue-400',
-              value: 'text-blue-900 dark:text-blue-100',
-              helper: 'text-blue-700/80 dark:text-blue-400/80',
-              icon: 'text-blue-600 dark:text-blue-500'
+              card: 'border-gray-200 bg-white',
+              label: 'text-gray-600',
+              value: 'text-gray-900',
+              helper: 'text-gray-500',
+              icon: 'text-malawiGreen'
             }}
           />
           <MetricCard
-            label="Available Cells"
+            label="Total Cells"
             value={cells.length}
-            helper="Cells ready for allocation right now"
+            helper="Cells tracked with current occupancy"
             icon={MdHome}
             accent={{
-              card: 'border-amber-205 bg-amber-50/50 dark:border-amber-950/30 dark:bg-amber-950/20',
-              label: 'text-amber-805 dark:text-amber-400',
-              value: 'text-amber-900 dark:text-amber-100',
-              helper: 'text-amber-700/80 dark:text-amber-400/80',
-              icon: 'text-amber-600 dark:text-amber-500'
+              card: 'border-yellow-200 bg-yellow-50/70',
+              label: 'text-yellow-700',
+              value: 'text-gray-900',
+              helper: 'text-yellow-700/80',
+              icon: 'text-yellow-600'
             }}
           />
           <MetricCard
-            label="First-Time Cases"
-            value={readyForAdmission.filter((inmate) => inmate.neverAdmitted).length}
-            helper="Inmates who have never been admitted"
+            label="No Prior System Release"
+            value={firstTimeCases}
+            helper="Inmates not previously released by MIMS"
             icon={MdPeople}
             accent={{
-              card: 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900',
-              label: 'text-zinc-500 dark:text-zinc-400',
-              value: 'text-zinc-900 dark:text-zinc-100',
-              helper: 'text-zinc-600 dark:text-zinc-405',
-              icon: 'text-zinc-400 dark:text-zinc-500'
+              card: 'border-red-200 bg-red-50/60',
+              label: 'text-malawiRed',
+              value: 'text-gray-900',
+              helper: 'text-red-700/80',
+              icon: 'text-malawiRed'
             }}
           />
         </section>
 
         {/* Functional Panels Area */}
         <section className="grid gap-4 xl:grid-cols-3">
-          <Card className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm p-6 flex flex-col justify-between">
+          <Card className="rounded-2xl border border-gray-200 bg-white shadow-sm p-6 flex flex-col justify-between">
             <div>
-              <h2 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                 <MdLocalActivity className="text-malawiGreen text-xl" />
                 Quick Actions
               </h2>
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-455">Common admissions tasks for a reception officer.</p>
+              <p className="mt-1 text-xs text-gray-500">Common admissions tasks for a reception officer.</p>
             </div>
             <div className="mt-4 flex flex-col gap-2">
               <Link to="/admissions/new" className="w-full">
@@ -361,7 +425,7 @@ export default function AdmissionsDashboardPage() {
                 </button>
               </Link>
               <Link to="/admissions" className="w-full">
-                <button className="w-full flex items-center justify-between px-4 py-2.5 bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 font-medium rounded-xl transition text-sm">
+                <button className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition text-sm">
                   <span className="flex items-center gap-2"><MdAssignment /> Admissions Register</span>
                   <MdArrowForward />
                 </button>
@@ -369,42 +433,42 @@ export default function AdmissionsDashboardPage() {
             </div>
           </Card>
 
-          <Card className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm p-6 flex flex-col justify-between">
+          <Card className="rounded-2xl border border-gray-200 bg-white shadow-sm p-6 flex flex-col justify-between">
             <div>
-              <h2 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                 <MdHome className="text-malawiGold text-xl" />
                 Cell Security Overview
               </h2>
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-455">Sample of available cells by security classification.</p>
+              <p className="mt-1 text-xs text-gray-500">Tracked cells by security classification.</p>
             </div>
             <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-              <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40 p-3 text-emerald-900 dark:text-emerald-400">
+              <div className="rounded-xl bg-green-50 border border-green-200 p-3 text-malawiGreen">
                 <div className="text-[10px] font-bold uppercase tracking-wider">Min</div>
                 <div className="mt-1.5 text-2xl font-black leading-none">{cellBySecurity.minimum}</div>
               </div>
-              <div className="rounded-xl bg-amber-55 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40 p-3 text-amber-900 dark:text-amber-400">
+              <div className="rounded-xl bg-yellow-50 border border-yellow-200 p-3 text-yellow-700">
                 <div className="text-[10px] font-bold uppercase tracking-wider">Med</div>
                 <div className="mt-1.5 text-2xl font-black leading-none">{cellBySecurity.medium}</div>
               </div>
-              <div className="rounded-xl bg-red-55 dark:bg-red-950/30 border border-red-100 dark:border-red-900/40 p-3 text-red-900 dark:text-red-400">
+              <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-malawiRed">
                 <div className="text-[10px] font-bold uppercase tracking-wider">Max</div>
                 <div className="mt-1.5 text-2xl font-black leading-none">{cellBySecurity.maximum}</div>
               </div>
             </div>
           </Card>
 
-          <Card className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm p-6 flex flex-col justify-between">
+          <Card className="rounded-2xl border border-gray-200 bg-white shadow-sm p-6 flex flex-col justify-between">
             <div>
-              <h2 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                <MdRefresh className="text-blue-500 text-xl" />
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <MdRefresh className="text-malawiGreen text-xl" />
                 Sync Dashboard
               </h2>
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-455">Reload latest inmate and cell occupancy data.</p>
+              <p className="mt-1 text-xs text-gray-500">Reload latest inmate and cell occupancy data.</p>
             </div>
             <div className="mt-4">
               <button
                 onClick={load}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-medium rounded-xl transition text-sm shadow-sm"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-malawiGreen hover:bg-green-800 active:scale-95 text-white font-medium rounded-xl transition text-sm shadow-sm"
               >
                 <MdRefresh className="text-lg" />
                 Refresh Data
@@ -421,28 +485,28 @@ export default function AdmissionsDashboardPage() {
             emptyText="No inmates waiting for admission were found."
           >
             {admissionQueue.map((inmate) => (
-              <div key={inmate.id} className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 p-4 transition hover:bg-zinc-50 dark:hover:bg-zinc-900/60 duration-200">
+              <div key={inmate.id} className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 transition hover:bg-gray-50 duration-200">
                 <div className="flex items-start gap-4">
-                  <div className="flex shrink-0 items-center justify-center rounded-full font-bold h-10 w-10 bg-zinc-105 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                  <div className="flex shrink-0 items-center justify-center rounded-full font-bold h-10 w-10 bg-malawiBlack text-malawiGold border border-gray-200">
                     {getInmateInitials(inmate)}
                   </div>
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <div className="font-semibold text-zinc-900 dark:text-white truncate">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-gray-900 truncate">
                           {inmate.first_name} {inmate.last_name}
                         </div>
-                        <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                        <div className="mt-0.5 text-xs text-gray-500">
                           {inmate.prison_number || 'No prison number'} • DOB {inmate.date_of_birth ? formatDate(inmate.date_of_birth) : 'Not recorded'}
                         </div>
                         <div className="mt-2 flex flex-wrap gap-1.5 text-[10px]">
-                          <span className="rounded-full bg-white dark:bg-zinc-800 border border-zinc-250 dark:border-zinc-700 px-2.5 py-0.5 font-semibold text-zinc-600 dark:text-zinc-300">
+                          <span className="rounded-full bg-white border border-gray-200 px-2.5 py-0.5 font-semibold text-gray-600">
                             Admissions: {getAdmissionsCount(inmate)}
                           </span>
                           {inmate.neverAdmitted && (
-                            <span className="rounded-full bg-green-100 dark:bg-green-950/40 border border-green-200 dark:border-green-900/40 px-2.5 py-0.5 font-bold text-green-700 dark:text-green-400">
-                              First admission
+                            <span className="rounded-full bg-green-100 border border-green-200 px-2.5 py-0.5 font-bold text-malawiGreen">
+                              No system release history
                             </span>
                           )}
                         </div>
@@ -454,7 +518,7 @@ export default function AdmissionsDashboardPage() {
                           </button>
                         </Link>
                         <Link to={`/inmates/${inmate.id}`}>
-                          <button className="px-3 py-1.5 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 font-medium rounded-lg text-xs transition duration-150">
+                          <button className="px-3 py-1.5 bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 font-medium rounded-lg text-xs transition duration-150">
                             View
                           </button>
                         </Link>
@@ -472,33 +536,36 @@ export default function AdmissionsDashboardPage() {
             emptyText="No active admissions were found in the loaded list."
           >
             {activeAdmissionQueue.map((inmate) => (
-              <div key={inmate.id} className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 p-4 transition hover:bg-zinc-50 dark:hover:bg-zinc-900/60 duration-200">
+              <div key={inmate.id} className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 transition hover:bg-gray-50 duration-200">
                 <div className="flex items-start gap-4">
-                  <div className="flex shrink-0 items-center justify-center rounded-full font-bold h-10 w-10 bg-zinc-105 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                  <div className="flex shrink-0 items-center justify-center rounded-full font-bold h-10 w-10 bg-malawiBlack text-malawiGold border border-gray-200">
                     {getInmateInitials(inmate)}
                   </div>
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <div className="font-semibold text-zinc-900 dark:text-white truncate">
+                        <div className="font-semibold text-gray-900 truncate">
                           {inmate.first_name} {inmate.last_name}
                         </div>
-                        <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                        <div className="mt-0.5 text-xs text-gray-500">
                           {inmate.prison_number || 'No prison number'} • Admission #{inmate.currentAdmission?.id}
                         </div>
                         <div className="mt-2 flex flex-wrap gap-1.5 text-[10px]">
-                          <span className="rounded-full bg-white dark:bg-zinc-800 border border-zinc-250 dark:border-zinc-700 px-2.5 py-0.5 font-semibold text-zinc-600 dark:text-zinc-300">
+                          <span className="rounded-full bg-white border border-gray-200 px-2.5 py-0.5 font-semibold text-gray-600">
                             {inmate.currentAdmission?.inmate_type || 'Type unknown'}
                           </span>
-                          <span className="rounded-full bg-white dark:bg-zinc-800 border border-zinc-250 dark:border-zinc-700 px-2.5 py-0.5 font-semibold text-zinc-600 dark:text-zinc-300">
+                          <span className="rounded-full bg-white border border-gray-200 px-2.5 py-0.5 font-semibold text-gray-600">
                             {inmate.currentAdmission?.admission_date ? formatDate(inmate.currentAdmission.admission_date) : 'No date'}
+                          </span>
+                          <span className="rounded-full bg-white border border-gray-200 px-2.5 py-0.5 font-semibold text-gray-600">
+                            Admissions: {getAdmissionsCount(inmate)}
                           </span>
                           {inmate.daysRemaining != null && (
                             <span className={`rounded-full border px-2.5 py-0.5 font-bold ${
                               inmate.daysRemaining === 0 
-                                ? 'bg-amber-105 border-amber-200 text-amber-800 dark:bg-amber-950/40 dark:border-amber-900/40 dark:text-amber-400' 
-                                : 'bg-zinc-100 border-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300'
+                                ? 'bg-yellow-50 border-yellow-200 text-yellow-700'
+                                : 'bg-gray-100 border-gray-200 text-gray-700'
                             }`}>
                               {inmate.daysRemaining === 0
                                 ? 'Court today'
@@ -509,12 +576,12 @@ export default function AdmissionsDashboardPage() {
                       </div>
                       <div className="flex gap-2">
                         <Link to={`/admissions/${inmate.currentAdmission?.id}`}>
-                          <button className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-xs transition duration-150 shadow-sm">
+                          <button className="px-3 py-1.5 bg-malawiGreen hover:bg-green-800 text-white font-semibold rounded-lg text-xs transition duration-150 shadow-sm">
                             Details
                           </button>
                         </Link>
                         <Link to={`/inmates/${inmate.id}`}>
-                          <button className="px-3 py-1.5 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 font-medium rounded-lg text-xs transition duration-150">
+                          <button className="px-3 py-1.5 bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 font-medium rounded-lg text-xs transition duration-150">
                             View
                           </button>
                         </Link>
@@ -527,7 +594,7 @@ export default function AdmissionsDashboardPage() {
           </QueueCard>
         </section>
 
-        {/* Recently Added & Open Cells section */}
+        {/* Recently Added & Cell Occupancy section */}
         <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <QueueCard
             title="Recently Added Inmates"
@@ -535,24 +602,29 @@ export default function AdmissionsDashboardPage() {
             emptyText="No inmate records are available."
           >
             {recentlyAdded.map((inmate) => (
-              <div key={inmate.id} className="rounded-xl border border-zinc-250/50 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 transition hover:bg-zinc-50 dark:hover:bg-zinc-850 duration-200">
+              <div key={inmate.id} className="rounded-xl border border-gray-200 bg-white p-4 transition hover:bg-gray-50 duration-200">
                 <div className="flex items-center gap-4">
-                  <div className="flex shrink-0 items-center justify-center rounded-full font-bold h-10 w-10 bg-zinc-100 dark:bg-zinc-850 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800">
+                  <div className="flex shrink-0 items-center justify-center rounded-full font-bold h-10 w-10 bg-malawiBlack text-malawiGold border border-gray-200">
                     {getInmateInitials(inmate)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <div>
-                        <div className="font-semibold text-zinc-900 dark:text-white truncate">
+                        <div className="font-semibold text-gray-900 truncate">
                           {inmate.first_name} {inmate.last_name}
                         </div>
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
-                          {inmate.prison_number || 'No prison number'} • Status: <span className="font-medium text-zinc-700 dark:text-zinc-300">{inmate.status || 'No status'}</span>
+                        <div className="text-xs text-gray-500 truncate">
+                          {inmate.prison_number || 'No prison number'} • Status: <span className="font-medium text-gray-700">{inmate.status || 'No status'}</span>
+                        </div>
+                        <div className="mt-2 text-[10px]">
+                          <span className="rounded-full bg-white border border-gray-200 px-2.5 py-0.5 font-semibold text-gray-600">
+                            Admissions: {getAdmissionsCount(inmate)}
+                          </span>
                         </div>
                       </div>
                       <div className="flex gap-2">
                         <Link to={`/inmates/${inmate.id}`}>
-                          <button className="px-3 py-1.5 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 font-medium rounded-lg text-xs transition duration-150">
+                          <button className="px-3 py-1.5 bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 font-medium rounded-lg text-xs transition duration-150">
                             Profile
                           </button>
                         </Link>
@@ -572,27 +644,39 @@ export default function AdmissionsDashboardPage() {
           </QueueCard>
 
           <QueueCard
-            title="Open Cells"
-            subtitle="Sample of available cells ready for manual selection."
-            emptyText="No available cells were returned."
+            title="Cell Occupancy"
+            subtitle="Sample of tracked cells with current occupancy."
+            emptyText="No cells were returned."
           >
-            {availableCells.map((cell) => (
-              <div key={cell.id} className="rounded-xl border border-zinc-250/50 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 transition hover:bg-zinc-50 dark:hover:bg-zinc-850 duration-200">
-                <div className="flex items-center gap-3 justify-between">
-                  <div>
-                    <div className="font-semibold text-zinc-900 dark:text-white">{getCellLabel(cell)}</div>
-                    <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                      Security: <span className="capitalize font-semibold text-zinc-700 dark:text-zinc-300">{cell.security_classification}</span>
+            {sampleCells.map((cell) => (
+              <div key={cell.id} className="rounded-xl border border-gray-200 bg-white p-4 transition hover:bg-gray-50 duration-200">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 justify-between">
+                    <div>
+                      <div className="font-semibold text-gray-900">{getCellLabel(cell)}</div>
+                      <div className="mt-0.5 text-xs text-gray-500">
+                        Security: <span className="capitalize font-semibold text-gray-700">{cell.security_classification}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className={`inline-flex rounded px-2 py-1 text-[10px] font-bold ${
+                        cell.current_occupancy >= cell.capacity
+                          ? 'bg-red-100 text-malawiRed border border-red-200'
+                          : 'bg-green-100 text-malawiGreen border border-green-200'
+                      }`}>
+                        {cell.current_occupancy}/{cell.capacity} Occupied
+                      </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span className={`inline-flex rounded px-2 py-1 text-[10px] font-bold ${
-                      cell.current_occupancy >= cell.capacity
-                        ? 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400 border border-red-200 dark:border-red-900/40'
-                        : 'bg-green-105 text-green-800 dark:bg-green-950/40 dark:text-green-400 border border-green-200 dark:border-green-900/40'
-                    }`}>
-                      {cell.current_occupancy}/{cell.capacity} Occupied
-                    </span>
+                  <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${getCellOccupancyPercent(cell) >= 100 ? 'bg-malawiRed' : 'bg-malawiGreen'}`}
+                      style={{ width: `${getCellOccupancyPercent(cell)}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                    <span>{getCellOccupancyPercent(cell)}% full</span>
+                    <span className="capitalize">{cell.status || 'No status'}</span>
                   </div>
                 </div>
               </div>
