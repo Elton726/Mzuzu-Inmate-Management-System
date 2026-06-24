@@ -34,16 +34,21 @@ class InmateController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             'sort_by' => ['nullable', 'string', 'in:id,prison_number,first_name,last_name,date_of_birth,status'],
             'sort_order' => ['nullable', 'string', 'in:asc,desc'],
+            'include_released' => ['nullable', 'boolean'],
         ]);
 
         $perPage = $request->integer('per_page', 25);
         $sortBy = $request->string('sort_by', 'id')->toString();
         $sortOrder = $request->string('sort_order', 'desc')->toString();
+        $includeReleased = $request->boolean('include_released');
 
         $query = Inmate::query()
-            ->where('status', '<>', 'released')
             ->withCount('admissions')
             ->with(['currentAdmission:id,inmate_id,is_current,admission_date,inmate_type,case_number,sentence_years,sentence_months,sentence_start_date,projected_release_date,original_release_date,released_at']);
+
+        if (! $includeReleased) {
+            $query->where('status', '<>', 'released');
+        }
 
         return response()->json($query->orderBy($sortBy, $sortOrder)->paginate($perPage));
     }
@@ -118,7 +123,17 @@ class InmateController extends Controller
             return response()->json(['error' => 'Inmate profile not available.'], 404);
         }
 
-        return response()->json($inmate->load('currentAdmission', 'documents'));
+        return response()->json($inmate->loadCount('admissions')->load([
+            'currentAdmission.cellAllocations.cell',
+            'currentAdmission.inmateActivities.activity',
+            'admissions' => fn ($query) => $query
+                ->with(['cellAllocations.cell', 'inmateActivities.activity'])
+                ->latest('admission_date')
+                ->latest('id'),
+            'cellAllocations.cell',
+            'inmateActivities.activity',
+            'documents' => fn ($query) => $query->latest('id'),
+        ]));
     }
 
     public function update(UpdateInmateRequest $request, Inmate $inmate)

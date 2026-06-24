@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
 
         // Seed sample data for the admission module (cells/activities).
         $this->call(AdmissionModuleSeeder::class);
+        $this->call(CellSeeder::class);
 
         // Create a regular user you can use for smoke testing.
         $defaultRole = Role::firstOrCreate(['name' => 'officer_on_duty'], ['description' => null]);

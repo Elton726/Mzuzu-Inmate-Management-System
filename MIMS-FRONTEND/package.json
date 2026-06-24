@@ -1,5 +1,5 @@
 {
-  "name": "mims-frontend",
+  "name": "Mzuzu Inmate Management System",
   "version": "0.0.0",
   "private": true,
   "description": "Group one third year project",
@@ -56,5 +56,8 @@
     "playwright": "^1.58.2",
     "@vitest/browser-playwright": "^4.1.2",
     "@vitest/coverage-v8": "^4.1.2"
+  },
+  "allowScripts": {
+    "esbuild@0.27.3": true
   }
 }

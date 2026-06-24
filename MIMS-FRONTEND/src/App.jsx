@@ -26,10 +26,9 @@
 import React from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import { ThemeProvider, ThemeContext } from './contexts/ThemeContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import { useAuth } from './contexts/useAuth';
-import { useContext } from 'react';
-import { MdDarkMode, MdLightMode } from 'react-icons/md';
 import { ROLES } from './utils/helpers';
 import LoginPage from './modules/auth/pages/LoginPage';
 import HomePage from './modules/home/pages/HomePage';
@@ -63,6 +62,7 @@ import RulesPage from './modules/visitation/pages/RulesPage';
 import ReportsPage from './modules/visitation/pages/ReportsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
+import { Navigation } from './components/Navigation';
 import { ToastProvider } from './contexts/ToastContext';
 import { ToastContainer } from 'react-toastify';
 
@@ -76,8 +76,8 @@ import { ToastContainer } from 'react-toastify';
  */
 const AppContent = () => {
   const { isAuthenticated, loading } = useAuth();
-  const { theme, toggleTheme } = useContext(ThemeContext);
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 
   // Show loading spinner during authentication verification
   if (loading) {
@@ -91,45 +91,31 @@ const AppContent = () => {
     );
   }
 
+  const handleSidebarClose = () => setSidebarOpen(false);
+
+  const contentMarginClass = isAuthenticated && sidebarOpen
+    ? (sidebarCollapsed ? 'ml-20' : 'ml-64')
+    : 'ml-0';
+
   return (
     <div className="flex">
       {/* Sidebar - only shown for authenticated users when open */}
       {isAuthenticated && sidebarOpen && (
-        <Sidebar onClose={() => setSidebarOpen(false)} />
+        <Sidebar
+          onClose={handleSidebarClose}
+          isCollapsed={sidebarCollapsed}
+          setIsCollapsed={setSidebarCollapsed}
+        />
       )}
 
       {/* Main content area - adjusts margin based on sidebar state */}
-      <div className={isAuthenticated && sidebarOpen ? "ml-64 flex-1" : "flex-1"}>
-        {/* Theme toggle button */}
-        {isAuthenticated && (
-          <button
-            className="fixed top-4 right-4 z-50 bg-malawiGreen text-white px-3 py-2 rounded shadow hover:bg-green-700 transition inline-flex items-center gap-2"
-            onClick={toggleTheme}
-            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {theme === 'dark' ? (
-              <>
-                <MdLightMode className="w-5 h-5" />
-                Light Mode
-              </>
-            ) : (
-              <>
-                <MdDarkMode className="w-5 h-5" />
-                Dark Mode
-              </>
-            )}
-          </button>
-        )}
+      <div className={`${contentMarginClass} flex-1 min-w-0 transition-all duration-300`}>
 
-        {/* Sidebar toggle button - shown when sidebar is closed */}
-        {isAuthenticated && !sidebarOpen && (
-          <button
-            className="fixed top-4 left-4 z-50 bg-malawiGold text-malawiBlack p-2 rounded shadow hover:bg-malawiRed hover:text-malawiGold transition"
-            onClick={() => setSidebarOpen(true)}
-          >
-            ☰ Open Sidebar
-          </button>
-        )}
+        {/* Top Navigation Bar - shows for authenticated users */}
+        {isAuthenticated && <Navigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />}
+
+
+
 
         {/* Application Routes */}
         <Routes>
@@ -184,7 +170,7 @@ const AppContent = () => {
           <Route
             path="/inmates/:inmateId"
             element={
-              <ProtectedRoute allowedRoles={['reception_officer']}>
+              <ProtectedRoute allowedRoles={['reception_officer', 'station_officer']}>
                 <InmateDetailPage />
               </ProtectedRoute>
             }
@@ -447,12 +433,14 @@ function App() {
   return (
     <Router>
       <ThemeProvider>
-        <ToastProvider>
-          <ToastContainer position="top-right" autoClose={7000} />
-          <AuthProvider>
-            <AppContent />
-          </AuthProvider>
-        </ToastProvider>
+        <NotificationProvider>
+          <ToastProvider>
+            <ToastContainer position="top-right" autoClose={7000} />
+            <AuthProvider>
+              <AppContent />
+            </AuthProvider>
+          </ToastProvider>
+        </NotificationProvider>
       </ThemeProvider>
     </Router>
   );

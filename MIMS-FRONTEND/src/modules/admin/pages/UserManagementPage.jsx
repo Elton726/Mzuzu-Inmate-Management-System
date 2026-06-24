@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import apiService from '../../../services/apiService';
-import { getRoleDisplayName, ROLE_OPTIONS, validatePassword, getErrorMessage, getFieldErrors } from '../../../utils/helpers';
+import { ROLE_OPTIONS, validatePassword, getErrorMessage, getFieldErrors } from '../../../utils/helpers';
 import { useDebouncedValue } from '../../../utils/useDebouncedValue';
 import { useToast } from '../../../contexts/useToast';
+import UserAvatarWithRole from '../../../components/common/UserAvatarWithRole';
 
 export const UserManagementPage = () => {
   const { fromError } = useToast();
@@ -263,7 +264,7 @@ export const UserManagementPage = () => {
 
   return (
     <div className="max-w-7xl mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold text-gray-800 mb-8">User Management</h1>
+      <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-8">User Management</h1>
 
       {/* Messages */}
       {error && (
@@ -285,20 +286,20 @@ export const UserManagementPage = () => {
       )}
 
       {/* Controls */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
           <input
             type="text"
             placeholder="Search by name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+            className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
           />
 
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+            className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
           >
             <option value="">All Roles</option>
             {ROLE_OPTIONS.map(role => (
@@ -311,7 +312,7 @@ export const UserManagementPage = () => {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+            className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
           >
             <option value="created_at">Date Created</option>
             <option value="name">Name</option>
@@ -322,7 +323,7 @@ export const UserManagementPage = () => {
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+            className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
           >
             <option value="desc">Descending</option>
             <option value="asc">Ascending</option>
@@ -331,7 +332,7 @@ export const UserManagementPage = () => {
           <select
             value={perPage}
             onChange={(e) => setPerPage(Number(e.target.value))}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+            className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
           >
             <option value="10">10 per page</option>
             <option value="20">20 per page</option>
@@ -378,19 +379,19 @@ export const UserManagementPage = () => {
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow overflow-hidden">
         {loading ? (
           <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           </div>
         ) : users.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-gray-500 dark:text-gray-300">
             <p>No users found</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-100">
+              <thead className="bg-gray-100 dark:bg-slate-800">
                 <tr>
                   <th className="px-6 py-3 text-left">
                     <input
@@ -400,16 +401,14 @@ export const UserManagementPage = () => {
                       className="rounded"
                     />
                   </th>
-                  <th className="px-6 py-3 text-left text-gray-700 font-semibold">Name</th>
-                  <th className="px-6 py-3 text-left text-gray-700 font-semibold">Email</th>
-                  <th className="px-6 py-3 text-left text-gray-700 font-semibold">Role</th>
-                  <th className="px-6 py-3 text-left text-gray-700 font-semibold">Created</th>
-                  <th className="px-6 py-3 text-left text-gray-700 font-semibold">Actions</th>
+                  <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-200 font-semibold">User</th>
+                  <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-200 font-semibold">Created</th>
+                  <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-200 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((user) => (
-                  <tr key={user.id} className="border-b hover:bg-gray-50">
+                  <tr key={user.id} className="border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800">
                     <td className="px-6 py-4">
                       <input
                         type="checkbox"
@@ -418,14 +417,10 @@ export const UserManagementPage = () => {
                         className="rounded"
                       />
                     </td>
-                    <td className="px-6 py-4 font-semibold text-gray-800">{user.name}</td>
-                    <td className="px-6 py-4 text-gray-600">{user.email}</td>
                     <td className="px-6 py-4">
-                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
-                          {getRoleDisplayName(user)}
-                        </span>
+                      <UserAvatarWithRole user={user} />
                     </td>
-                    <td className="px-6 py-4 text-gray-600">
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
                       {new Date(user.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4">

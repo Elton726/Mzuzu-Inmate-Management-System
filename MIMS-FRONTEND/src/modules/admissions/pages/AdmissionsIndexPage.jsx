@@ -1,25 +1,179 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { useDebouncedValue } from '../../../utils/useDebouncedValue';
 import { searchInmates, listInmates } from '../services/inmateService';
 import { formatDate } from '../../../utils/helpers';
+import {
+  MdSearch,
+  MdSort,
+  MdAdd,
+  MdPerson,
+  MdBadge,
+  MdFingerprint,
+  MdCake,
+  MdOpenInNew,
+  MdPlayArrow,
+  MdChevronLeft,
+  MdChevronRight,
+  MdWarning,
+  MdFilterList,
+  MdGavel,
+  MdSchedule,
+} from 'react-icons/md';
+
+/* ─── helpers ───────────────────────────────────────────────────────── */
 
 const getAdmissionsCount = (inmate) => {
   const n = inmate?.admissions_count ?? inmate?.admissionsCount;
   return typeof n === 'number' ? n : null;
 };
 
-const getCurrentAdmission = (inmate) => inmate?.current_admission || inmate?.currentAdmission || null;
+const getCurrentAdmission = (inmate) =>
+  inmate?.current_admission || inmate?.currentAdmission || null;
+
+const getInitials = (first, last) =>
+  `${first?.[0] ?? ''}${last?.[0] ?? ''}`.toUpperCase() || '?';
+
+/* ─── sub-components ────────────────────────────────────────────────── */
+
+const SkeletonRow = () => (
+  <div className="flex items-center gap-4 px-5 py-4 border-b border-gray-100 last:border-0 animate-pulse">
+    <div className="w-10 h-10 rounded-xl bg-gray-200 shrink-0" />
+    <div className="flex-1 space-y-2">
+      <div className="h-3.5 bg-gray-200 rounded w-48" />
+      <div className="h-3 bg-gray-100 rounded w-72" />
+    </div>
+    <div className="flex gap-2">
+      <div className="h-7 w-20 bg-gray-100 rounded-lg" />
+      <div className="h-7 w-24 bg-gray-100 rounded-lg" />
+    </div>
+  </div>
+);
+
+const StatusBadge = ({ admitted }) =>
+  admitted ? (
+    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-malawiGreen border border-green-200">
+      <span className="w-1.5 h-1.5 rounded-full bg-malawiGreen inline-block" />
+      Admitted
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
+      <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 inline-block" />
+      Not admitted
+    </span>
+  );
+
+const InmateAvatar = ({ first, last }) => {
+  const initials = getInitials(first, last);
+  return (
+    <div className="w-10 h-10 rounded-xl bg-malawiBlack flex items-center justify-center shrink-0 shadow-sm">
+      <span className="text-sm font-extrabold text-malawiGold">{initials}</span>
+    </div>
+  );
+};
+
+/* ─── main component ────────────────────────────────────────────────── */
+
+const InmateTypeBadge = ({ type }) => {
+  const labels = {
+    convict: 'Convict',
+    remandee: 'General remandee',
+    murder_remandee: 'Murder remandee',
+  };
+
+  if (!type || !labels[type]) return null;
+
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+      {labels[type]}
+    </span>
+  );
+};
+
+const InmateRow = ({ inmate }) => {
+  const admission = getCurrentAdmission(inmate);
+  const isAdmitted = !!admission?.id;
+  const count = getAdmissionsCount(inmate) ?? 0;
+
+  return (
+    <div
+      className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4 transition-colors duration-150
+        ${inmate.neverAdmitted ? 'bg-yellow-50/60' : 'hover:bg-gray-50/70'}`}
+    >
+      <div className="flex items-start sm:items-center gap-4 flex-1 min-w-0">
+        <InmateAvatar first={inmate.first_name} last={inmate.last_name} />
+
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-gray-900 text-sm">
+              {inmate.first_name} {inmate.last_name}
+            </span>
+            <StatusBadge admitted={isAdmitted} />
+            <InmateTypeBadge type={admission?.inmate_type} />
+          </div>
+
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+            {inmate.prison_number && (
+              <MetaItem icon={<MdBadge />} text={inmate.prison_number} />
+            )}
+            {inmate.national_id && (
+              <MetaItem icon={<MdFingerprint />} text={inmate.national_id} />
+            )}
+            {inmate.date_of_birth && (
+              <MetaItem icon={<MdCake />} text={formatDate(inmate.date_of_birth)} />
+            )}
+            <MetaItem
+              icon={<MdBadge />}
+              text={`${count} admission${count !== 1 ? 's' : ''}`}
+            />
+          </div>
+
+          {admission?.id && (
+            <p className="text-xs text-gray-400 mt-1">
+              Current admission: <span className="font-semibold text-gray-600">#{admission.id}</span>
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 shrink-0 pl-14 sm:pl-0">
+        <Link
+          to={`/inmates/${inmate.id}`}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg
+            border border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400 transition"
+        >
+          <MdOpenInNew className="text-base" />
+          View
+        </Link>
+        {!isAdmitted && (
+          <Link
+            to={`/admissions/new?inmateId=${inmate.id}`}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg
+              bg-malawiGreen text-white hover:bg-green-800 transition shadow-sm"
+          >
+            <MdPlayArrow className="text-base" />
+            Admit
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default function AdmissionsIndexPage() {
+  const [searchParams] = useSearchParams();
+  const urlSearchQuery = searchParams.get('search') || searchParams.get('q') || '';
   const [loading, setLoading] = useState(false);
   const [inmates, setInmates] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState(urlSearchQuery);
+  const debouncedSearchQuery = useDebouncedValue(searchInput, 300);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [sortBy, setSortBy] = useState('id');
   const [sortOrder, setSortOrder] = useState('desc');
   const [perPage, setPerPage] = useState(25);
+  const [activeCategory, setActiveCategory] = useState('convicts');
 
   const loadInmates = useCallback(async () => {
     try {
@@ -28,19 +182,18 @@ export default function AdmissionsIndexPage() {
         per_page: perPage,
         page: currentPage,
         sort_by: sortBy,
-        sort_order: sortOrder
+        sort_order: sortOrder,
       };
 
-      // If there's a search query, use search endpoint; otherwise use index
       let data;
-      if (searchQuery.trim().length >= 2) {
-        data = await searchInmates({ q: searchQuery, ...params });
+      if (debouncedSearchQuery.trim().length >= 2) {
+        data = await searchInmates({ q: debouncedSearchQuery, ...params });
       } else {
         data = await listInmates(params);
       }
 
-      const inmates = data.data || [];
-      setInmates(Array.isArray(inmates) ? inmates : []);
+      const list = data.data || [];
+      setInmates(Array.isArray(list) ? list : []);
       setTotalPages(data.last_page || 1);
       setCurrentPage(data.current_page || 1);
     } catch (err) {
@@ -48,193 +201,323 @@ export default function AdmissionsIndexPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, sortBy, sortOrder, perPage, searchQuery]);
+  }, [currentPage, sortBy, sortOrder, perPage, debouncedSearchQuery]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, sortBy, sortOrder, perPage]);
+  }, [debouncedSearchQuery, sortBy, sortOrder, perPage]);
+
+  useEffect(() => {
+    setSearchInput(urlSearchQuery);
+    setCurrentPage(1);
+  }, [urlSearchQuery]);
 
   useEffect(() => {
     loadInmates();
   }, [loadInmates]);
 
-  const filteredInmates = useMemo(() => {
-    return inmates.map((inmate) => ({
-      ...inmate,
-      neverAdmitted: getAdmissionsCount(inmate) === 0 && !getCurrentAdmission(inmate)?.id
-    }));
-  }, [inmates]);
+  const filteredInmates = useMemo(
+    () =>
+      inmates.map((inmate) => ({
+        ...inmate,
+        neverAdmitted:
+          getAdmissionsCount(inmate) === 0 && !getCurrentAdmission(inmate)?.id,
+      })),
+    [inmates]
+  );
 
   const unadmittedCount = useMemo(
     () => filteredInmates.filter((i) => i.neverAdmitted).length,
     [filteredInmates]
   );
 
+  const inmateGroups = useMemo(
+    () => [
+      {
+        key: 'convicts',
+        title: 'Convicts',
+        description: 'Sentenced inmates currently admitted.',
+        icon: MdGavel,
+        tone: 'text-malawiGreen',
+        inmates: filteredInmates.filter((inmate) => getCurrentAdmission(inmate)?.inmate_type === 'convict'),
+      },
+      {
+        key: 'general_remandees',
+        title: 'General Remandees',
+        description: 'Remand inmates awaiting court outcomes.',
+        icon: MdSchedule,
+        tone: 'text-amber-600',
+        inmates: filteredInmates.filter((inmate) => getCurrentAdmission(inmate)?.inmate_type === 'remandee'),
+      },
+      {
+        key: 'murder_remandees',
+        title: 'Murder Remandees',
+        description: 'Remand inmates registered under murder cases.',
+        icon: MdPerson,
+        tone: 'text-malawiRed',
+        inmates: filteredInmates.filter((inmate) => getCurrentAdmission(inmate)?.inmate_type === 'murder_remandee'),
+      },
+    ],
+    [filteredInmates]
+  );
+
+  const activeGroup = useMemo(
+    () => inmateGroups.find((group) => group.key === activeCategory) || inmateGroups[0],
+    [activeCategory, inmateGroups]
+  );
+  const ActiveCategoryIcon = activeGroup.icon;
+
   return (
-    <div className="max-w-7xl mx-auto py-8 px-4">
-      <div className="flex items-start justify-between gap-4 mb-6">
+    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 space-y-6">
+
+      {/* ── Page Header ──────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Admissions</h1>
-          <p className="text-gray-600">Manage inmate admissions and view admission history</p>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <MdPerson className="text-malawiGreen text-3xl" />
+            Inmate Register
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Manage admissions and view inmate records
+          </p>
         </div>
+
         <Link
           to="/admissions/new"
-          className="bg-malawiGold text-malawiBlack px-4 py-2 rounded hover:bg-malawiRed hover:text-malawiGold transition font-semibold"
+          className="inline-flex items-center gap-2 bg-malawiGreen hover:bg-green-800 text-white
+            font-semibold text-sm px-4 py-2.5 rounded-xl shadow transition-all duration-200 shrink-0"
         >
-          + New admission
+          <MdAdd className="text-lg" />
+          New Admission
         </Link>
       </div>
 
+      {/* ── Alert: unadmitted inmates ─────────────────────────────── */}
       {unadmittedCount > 0 && (
-        <div className="mb-6 p-4 rounded bg-green-50 border border-malawiGreen">
-          <p className="text-green-900 font-semibold">
-            {unadmittedCount} inmate{unadmittedCount !== 1 ? 's' : ''} not yet admitted
+        <div className="flex items-center gap-3 bg-yellow-50 border border-yellow-200 rounded-xl px-5 py-3.5 shadow-sm">
+          <MdWarning className="text-yellow-500 text-xl shrink-0" />
+          <p className="text-sm font-semibold text-yellow-800">
+            {unadmittedCount} inmate{unadmittedCount !== 1 ? 's' : ''} registered but not yet admitted
           </p>
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Search</label>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by prison number, name, or national ID..."
-              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-malawiGold"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Sort by</label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-malawiGold"
-              >
-                <option value="id">ID (newest first)</option>
-                <option value="prison_number">Prison number</option>
-                <option value="first_name">First name</option>
-                <option value="last_name">Last name</option>
-                <option value="date_of_birth">Date of birth</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Order</label>
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-malawiGold"
-              >
-                <option value="desc">Descending</option>
-                <option value="asc">Ascending</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Per page</label>
-              <select
-                value={perPage}
-                onChange={(e) => setPerPage(Number(e.target.value))}
-                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-malawiGold"
-              >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
-            </div>
-          </div>
+      {/* ── Toolbar ───────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 space-y-4">
+        {/* Search */}
+        <div className="relative">
+          <MdSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl pointer-events-none" />
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search by prison number, name, or national ID…"
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm
+              focus:outline-none focus:ring-2 focus:ring-malawiGreen focus:border-malawiGreen
+              placeholder-gray-400 transition"
+          />
         </div>
 
-        <div className="mt-6 border rounded overflow-hidden">
-          {loading ? (
-            <div className="px-4 py-8 text-center text-gray-500">Loading inmates…</div>
-          ) : filteredInmates.length === 0 ? (
-            <div className="px-4 py-8 text-center text-gray-500">No inmates found.</div>
-          ) : (
-            <div className="divide-y">
-              {filteredInmates.map((inmate) => (
-                <div
-                  key={inmate.id}
-                  className={[
-                    'px-4 py-4 transition flex items-start justify-between gap-4',
-                    inmate.neverAdmitted
-                      ? 'outline outline-2 outline-malawiGreen outline-offset-[-2px] bg-green-50'
-                      : 'hover:bg-gray-50'
-                  ].join(' ')}
-                >
-                  <div className="text-left flex-1">
-                    <div className="font-semibold text-gray-800">
-                      {inmate.prison_number ? `${inmate.prison_number} — ` : ''}
-                      {inmate.first_name} {inmate.last_name}
-                    </div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      DOB: {inmate.date_of_birth ? formatDate(inmate.date_of_birth) : '—'} · 
-                      National ID: {inmate.national_id || '—'} · 
-                      Admissions: {getAdmissionsCount(inmate) ?? 0}
-                    </div>
-                    {getCurrentAdmission(inmate)?.id && (
-                      <div className="text-sm text-gray-700 mt-1">
-                        Current admission: <span className="font-semibold">#{getCurrentAdmission(inmate).id}</span>
-                      </div>
-                    )}
-                  </div>
+        {/* Filters row */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <SelectField
+            label="Sort by"
+            icon={<MdSort />}
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="id">ID (newest first)</option>
+            <option value="prison_number">Prison number</option>
+            <option value="first_name">First name</option>
+            <option value="last_name">Last name</option>
+            <option value="date_of_birth">Date of birth</option>
+          </SelectField>
 
-                  <div className="flex flex-col gap-2 shrink-0">
-                    {inmate.neverAdmitted && (
-                      <span className="inline-flex items-center text-xs font-semibold px-2 py-1 rounded bg-malawiGreen text-white">
-                        Not admitted yet
-                      </span>
-                    )}
-                    <Link
-                      to={`/inmates/${inmate.id}`}
-                      className="text-sm font-semibold text-malawiRed hover:underline"
+          <SelectField
+            label="Order"
+            icon={<MdFilterList />}
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+          >
+            <option value="desc">Descending</option>
+            <option value="asc">Ascending</option>
+          </SelectField>
+
+          <SelectField
+            label="Per page"
+            icon={<MdFilterList />}
+            value={perPage}
+            onChange={(e) => setPerPage(Number(e.target.value))}
+          >
+            <option value={10}>10 per page</option>
+            <option value={25}>25 per page</option>
+            <option value={50}>50 per page</option>
+            <option value={100}>100 per page</option>
+          </SelectField>
+        </div>
+      </div>
+
+      {/* ── Results Table ─────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Table header */}
+        <div className="hidden sm:grid grid-cols-[1fr_auto] px-5 py-3 bg-gray-50 border-b border-gray-100">
+          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+            Inmate
+          </span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+            Actions
+          </span>
+        </div>
+
+        {/* Body */}
+        {loading ? (
+          <div className="divide-y divide-gray-100">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonRow key={i} />
+            ))}
+          </div>
+        ) : filteredInmates.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
+            <MdPerson className="text-5xl opacity-30" />
+            <p className="text-sm font-medium">No inmates found</p>
+            {searchInput && (
+              <button
+                onClick={() => setSearchInput('')}
+                className="text-xs text-malawiGreen underline underline-offset-2"
+              >
+                Clear search
+              </button>
+            )}
+          </div>
+        ) : (
+          <div>
+            <div className="overflow-x-auto border-b border-gray-200 bg-white">
+              <div className="flex min-w-max gap-1 px-4 py-3" role="tablist" aria-label="Inmate register categories">
+                {inmateGroups.map((group) => {
+                  const Icon = group.icon;
+                  const selected = group.key === activeGroup.key;
+
+                  return (
+                    <button
+                      key={group.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={selected}
+                      onClick={() => setActiveCategory(group.key)}
+                      className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition
+                        ${selected
+                          ? 'bg-malawiGreen text-white shadow-sm'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
                     >
-                      View profile
-                    </Link>
-                    {!getCurrentAdmission(inmate)?.id && (
-                      <Link
-                        to={`/admissions/new?inmateId=${inmate.id}`}
-                        className="text-sm font-semibold text-malawiGold hover:underline"
+                      <Icon className={`text-lg ${selected ? 'text-white' : group.tone}`} />
+                      <span>{group.title}</span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs
+                          ${selected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}
                       >
-                        Start admission
-                      </Link>
-                    )}
+                        {group.inmates.length}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <section>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-5 py-4 bg-gray-50 border-b border-gray-100">
+                <div className="flex items-start gap-3">
+                  <ActiveCategoryIcon className={`${activeGroup.tone} text-2xl mt-0.5 shrink-0`} />
+                  <div>
+                    <h2 className="text-sm font-bold text-gray-900">{activeGroup.title}</h2>
+                    <p className="text-xs text-gray-500">{activeGroup.description}</p>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                <span className="inline-flex self-start sm:self-center items-center rounded-full bg-white border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-700">
+                  {activeGroup.inmates.length} record{activeGroup.inmates.length === 1 ? '' : 's'}
+                </span>
+              </div>
 
-        {totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-between">
-            <div className="text-sm text-gray-600">
-              Page {currentPage} of {totalPages}
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1 || loading}
-                className="px-4 py-2 border rounded text-sm font-semibold hover:bg-gray-50 disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages || loading}
-                className="px-4 py-2 border rounded text-sm font-semibold hover:bg-gray-50 disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
+              {activeGroup.inmates.length === 0 ? (
+                <div className="px-5 py-16 text-center text-sm text-gray-400">
+                  No {activeGroup.title.toLowerCase()} found.
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {activeGroup.inmates.map((inmate) => (
+                    <InmateRow key={inmate.id} inmate={inmate} />
+                  ))}
+                </div>
+              )}
+            </section>
           </div>
         )}
       </div>
+
+      {/* ── Pagination ────────────────────────────────────────────── */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between gap-4 bg-white rounded-2xl shadow-sm border border-gray-200 px-5 py-3">
+          <span className="text-sm text-gray-500">
+            Page <span className="font-semibold text-gray-800">{currentPage}</span> of{' '}
+            <span className="font-semibold text-gray-800">{totalPages}</span>
+          </span>
+
+          <div className="flex gap-2">
+            <PaginationBtn
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1 || loading}
+              icon={<MdChevronLeft className="text-xl" />}
+              label="Previous"
+            />
+            <PaginationBtn
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages || loading}
+              icon={<MdChevronRight className="text-xl" />}
+              label="Next"
+              iconRight
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+/* ─── micro-components ──────────────────────────────────────────────── */
+
+const MetaItem = ({ icon, text }) => (
+  <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+    <span className="text-gray-400">{icon}</span>
+    {text}
+  </span>
+);
+
+const SelectField = ({ label, icon, value, onChange, children }) => (
+  <div>
+    <label className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</label>
+    <div className="relative flex items-center">
+      <span className="absolute left-2.5 text-gray-400 text-base pointer-events-none">{icon}</span>
+      <select
+        value={value}
+        onChange={onChange}
+        className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm bg-white
+          focus:outline-none focus:ring-2 focus:ring-malawiGreen focus:border-malawiGreen transition"
+      >
+        {children}
+      </select>
+    </div>
+  </div>
+);
+
+const PaginationBtn = ({ onClick, disabled, icon, label, iconRight }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300
+      text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40
+      disabled:cursor-not-allowed transition"
+  >
+    {!iconRight && icon}
+    {label}
+    {iconRight && icon}
+  </button>
+);

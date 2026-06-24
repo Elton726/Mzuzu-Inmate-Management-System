@@ -5,7 +5,7 @@
  * - Tailwind CSS directives for base styles, components, and utilities
  * - Custom utility classes for Malawi-themed colors
  * - Component-specific styles for consistent UI elements
- * - Global body styling with Malawi gold background
+ * - Global body styling with a softened Malawi gold background
  */
 
 /* Import Tailwind CSS layers */
@@ -19,13 +19,13 @@
  * These classes provide consistent access to the official Malawi color scheme:
  * - Black (#000000) - Primary text and borders
  * - Red (#D71920) - Error states and important actions
- * - Gold (#FFD700) - Primary brand color, backgrounds, accents
+ * - Gold (#FFD700) - Primary brand color and accents
  * - Green (#00843D) - Success states and positive actions
  */
 @layer utilities {
   /* Gold color utilities */
   .bg-malawiGold {
-    background-color: #FFD700;
+    background-color: #fef3c7;
   }
   .text-malawiBlack {
     color: #000000;
@@ -76,34 +76,116 @@
 /**
  * Global Body Styling
  *
- * Sets the default page background to Malawi gold
+ * Sets the default page background to a faded Malawi gold
  * Ensures consistent base styling across all pages
  */
 body {
-  @apply bg-yellow-400 text-black font-sans;
+  background-color: #fef3c7;
+  @apply text-black font-sans;
   /* For custom background, use .bg-malawiGold in JSX */
 }
 
 .dark body {
-  @apply bg-slate-950 text-white;
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+.dark .bg-malawiGold {
+  background-color: #fde68a;
+}
+
+.dark .text-malawiGold {
+  color: #fde68a;
+}
+
+.dark .bg-malawiRed {
+  background-color: #991b1b;
+}
+
+.dark .text-malawiRed {
+  color: #fecaca;
+}
+
+.dark .bg-malawiGreen {
+  background-color: #065f46;
+}
+
+.dark .border-malawiGreen {
+  border-color: #166534;
+}
+
+.dark .border-malawiGold {
+  border-color: #f59e0b;
 }
 
 .dark .bg-white {
   background-color: #0f172a;
 }
 
-.dark .text-gray-900 {
+.dark .text-gray-900,
+.dark .text-black,
+.dark .text-malawiBlack {
   color: #f8fafc;
 }
 
-.dark .text-gray-700 {
-  color: #cbd5e1;
+.dark .text-gray-800 {
+  color: #e2e8f0;
 }
 
-.dark .bg-gray-50 {
-  background-color: #1e293b;
+.dark .text-gray-700,
+.dark .text-gray-600,
+.dark .text-gray-500 {
+  color: #94a3b8;
 }
 
-.dark .border-gray-200 {
-  border-color: #334155;
+.dark .bg-gray-50,
+.dark .bg-gray-100 {
+  background-color: #111827;
+}
+
+.dark .bg-gray-200,
+.dark .bg-gray-300 {
+  background-color: #1f2937;
+}
+
+.dark .border-gray-200,
+.dark .border-gray-300,
+.dark .border-black,
+.dark .border-malawiBlack {
+  border-color: #475569;
+}
+
+.dark .hover\:bg-white:hover,
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover,
+.dark .hover\:bg-gray-200:hover,
+.dark .hover\:bg-malawiGold:hover {
+  background-color: #1f2937;
+}
+
+.dark .focus\:bg-gray-50:focus,
+.dark .focus\:bg-gray-100:focus {
+  background-color: #1f2937;
+}
+
+.dark .hover\:text-gray-700:hover,
+.dark .hover\:text-gray-800:hover,
+.dark .hover\:text-malawiBlack:hover {
+  color: #f8fafc;
+}
+
+.dark .hover\:bg-malawiBlack:hover {
+  background-color: #334155;
+}
+
+input,
+textarea,
+select {
+  @apply text-gray-900 bg-white;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  @apply text-white bg-slate-900;
 }

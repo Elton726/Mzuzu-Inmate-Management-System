@@ -404,6 +404,16 @@ class ApiService {
   }
 
   /**
+   * List inmates with optional pagination and sorting.
+   * @param {Object} params - Query parameters
+   * @returns {Promise<Object>} Paginated inmate list
+   */
+  async listInmates(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request('admissions_ops', `/inmates${queryString ? `?${queryString}` : ''}`, { method: 'GET' });
+  }
+
+  /**
    * Get inmate by ID
    * @param {number} inmateId - Inmate ID
    * @returns {Promise<Object>} Inmate data

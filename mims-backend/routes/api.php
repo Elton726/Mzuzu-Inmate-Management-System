@@ -107,6 +107,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         Route::post('/admissions', [AdmissionController::class, 'store'])->middleware('throttle:30,60,user');
 
+        Route::get('/cells', [CellController::class, 'index'])->middleware('throttle:60,60,user');
         Route::get('/cells/available', [CellController::class, 'available'])->middleware('throttle:60,60,user');
         Route::get('/activities', [ActivityController::class, 'index'])->middleware('throttle:60,60,user');
         Route::post('/documents', [DocumentController::class, 'store'])->middleware('throttle:30,60,user');

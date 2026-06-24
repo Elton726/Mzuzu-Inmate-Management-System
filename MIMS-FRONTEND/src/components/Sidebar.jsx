@@ -1,257 +1,350 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
-import { MdHome, MdPerson, MdDashboard, MdPeople, MdLogout, MdAssignment, MdHistory, MdSchedule, MdLocalActivity, MdCheckCircle, MdExitToApp, MdEditCalendar } from 'react-icons/md';
-import { ROLES } from '../utils/helpers';
-import logo from '/government-logo.png';
+import {
+  MdHome,
+  MdPerson,
+  MdAdd,
+  MdDashboard,
+  MdPeople,
+  MdAssignment,
+  MdHistory,
+  MdSchedule,
+  MdLocalActivity,
+  MdCheckCircle,
+  MdExitToApp,
+  MdEditCalendar,
+  MdChevronLeft,
+  MdChevronRight,
+  MdLogout
+} from 'react-icons/md';
+import { ROLES, getRoleDisplayName, getRoleName } from '../utils/helpers';
+import logo from '/cuffs.png';
 
-/**
- * Sidebar Navigation Component
- *
- * Main navigation sidebar for authenticated users with role-based menu items.
- * Features Malawi government branding, responsive design, and logout confirmation.
- *
- * Features:
- * - Role-based navigation (admin, reception officer, regular users)
- * - Malawi government logo and branding
- * - Collapsible/closeable design
- * - Logout confirmation modal
- * - Responsive layout with fixed positioning
- *
- * Navigation Items by Role:
- * - All users: Profile
- * - Non-admin: Home
- * - Reception Officer: Admissions
- * - Admin: Admin Dashboard, User Management
- *
- * @param {Object} props - Component props
- * @param {Function} props.onClose - Callback to close/hide the sidebar
- */
-const Sidebar = ({ onClose }) => {
-  const { logout, isAdmin, getRoleName, loading } = useAuth();
+const roleTone = {
+  admin: 'bg-red-950/40 text-red-400 border-red-900/50',
+  reception_officer: 'bg-green-950/40 text-green-400 border-green-900/50',
+  station_officer: 'bg-blue-950/40 text-blue-400 border-blue-900/50',
+  officer_on_duty: 'bg-amber-950/40 text-amber-400 border-amber-900/50',
+  gatekeeper: 'bg-purple-950/40 text-purple-400 border-purple-900/50',
+};
+
+const avatarTone = {
+  admin: 'bg-malawiRed text-white',
+  reception_officer: 'bg-malawiGreen text-white',
+  station_officer: 'bg-blue-600 text-white',
+  officer_on_duty: 'bg-malawiGold text-malawiBlack',
+  gatekeeper: 'bg-purple-700 text-white',
+};
+
+const getInitials = (user) => {
+  const source = user?.name || user?.email || 'User';
+  const parts = source
+    .replace(/@.*/, '')
+    .split(/\s+|[._-]+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) return 'U';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+};
+
+export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }) {
+  const { user, isAdmin, logout, loading } = useAuth();
   const navigate = useNavigate();
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const role = getRoleName();
+  const role = getRoleName(user);
+
+  const handleLogout = async () => {
+    if (window.confirm("Are you sure you want to log out?")) {
+      await logout();
+      navigate('/login');
+    }
+  };
 
   // Show loading skeleton while auth is initializing
   if (loading) {
     return (
-      <aside className="w-64 h-screen bg-malawiBlack text-malawiGold flex flex-col shadow-lg fixed top-0 left-0 z-50">
-        <div className="flex items-center justify-center h-24 border-b border-malawiGold px-4">
-          <div className="animate-pulse bg-gray-600 h-16 w-16 rounded-full"></div>
+      <aside className={`h-screen bg-zinc-950 text-gray-300 border-r border-zinc-800/80 shadow-lg fixed top-0 left-0 z-50 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
+        <div className="flex items-center justify-center h-20 border-b border-zinc-800/80 px-4">
+          <div className="animate-pulse bg-zinc-800 h-10 w-10 rounded-full"></div>
         </div>
-        <div className="flex-1 mt-8 px-6 space-y-4">
+        <div className="flex-1 mt-8 px-4 space-y-4">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="animate-pulse bg-gray-700 h-8 rounded"></div>
+            <div key={i} className="animate-pulse bg-zinc-900 h-10 rounded-lg"></div>
           ))}
         </div>
       </aside>
     );
   }
 
-  /**
-   * Handle logout button click - show confirmation modal
-   */
-  const handleLogoutClick = () => {
-    setShowConfirmation(true);
-  };
+  const sections = [
+    {
+      id: 'core',
+      title: 'General',
+      items: [
+        {
+          to: '/',
+          end: true,
+          icon: MdHome,
+          title: 'Home',
+          show: !isAdmin
+        }
+      ]
+    },
+    {
+      id: 'admissions',
+      title: 'Admission',
+      items: [
+        {
+          to: '/admissions',
+          icon: MdAssignment,
+          title: 'Admissions Register',
+          show: role === ROLES.RECEPTION_OFFICER
+        },
+        {
+          to: '/admissions/new',
+          icon: MdAdd,
+          title: 'New Admission',
+          show: role === ROLES.RECEPTION_OFFICER
+        }
+      ]
+    },
+    {
+      id: 'activities',
+      title: 'Activities',
+      items: [
+        {
+          to: '/officer/activities',
+          icon: MdLocalActivity,
+          title: 'Available Activities',
+          show: role === ROLES.OFFICER_ON_DUTY
+        },
+        {
+          to: '/officer/activity-sessions',
+          icon: MdLocalActivity,
+          title: 'Activity Sessions',
+          show: role === ROLES.OFFICER_ON_DUTY
+        }
+      ]
+    },
+    {
+      id: 'releases',
+      title: 'Releases',
+      items: [
+        {
+          to: '/releases/approval',
+          icon: MdCheckCircle,
+          title: 'Release Approval',
+          show: role === ROLES.STATION_OFFICER
+        },
+        {
+          to: '/releases/sentences',
+          icon: MdEditCalendar,
+          title: 'Sentence Lengths',
+          show: role === ROLES.STATION_OFFICER
+        },
+        {
+          to: '/releases/confirmation',
+          icon: MdExitToApp,
+          title: 'Confirm Release',
+          show: role === ROLES.GATEKEEPER
+        },
+        {
+          to: '/releases/confirmed',
+          icon: MdHistory,
+          title: 'Confirmed Releases',
+          show: role === ROLES.STATION_OFFICER
+        },
+        {
+          to: '/releases/history',
+          icon: MdHistory,
+          title: 'Release History',
+          show: role === ROLES.STATION_OFFICER || role === ROLES.GATEKEEPER
+        }
+      ]
+    },
+    {
+      id: 'visitation',
+      title: 'Visitation',
+      items: [
+        {
+          to: '/visitation/visitors',
+          icon: MdPerson,
+          title: 'Visitation',
+          show: role === ROLES.GATEKEEPER
+        }
+      ]
+    },
+    {
+      id: 'system',
+      title: 'Administration',
+      items: [
+        {
+          to: '/admin/dashboard',
+          icon: MdDashboard,
+          title: 'Admin Dashboard',
+          show: isAdmin
+        },
+        {
+          to: '/admin/users',
+          icon: MdPeople,
+          title: 'User Management',
+          show: isAdmin
+        },
+        {
+          to: '/admin/audit-logs',
+          icon: MdHistory,
+          title: 'Audit Logs',
+          show: isAdmin
+        },
+        {
+          to: '/admin/duty-rosters',
+          icon: MdSchedule,
+          title: 'Duty Rosters',
+          show: isAdmin
+        },
+        {
+          to: '/admin/activities',
+          icon: MdLocalActivity,
+          title: 'Activities',
+          show: isAdmin
+        }
+      ]
+    }
+  ];
 
-  /**
-   * Confirm and execute logout
-   * Calls auth logout and redirects to login page
-   */
-  const handleConfirmLogout = async () => {
-    setShowConfirmation(false);
-    await logout();
-    navigate('/login');
-  };
-
-  /**
-   * Cancel logout - hide confirmation modal
-   */
-  const handleCancelLogout = () => {
-    setShowConfirmation(false);
-  };
+  const filteredSections = sections
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => item.show)
+    }))
+    .filter(section => section.items.length > 0);
 
   return (
-    <aside className="w-64 h-screen bg-malawiBlack text-malawiGold flex flex-col shadow-lg fixed top-0 left-0 z-50 transition-transform duration-300">
-      {/* Header with government logo and close button */}
-      <div className="flex items-center justify-between h-24 border-b border-malawiGold px-4">
-        <div className="flex items-center">
-          <img src={logo} alt="Malawi Government Logo" className="h-16 w-16 rounded-full border-4 border-malawiRed" />
-          <span className="ml-4 text-xl font-bold">Malawi Government</span>
+    <aside className={`h-screen bg-zinc-950 text-gray-300 border-r border-zinc-800/80 shadow-2xl fixed top-0 left-0 z-50 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'}`}>
+      {/* Header with cuffs logo */}
+      <div className="flex items-center h-20 border-b border-zinc-800/80 px-4 justify-between gap-3 flex-shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <img
+            src={logo}
+            alt="Cuffs logo"
+            className="h-10 w-10 rounded-full border border-malawiRed flex-shrink-0"
+          />
+          {!isCollapsed && (
+            <span className="text-white text-base font-bold tracking-wide truncate">
+              Mzuzu MIMS
+            </span>
+          )}
         </div>
+
+        {/* Toggle Collapse Button */}
         <button
-          className="bg-malawiGold text-malawiBlack rounded-full p-2 hover:bg-malawiRed hover:text-malawiGold transition"
-          onClick={onClose}
-          aria-label="Close sidebar"
+          type="button"
+          onClick={() => setIsCollapsed?.(!isCollapsed)}
+          className="hidden md:flex items-center justify-center p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors duration-200"
+          title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
         >
-          ✕
+          {isCollapsed ? <MdChevronRight className="text-xl" /> : <MdChevronLeft className="text-xl" />}
         </button>
       </div>
 
       {/* Main navigation menu */}
-      <nav className="flex-1 mt-8">
-        <ul className="space-y-4 px-6">
-          {/* Home link for non-admin users */}
-          {!isAdmin && (
-            <li>
-              <Link to="/" className="hover:text-malawiRed transition flex items-center">
-                <MdHome className="mr-2 text-xl" /> Home
-              </Link>
-            </li>
-          )}
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 space-y-6 scrollbar-thin">
+        {filteredSections.map(section => (
+          <div key={section.id} className="space-y-1.5">
+            {!isCollapsed && (
+              <h3 className="px-3 text-[10px] font-bold text-zinc-500 tracking-widest uppercase mb-1">
+                {section.title}
+              </h3>
+            )}
+            <ul className="space-y-1">
+              {section.items.map(item => {
+                const Icon = item.icon;
+                return (
+                  <li key={item.to} className="relative group">
+                    <NavLink
+                      to={item.to}
+                      end={item.end}
+                      onClick={() => onClose?.()}
+                      className={({ isActive }) =>
+                        `flex items-center rounded-lg px-3 py-2.5 transition-all duration-200 ${
+                          isCollapsed ? 'justify-center' : 'gap-3'
+                        } ${
+                          isActive
+                            ? 'bg-malawiGreen/25 text-white font-semibold border-l-4 border-malawiGreen shadow-inner'
+                            : 'text-zinc-400 hover:bg-zinc-900/60 hover:text-white'
+                        }`
+                      }
+                    >
+                      <Icon className="text-xl flex-shrink-0 transition-colors group-hover:text-white" />
+                      {!isCollapsed && <span className="truncate text-sm">{item.title}</span>}
+                    </NavLink>
 
-          {/* Admissions link for reception officers */}
-          {role === ROLES.RECEPTION_OFFICER && (
-            <li>
-              <Link to="/admissions" className="hover:text-malawiGold transition flex items-center">
-                <MdAssignment className="mr-2 text-xl" /> Admissions
-              </Link>
-            </li>
-          )}
-
-          {/* Officer on duty - activity sessions */}
-          {role === ROLES.OFFICER_ON_DUTY && (
-            <>
-              <li>
-                <Link to="/officer/activities" className="hover:text-malawiGold transition flex items-center">
-                  <MdLocalActivity className="mr-2 text-xl" /> Available Activities
-                </Link>
-              </li>
-              <li>
-                <Link to="/officer/activity-sessions" className="hover:text-malawiGold transition flex items-center">
-                  <MdLocalActivity className="mr-2 text-xl" /> Activity Sessions
-                </Link>
-              </li>
-            </>
-          )}
-
-          {/* Release Management - Station Officer & Gatekeeper */}
-          {(role === ROLES.STATION_OFFICER || role === ROLES.GATEKEEPER) && (
-            <>
-              <li className="text-malawiRed text-sm font-semibold mt-4 mb-2">Releases</li>
-              {role === ROLES.STATION_OFFICER && (
-                <li>
-                  <Link to="/releases/approval" className="hover:text-malawiGold transition flex items-center">
-                    <MdCheckCircle className="mr-2 text-xl" /> Release Approval
-                  </Link>
-                </li>
-              )}
-              {role === ROLES.STATION_OFFICER && (
-                <li>
-                  <Link to="/releases/sentences" className="hover:text-malawiGold transition flex items-center">
-                    <MdEditCalendar className="mr-2 text-xl" /> Sentence Lengths
-                  </Link>
-                </li>
-              )}
-              {role === ROLES.GATEKEEPER && (
-                <li>
-                  <Link to="/releases/confirmation" className="hover:text-malawiGold transition flex items-center">
-                    <MdExitToApp className="mr-2 text-xl" /> Confirm Release
-                  </Link>
-                </li>
-              )}
-              {role === ROLES.STATION_OFFICER && (
-                <li>
-                  <Link to="/releases/confirmed" className="hover:text-malawiGold transition flex items-center">
-                    <MdHistory className="mr-2 text-xl" /> Confirmed Releases
-                  </Link>
-                </li>
-              )}
-              {(role === ROLES.STATION_OFFICER || role === ROLES.GATEKEEPER) && (
-                <li>
-                  <Link to="/releases/history" className="hover:text-malawiGold transition flex items-center">
-                    <MdHistory className="mr-2 text-xl" /> Release History
-                  </Link>
-                </li>
-              )}
-            </>
-          )}
-
-          {role === ROLES.GATEKEEPER && (
-            <>
-              <li className="text-malawiRed text-sm font-semibold mt-4 mb-2">Visitation</li>
-              <li>
-                <Link to="/visitation/visitors" className="hover:text-malawiGold transition flex items-center">
-                  <MdPerson className="mr-2 text-xl" /> Visitation
-                </Link>
-              </li>
-            </>
-          )}
-
-          {/* Profile link for all users */}
-          <li>
-            <Link to="/profile" className="hover:text-malawiGreen transition flex items-center">
-              <MdPerson className="mr-2 text-xl" /> Profile
-            </Link>
-          </li>
-
-          {/* Admin-only navigation items */}
-          {isAdmin && (
-            <>
-              <li>
-                <Link to="/admin/dashboard" className="hover:text-malawiGold transition flex items-center">
-                  <MdDashboard className="mr-2 text-xl" /> Admin Dashboard
-                </Link>
-              </li>
-              <li>
-                <Link to="/admin/users" className="hover:text-malawiRed transition flex items-center">
-                  <MdPeople className="mr-2 text-xl" /> User Management
-                </Link>
-              </li>
-              <li>
-                <Link to="/admin/audit-logs" className="hover:text-malawiGreen transition flex items-center">
-                  <MdHistory className="mr-2 text-xl" /> Audit Logs
-                </Link>
-              </li>
-              <li>
-                <Link to="/admin/duty-rosters" className="hover:text-malawiGold transition flex items-center">
-                  <MdSchedule className="mr-2 text-xl" /> Duty Rosters
-                </Link>
-              </li>
-              <li>
-                <Link to="/admin/activities" className="hover:text-malawiRed transition flex items-center">
-                  <MdLocalActivity className="mr-2 text-xl" /> Activities
-                </Link>
-              </li>
-            </>
-          )}
-        </ul>
+                    {/* Collapsed Tooltip */}
+                    {isCollapsed && (
+                      <div className="absolute left-full ml-4 px-2.5 py-1.5 bg-zinc-900 text-xs font-semibold text-white rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-x-2 group-hover:translate-x-0 pointer-events-none whitespace-nowrap z-50 shadow-xl border border-zinc-800">
+                        {item.title}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
       </nav>
 
-      {/* Logout button at bottom */}
-      <div className="mt-auto px-6 py-4 border-t border-malawiGold">
-        <button onClick={handleLogoutClick} className="w-full bg-malawiRed text-malawiGold py-2 rounded hover:bg-malawiGold hover:text-malawiBlack transition font-semibold flex items-center justify-center gap-2">
-          <MdLogout /> Logout
-        </button>
-      </div>
+      {/* Profile Footer Section */}
+      {user && (
+        <div className="border-t border-zinc-800/80 p-4 bg-zinc-950/40 flex-shrink-0">
+          <div className={`flex items-center ${isCollapsed ? 'justify-center flex-col' : 'justify-between'} gap-3`}>
+            <NavLink
+              to="/profile"
+              onClick={() => onClose?.()}
+              className={`flex items-center gap-3 min-w-0 ${isCollapsed ? 'justify-center' : 'flex-1'}`}
+              title="Open profile"
+            >
+              {/* Avatar circle */}
+              <div className={`flex shrink-0 items-center justify-center rounded-full font-black shadow-sm h-10 w-10 text-sm ${avatarTone[role] || 'bg-zinc-800 text-white'}`}>
+                {getInitials(user)}
+              </div>
 
-      {/* Logout confirmation modal */}
-      {showConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
-          <div className="bg-malawiGold text-malawiBlack rounded-lg shadow-lg p-6 max-w-sm mx-4">
-            <h2 className="text-xl font-semibold mb-4">Confirm Logout</h2>
-            <p className="text-gray-700 mb-6">Are you sure you want to log out?</p>
-            <div className="flex gap-4 justify-end">
+              {/* Text Info */}
+              {!isCollapsed && (
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-white truncate">
+                    {user.name || 'Unnamed Officer'}
+                  </div>
+                  <div className={`mt-0.5 inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold uppercase border ${roleTone[role] || 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}>
+                    {getRoleDisplayName(user) || 'Staff'}
+                  </div>
+                </div>
+              )}
+            </NavLink>
+
+            {/* Logout Button */}
+            {!isCollapsed ? (
               <button
-                onClick={handleCancelLogout}
-                className="px-4 py-2 rounded bg-gray-400 text-white hover:bg-gray-500 transition font-semibold"
+                type="button"
+                onClick={handleLogout}
+                className="p-2 text-zinc-400 hover:text-red-500 transition-colors duration-200 rounded-lg hover:bg-zinc-900 flex-shrink-0"
+                title="Logout"
               >
-                Cancel
+                <MdLogout className="text-xl" />
               </button>
+            ) : (
               <button
-                onClick={handleConfirmLogout}
-                className="px-4 py-2 rounded bg-malawiRed text-malawiGold hover:bg-red-700 transition font-semibold"
+                type="button"
+                onClick={handleLogout}
+                className="w-10 h-10 mt-1 flex items-center justify-center text-zinc-400 hover:text-red-500 transition-colors duration-200 rounded-lg hover:bg-zinc-900 flex-shrink-0"
+                title="Logout"
               >
-                Logout
+                <MdLogout className="text-xl" />
               </button>
-            </div>
+            )}
           </div>
         </div>
       )}
     </aside>
   );
-};
-
-export default Sidebar;
+}

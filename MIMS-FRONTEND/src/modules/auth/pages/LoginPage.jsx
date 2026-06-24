@@ -50,23 +50,23 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-yellow-300 to-yellow-500 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-malawiGold flex items-center justify-center p-4">
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-yellow-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
-        <div className="absolute bottom-20 right-10 w-72 h-72 bg-yellow-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+        <div className="absolute top-20 left-10 w-72 h-72 bg-yellow-100 dark:bg-slate-600 rounded-full mix-blend-multiply filter blur-3xl opacity-30 dark:opacity-20"></div>
+        <div className="absolute bottom-20 right-10 w-72 h-72 bg-yellow-200 dark:bg-slate-500 rounded-full mix-blend-multiply filter blur-3xl opacity-25 dark:opacity-20"></div>
       </div>
 
       {/* Main login container */}
       <div className="w-full max-w-md relative z-10">
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <div className="!bg-white rounded-2xl shadow-2xl overflow-hidden">
           {/* Header section with accent bar */}
-          <div className="bg-white px-8 py-6">
+          <div className="!bg-white px-8 py-6">
             <div className="text-center">
-              <h1 className="text-4xl font-bold text-malawiBlack mb-1">
+              <h1 className="text-4xl font-bold !text-malawiBlack mb-1">
                 MIMS
               </h1>
-              <p className="text-gray-600 text-sm font-semibold tracking-wide">
+              <p className="!text-gray-600 text-sm font-semibold tracking-wide">
                 Mzuzu Inmate Management System
               </p>
             </div>
@@ -82,7 +82,7 @@ export const LoginPage = () => {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-malawiBlack font-semibold mb-3 text-sm">
+                <label className="block !text-malawiBlack font-semibold mb-3 text-sm">
                   Email Address
                 </label>
                 <input
@@ -91,12 +91,12 @@ export const LoginPage = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
                   required
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-malawiBlack focus:border-transparent hover:border-gray-400 transition-colors"
+                  className="w-full px-4 py-3 border-2 border-gray-300 !bg-white !text-gray-950 placeholder:text-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-malawiBlack focus:border-transparent hover:border-gray-400 transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-malawiBlack font-semibold mb-3 text-sm">
+                <label className="block !text-malawiBlack font-semibold mb-3 text-sm">
                   Password
                 </label>
                 <input
@@ -105,7 +105,7 @@ export const LoginPage = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   required
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-malawiBlack focus:border-transparent hover:border-gray-400 transition-colors"
+                  className="w-full px-4 py-3 border-2 border-gray-300 !bg-white !text-gray-950 placeholder:text-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-malawiBlack focus:border-transparent hover:border-gray-400 transition-colors"
                 />
               </div>
 
@@ -120,7 +120,7 @@ export const LoginPage = () => {
 
             {/* Footer */}
             <div className="mt-8 pt-6 border-t border-gray-200">
-              <p className="text-center text-gray-500 text-xs">
+              <p className="text-center !text-gray-500 text-xs">
                 © 2026 Malawi Prison Service. All rights reserved.
               </p>
             </div>
