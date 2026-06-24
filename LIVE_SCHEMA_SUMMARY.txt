@@ -1,0 +1,1041 @@
+﻿
+> CREATE TABLE public.activities (
+      id bigint NOT NULL,
+      name character varying(100) NOT NULL,
+>     CONSTRAINT activities_security_level_check CHECK 
+(((security_level)::text = ANY ((ARRAY['low'::character varying, 
+'medium'::character varying, 'high'::character varying])::text[]))),
+>     CONSTRAINT activities_source_type_check CHECK (((source_type)::text = 
+ANY ((ARRAY['predefined'::character varying, 'custom'::character 
+varying])::text[])))
+  );
+  
+> CREATE TABLE public.inmate_activities (
+      id bigint NOT NULL,
+      inmate_id bigint NOT NULL,
+> CREATE TABLE public.inmates (
+      id bigint NOT NULL,
+      created_at timestamp(0) without time zone,
+>     CONSTRAINT inmates_status_check CHECK (((status)::text = ANY 
+((ARRAY['active'::character varying, 'released'::character varying, 
+'deceased'::character varying, 'transferred'::character varying])::text[])))
+  );
+  
+> CREATE TABLE public.users (
+      id bigint NOT NULL,
+      name character varying(255) NOT NULL,
+> CREATE TABLE public.visitation_sessions (
+      id bigint NOT NULL,
+      inmate_id bigint NOT NULL,
+>     CONSTRAINT visitation_sessions_status_check CHECK (((status)::text = ANY 
+((ARRAY['scheduled'::character varying, 'in_progress'::character varying, 
+'completed'::character varying, 'cancelled'::character varying, 
+'no_show'::character varying])::text[])))
+  );
+  
+> CREATE TABLE public.visitors (
+      id bigint NOT NULL,
+      first_name character varying(50) NOT NULL,
+>     CONSTRAINT visitors_relationship_check CHECK (((relationship)::text = 
+ANY ((ARRAY['family'::character varying, 'friend'::character varying, 
+'legal_representative'::character varying, 'social_worker'::character varying, 
+'charity_representative'::character varying, 'other'::character 
+varying])::text[])))
+  );
+  
+> CREATE TABLE public.activity_assignment_logs (
+      id bigint NOT NULL,
+      inmate_activity_id bigint NOT NULL,
+> CREATE TABLE public.activity_categories (
+      id bigint NOT NULL,
+      name character varying(50) NOT NULL,
+> CREATE TABLE public.activity_sessions (
+      id bigint NOT NULL,
+      activity_id bigint NOT NULL,
+>     CONSTRAINT activity_sessions_status_check CHECK (((status)::text = ANY 
+((ARRAY['scheduled'::character varying, 'in_progress'::character varying, 
+'completed'::character varying, 'cancelled'::character varying])::text[])))
+  );
+  
+> CREATE TABLE public.admissions (
+      id bigint NOT NULL,
+      inmate_id bigint NOT NULL,
+>     CONSTRAINT admissions_admission_type_check CHECK 
+(((admission_type)::text = ANY ((ARRAY['first_time'::character varying, 
+'repeat'::character varying])::text[]))),
+>     CONSTRAINT admissions_inmate_type_check CHECK (((inmate_type)::text = 
+ANY ((ARRAY['convict'::character varying, 'remandee'::character varying, 
+'murder_remandee'::character varying])::text[])))
+  );
+  
+> CREATE TABLE public.audit_logs (
+      id bigint NOT NULL,
+      user_id bigint,
+> CREATE TABLE public.cache (
+      key character varying(255) NOT NULL,
+      value text NOT NULL,
+> CREATE TABLE public.cache_locks (
+      key character varying(255) NOT NULL,
+      owner character varying(255) NOT NULL,
+> CREATE TABLE public.cell_allocations (
+      id bigint NOT NULL,
+      inmate_id bigint NOT NULL,
+> CREATE TABLE public.cells (
+      id bigint NOT NULL,
+      cell_number character varying(20) NOT NULL,
+>     CONSTRAINT cells_security_classification_check CHECK 
+(((security_classification)::text = ANY ((ARRAY['maximum'::character varying, 
+'medium'::character varying, 'minimum'::character varying])::text[]))),
+>     CONSTRAINT cells_status_check CHECK (((status)::text = ANY 
+((ARRAY['available'::character varying, 'full'::character varying, 
+'maintenance'::character varying])::text[])))
+  );
+  
+> CREATE TABLE public.officer_duty_rosters (
+      id bigint NOT NULL,
+      officer_id bigint NOT NULL,
+>     CONSTRAINT officer_duty_rosters_shift_type_check CHECK 
+(((shift_type)::text = 'full_day'::text)),
+>     CONSTRAINT officer_duty_rosters_week_range_check CHECK ((duty_week_end 
+>= duty_week_start))
+  );
+  
+> CREATE TABLE public.documents (
+      id bigint NOT NULL,
+      inmate_id bigint NOT NULL,
+> CREATE TABLE public.external_activity_details (
+      id bigint NOT NULL,
+      activity_id bigint NOT NULL,
+> CREATE TABLE public.failed_jobs (
+      id bigint NOT NULL,
+      uuid character varying(255) NOT NULL,
+> CREATE TABLE public.inmate_visitor_registrations (
+      id bigint NOT NULL,
+      inmate_id bigint NOT NULL,
+> CREATE TABLE public.release_workflow (
+      id bigint NOT NULL,
+      admission_id bigint NOT NULL,
+> CREATE TABLE public.job_batches (
+      id character varying(255) NOT NULL,
+      name character varying(255) NOT NULL,
+> CREATE TABLE public.jobs (
+      id bigint NOT NULL,
+      queue character varying(255) NOT NULL,
+> CREATE TABLE public.migrations (
+      id integer NOT NULL,
+      migration character varying(255) NOT NULL,
+> CREATE TABLE public.password_reset_tokens (
+      email character varying(255) NOT NULL,
+      token character varying(255) NOT NULL,
+> CREATE TABLE public.personal_access_tokens (
+      id bigint NOT NULL,
+      tokenable_type character varying(255) NOT NULL,
+> CREATE TABLE public.roles (
+      id bigint NOT NULL,
+      name character varying(50) NOT NULL,
+> CREATE TABLE public.sentence_adjustments (
+      id bigint NOT NULL,
+      admission_id bigint NOT NULL,
+> CREATE TABLE public.session_attendance (
+      id bigint NOT NULL,
+      session_id bigint NOT NULL,
+>     CONSTRAINT session_attendance_status_check CHECK 
+(((attendance_status)::text = ANY ((ARRAY['present'::character varying, 
+'absent'::character varying, 'late'::character varying, 'excused'::character 
+varying])::text[])))
+  );
+  
+> CREATE TABLE public.sessions (
+      id character varying(255) NOT NULL,
+      user_id bigint,
+> CREATE TABLE public.visitation_denials (
+      id bigint NOT NULL,
+      visitation_session_id bigint NOT NULL,
+> CREATE TABLE public.visitation_items (
+      id bigint NOT NULL,
+      visitation_session_id bigint NOT NULL,
+>     CONSTRAINT visitation_items_category_check CHECK (((item_category)::text 
+= ANY ((ARRAY['food'::character varying, 'clothing'::character varying, 
+'reading_material'::character varying, 'toiletries'::character varying, 
+'documents'::character varying, 'other'::character varying])::text[])))
+  );
+  
+> CREATE TABLE public.visitation_rules (
+      id bigint NOT NULL,
+      inmate_id bigint NOT NULL,
+>     CONSTRAINT visitation_rules_type_check CHECK (((rule_type)::text = ANY 
+((ARRAY['restricted_visitors'::character varying, 'contact_only'::character 
+varying, 'supervised_only'::character varying, 'no_visitation'::character 
+varying])::text[])))
+  );
+  
+> -- Name: activities activities_name_unique; Type: CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT activities_name_unique UNIQUE (name);
+  
+  
+> -- Name: activities activities_pkey; Type: CONSTRAINT; Schema: public; 
+Owner: -
+  --
+  
+>     ADD CONSTRAINT activities_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: activity_assignment_logs activity_assignment_logs_pkey; Type: 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT activity_assignment_logs_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: activity_categories activity_categories_name_unique; Type: 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT activity_categories_name_unique UNIQUE (name);
+  
+  
+> -- Name: activity_categories activity_categories_pkey; Type: CONSTRAINT; 
+Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT activity_categories_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: activity_sessions activity_sessions_pkey; Type: CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT activity_sessions_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: admissions admissions_pkey; Type: CONSTRAINT; Schema: public; 
+Owner: -
+  --
+  
+>     ADD CONSTRAINT admissions_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: audit_logs audit_logs_pkey; Type: CONSTRAINT; Schema: public; 
+Owner: -
+  --
+  
+>     ADD CONSTRAINT audit_logs_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: cache_locks cache_locks_pkey; Type: CONSTRAINT; Schema: public; 
+Owner: -
+  --
+  
+>     ADD CONSTRAINT cache_locks_pkey PRIMARY KEY (key);
+  
+  
+> -- Name: cache cache_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT cache_pkey PRIMARY KEY (key);
+  
+  
+> -- Name: cell_allocations cell_allocations_pkey; Type: CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT cell_allocations_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: cells cells_cell_number_unique; Type: CONSTRAINT; Schema: public; 
+Owner: -
+  --
+  
+>     ADD CONSTRAINT cells_cell_number_unique UNIQUE (cell_number);
+  
+  
+> -- Name: cells cells_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT cells_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: documents documents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT documents_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: external_activity_details 
+external_activity_details_activity_id_unique; Type: CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT external_activity_details_activity_id_unique UNIQUE 
+(activity_id);
+  
+  
+> -- Name: external_activity_details external_activity_details_pkey; Type: 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT external_activity_details_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: failed_jobs failed_jobs_pkey; Type: CONSTRAINT; Schema: public; 
+Owner: -
+  --
+  
+>     ADD CONSTRAINT failed_jobs_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: failed_jobs failed_jobs_uuid_unique; Type: CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT failed_jobs_uuid_unique UNIQUE (uuid);
+  
+  
+> -- Name: session_attendance idx_attendance_unique; Type: CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT idx_attendance_unique UNIQUE (session_id, inmate_id);
+  
+  
+> -- Name: inmate_activities inmate_activities_pkey; Type: CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT inmate_activities_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: inmate_visitor_registrations inmate_visitor_registrations_pkey; 
+Type: CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT inmate_visitor_registrations_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: inmates inmates_national_id_unique; Type: CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT inmates_national_id_unique UNIQUE (national_id);
+  
+  
+> -- Name: inmates inmates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT inmates_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: inmates inmates_prison_number_unique; Type: CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT inmates_prison_number_unique UNIQUE (prison_number);
+  
+  
+> -- Name: job_batches job_batches_pkey; Type: CONSTRAINT; Schema: public; 
+Owner: -
+  --
+  
+>     ADD CONSTRAINT job_batches_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: jobs jobs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT jobs_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: migrations migrations_pkey; Type: CONSTRAINT; Schema: public; 
+Owner: -
+  --
+  
+>     ADD CONSTRAINT migrations_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: officer_duty_rosters officer_duty_rosters_pkey; Type: CONSTRAINT; 
+Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT officer_duty_rosters_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: password_reset_tokens password_reset_tokens_pkey; Type: CONSTRAINT; 
+Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT password_reset_tokens_pkey PRIMARY KEY (email);
+  
+  
+> -- Name: personal_access_tokens personal_access_tokens_pkey; Type: 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT personal_access_tokens_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: personal_access_tokens personal_access_tokens_token_unique; Type: 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT personal_access_tokens_token_unique UNIQUE (token);
+  
+  
+> -- Name: release_workflow release_workflow_pkey; Type: CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT release_workflow_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: roles roles_name_unique; Type: CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT roles_name_unique UNIQUE (name);
+  
+  
+> -- Name: roles roles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT roles_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: sentence_adjustments sentence_adjustments_pkey; Type: CONSTRAINT; 
+Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT sentence_adjustments_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: session_attendance session_attendance_pkey; Type: CONSTRAINT; 
+Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT session_attendance_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: sessions sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT sessions_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: officer_duty_rosters unique_duty_week_start; Type: CONSTRAINT; 
+Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT unique_duty_week_start UNIQUE (duty_week_start);
+  
+  
+> -- Name: users users_email_unique; Type: CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT users_email_unique UNIQUE (email);
+  
+  
+> -- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: visitation_denials visitation_denials_pkey; Type: CONSTRAINT; 
+Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT visitation_denials_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: visitation_items visitation_items_pkey; Type: CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT visitation_items_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: visitation_rules visitation_rules_pkey; Type: CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT visitation_rules_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: visitation_sessions visitation_sessions_pkey; Type: CONSTRAINT; 
+Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT visitation_sessions_pkey PRIMARY KEY (id);
+  
+  
+> -- Name: visitors visitors_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT visitors_pkey PRIMARY KEY (id);
+  
+  
+> CREATE INDEX activity_assignment_logs_inmate_activity_id_index ON 
+public.activity_assignment_logs USING btree (inmate_activity_id);
+  
+  
+> CREATE INDEX activity_sessions_activity_id_index ON public.activity_sessions 
+USING btree (activity_id);
+  
+  
+> CREATE INDEX activity_sessions_session_date_index ON 
+public.activity_sessions USING btree (session_date);
+  
+  
+> CREATE INDEX activity_sessions_supervising_officer_id_index ON 
+public.activity_sessions USING btree (supervising_officer_id);
+  
+  
+> CREATE INDEX admissions_inmate_id_is_current_index ON public.admissions 
+USING btree (inmate_id, is_current);
+  
+  
+> CREATE INDEX admissions_projected_release_date_index ON public.admissions 
+USING btree (projected_release_date);
+  
+  
+> CREATE INDEX audit_logs_record_id_index ON public.audit_logs USING btree 
+(record_id);
+  
+  
+> CREATE INDEX audit_logs_table_name_index ON public.audit_logs USING btree 
+(table_name);
+  
+  
+> CREATE INDEX audit_logs_user_id_created_at_index ON public.audit_logs USING 
+btree (user_id, created_at);
+  
+  
+> CREATE INDEX cache_expiration_index ON public.cache USING btree (expiration);
+  
+  
+> CREATE INDEX cache_locks_expiration_index ON public.cache_locks USING btree 
+(expiration);
+  
+  
+> CREATE INDEX cell_allocations_inmate_id_admission_id_index ON 
+public.cell_allocations USING btree (inmate_id, admission_id);
+  
+  
+> CREATE INDEX cells_security_classification_status_index ON public.cells 
+USING btree (security_classification, status);
+  
+  
+> CREATE INDEX documents_inmate_id_document_type_index ON public.documents 
+USING btree (inmate_id, document_type);
+  
+  
+> CREATE INDEX idx_inmate_activities_end_date ON public.inmate_activities 
+USING btree (end_date);
+  
+  
+> CREATE INDEX inmate_activities_inmate_id_admission_id_index ON 
+public.inmate_activities USING btree (inmate_id, admission_id);
+  
+  
+> CREATE INDEX inmates_first_name_last_name_date_of_birth_index ON 
+public.inmates USING btree (first_name, last_name, date_of_birth);
+  
+  
+> CREATE INDEX inmates_is_young_offender_index ON public.inmates USING btree 
+(is_young_offender);
+  
+  
+> CREATE INDEX jobs_queue_index ON public.jobs USING btree (queue);
+  
+  
+> CREATE INDEX officer_duty_rosters_officer_id_duty_week_start_index ON 
+public.officer_duty_rosters USING btree (officer_id, duty_week_start);
+  
+  
+> CREATE INDEX personal_access_tokens_expires_at_index ON 
+public.personal_access_tokens USING btree (expires_at);
+  
+  
+> CREATE INDEX personal_access_tokens_tokenable_type_tokenable_id_index ON 
+public.personal_access_tokens USING btree (tokenable_type, tokenable_id);
+  
+  
+> CREATE INDEX release_workflow_admission_id_index ON public.release_workflow 
+USING btree (admission_id);
+  
+  
+> CREATE INDEX release_workflow_status_index ON public.release_workflow USING 
+btree (status);
+  
+  
+> CREATE INDEX sentence_adjustments_admission_id_index ON 
+public.sentence_adjustments USING btree (admission_id);
+  
+  
+> CREATE INDEX sentence_adjustments_effective_date_index ON 
+public.sentence_adjustments USING btree (effective_date);
+  
+  
+> CREATE INDEX session_attendance_admission_id_index ON 
+public.session_attendance USING btree (admission_id);
+  
+  
+> CREATE INDEX session_attendance_inmate_id_index ON public.session_attendance 
+USING btree (inmate_id);
+  
+  
+> CREATE INDEX session_attendance_session_id_index ON 
+public.session_attendance USING btree (session_id);
+  
+  
+> CREATE INDEX sessions_last_activity_index ON public.sessions USING btree 
+(last_activity);
+  
+  
+> CREATE INDEX sessions_user_id_index ON public.sessions USING btree (user_id);
+  
+  
+> CREATE INDEX visitation_sessions_inmate_id_visit_date_index ON 
+public.visitation_sessions USING btree (inmate_id, visit_date);
+  
+  
+> CREATE INDEX visitation_sessions_status_index ON public.visitation_sessions 
+USING btree (status);
+  
+  
+> CREATE INDEX visitation_sessions_supervising_officer_id_index ON 
+public.visitation_sessions USING btree (supervising_officer_id);
+  
+  
+> CREATE INDEX visitation_sessions_visitor_id_index ON 
+public.visitation_sessions USING btree (visitor_id);
+  
+  
+> CREATE TRIGGER trigger_check_gatekeeper BEFORE UPDATE ON 
+public.release_workflow FOR EACH ROW WHEN ((new.confirmed_by IS DISTINCT FROM 
+old.confirmed_by)) EXECUTE FUNCTION public.check_gatekeeper_role();
+  
+  
+> CREATE TRIGGER trigger_finalize_release AFTER UPDATE ON 
+public.release_workflow FOR EACH ROW WHEN ((((new.status)::text = 
+'confirmed'::text) AND ((old.status)::text <> 'confirmed'::text))) EXECUTE 
+FUNCTION public.finalize_release();
+  
+  
+> CREATE TRIGGER trigger_prevent_double_confirmation BEFORE UPDATE ON 
+public.release_workflow FOR EACH ROW WHEN ((((old.status)::text = 
+'confirmed'::text) AND ((new.status)::text = 'confirmed'::text))) EXECUTE 
+FUNCTION public.prevent_double_confirmation();
+  
+  
+> CREATE TRIGGER trigger_recalc_release_date AFTER INSERT OR DELETE OR UPDATE 
+ON public.sentence_adjustments FOR EACH ROW EXECUTE FUNCTION 
+public.recalc_projected_release_date();
+  
+  
+> -- Name: activities activities_category_id_foreign; Type: FK CONSTRAINT; 
+Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT activities_category_id_foreign FOREIGN KEY (category_id) 
+REFERENCES public.activity_categories(id) ON DELETE SET NULL;
+  
+  
+> -- Name: activities activities_created_by_foreign; Type: FK CONSTRAINT; 
+Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT activities_created_by_foreign FOREIGN KEY (created_by) 
+REFERENCES public.users(id) ON DELETE SET NULL;
+  
+  
+> -- Name: activities activities_modified_by_foreign; Type: FK CONSTRAINT; 
+Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT activities_modified_by_foreign FOREIGN KEY (modified_by) 
+REFERENCES public.users(id) ON DELETE SET NULL;
+  
+  
+> -- Name: activity_assignment_logs 
+activity_assignment_logs_assigned_by_foreign; Type: FK CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT activity_assignment_logs_assigned_by_foreign FOREIGN KEY 
+(assigned_by) REFERENCES public.users(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: activity_assignment_logs 
+activity_assignment_logs_inmate_activity_id_foreign; Type: FK CONSTRAINT; 
+Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT activity_assignment_logs_inmate_activity_id_foreign 
+FOREIGN KEY (inmate_activity_id) REFERENCES public.inmate_activities(id) ON 
+DELETE CASCADE;
+  
+  
+> -- Name: activity_sessions activity_sessions_activity_id_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT activity_sessions_activity_id_foreign FOREIGN KEY 
+(activity_id) REFERENCES public.activities(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: activity_sessions activity_sessions_created_by_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT activity_sessions_created_by_foreign FOREIGN KEY 
+(created_by) REFERENCES public.users(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: activity_sessions activity_sessions_supervising_officer_id_foreign; 
+Type: FK CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT activity_sessions_supervising_officer_id_foreign FOREIGN 
+KEY (supervising_officer_id) REFERENCES public.users(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: admissions admissions_admitted_by_foreign; Type: FK CONSTRAINT; 
+Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT admissions_admitted_by_foreign FOREIGN KEY (admitted_by) 
+REFERENCES public.users(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: admissions admissions_inmate_id_foreign; Type: FK CONSTRAINT; 
+Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT admissions_inmate_id_foreign FOREIGN KEY (inmate_id) 
+REFERENCES public.inmates(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: audit_logs audit_logs_user_id_foreign; Type: FK CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT audit_logs_user_id_foreign FOREIGN KEY (user_id) 
+REFERENCES public.users(id) ON DELETE SET NULL;
+  
+  
+> -- Name: cell_allocations cell_allocations_admission_id_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT cell_allocations_admission_id_foreign FOREIGN KEY 
+(admission_id) REFERENCES public.admissions(id) ON DELETE CASCADE;
+  
+  
+> -- Name: cell_allocations cell_allocations_cell_id_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT cell_allocations_cell_id_foreign FOREIGN KEY (cell_id) 
+REFERENCES public.cells(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: cell_allocations cell_allocations_inmate_id_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT cell_allocations_inmate_id_foreign FOREIGN KEY 
+(inmate_id) REFERENCES public.inmates(id) ON DELETE CASCADE;
+  
+  
+> -- Name: documents documents_admission_id_foreign; Type: FK CONSTRAINT; 
+Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT documents_admission_id_foreign FOREIGN KEY (admission_id) 
+REFERENCES public.admissions(id) ON DELETE CASCADE;
+  
+  
+> -- Name: documents documents_inmate_id_foreign; Type: FK CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT documents_inmate_id_foreign FOREIGN KEY (inmate_id) 
+REFERENCES public.inmates(id) ON DELETE CASCADE;
+  
+  
+> -- Name: documents documents_uploaded_by_foreign; Type: FK CONSTRAINT; 
+Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT documents_uploaded_by_foreign FOREIGN KEY (uploaded_by) 
+REFERENCES public.users(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: external_activity_details 
+external_activity_details_activity_id_foreign; Type: FK CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT external_activity_details_activity_id_foreign FOREIGN KEY 
+(activity_id) REFERENCES public.activities(id) ON DELETE CASCADE;
+  
+  
+> -- Name: inmate_activities inmate_activities_activity_id_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT inmate_activities_activity_id_foreign FOREIGN KEY 
+(activity_id) REFERENCES public.activities(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: inmate_activities inmate_activities_admission_id_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT inmate_activities_admission_id_foreign FOREIGN KEY 
+(admission_id) REFERENCES public.admissions(id) ON DELETE CASCADE;
+  
+  
+> -- Name: inmate_activities inmate_activities_assigned_by_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT inmate_activities_assigned_by_foreign FOREIGN KEY 
+(assigned_by) REFERENCES public.users(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: inmate_activities inmate_activities_inmate_id_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT inmate_activities_inmate_id_foreign FOREIGN KEY 
+(inmate_id) REFERENCES public.inmates(id) ON DELETE CASCADE;
+  
+  
+> -- Name: inmate_visitor_registrations 
+inmate_visitor_registrations_inmate_id_foreign; Type: FK CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT inmate_visitor_registrations_inmate_id_foreign FOREIGN 
+KEY (inmate_id) REFERENCES public.inmates(id) ON DELETE CASCADE;
+  
+  
+> -- Name: inmate_visitor_registrations 
+inmate_visitor_registrations_visitor_id_foreign; Type: FK CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT inmate_visitor_registrations_visitor_id_foreign FOREIGN 
+KEY (visitor_id) REFERENCES public.visitors(id) ON DELETE CASCADE;
+  
+  
+> -- Name: officer_duty_rosters officer_duty_rosters_created_by_foreign; Type: 
+FK CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT officer_duty_rosters_created_by_foreign FOREIGN KEY 
+(created_by) REFERENCES public.users(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: officer_duty_rosters officer_duty_rosters_officer_id_foreign; Type: 
+FK CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT officer_duty_rosters_officer_id_foreign FOREIGN KEY 
+(officer_id) REFERENCES public.users(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: release_workflow release_workflow_admission_id_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT release_workflow_admission_id_foreign FOREIGN KEY 
+(admission_id) REFERENCES public.admissions(id) ON DELETE CASCADE;
+  
+  
+> -- Name: release_workflow release_workflow_approved_by_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT release_workflow_approved_by_foreign FOREIGN KEY 
+(approved_by) REFERENCES public.users(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: release_workflow release_workflow_cancelled_by_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT release_workflow_cancelled_by_foreign FOREIGN KEY 
+(cancelled_by) REFERENCES public.users(id) ON DELETE SET NULL;
+  
+  
+> -- Name: release_workflow release_workflow_confirmed_by_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT release_workflow_confirmed_by_foreign FOREIGN KEY 
+(confirmed_by) REFERENCES public.users(id) ON DELETE SET NULL;
+  
+  
+> -- Name: sentence_adjustments sentence_adjustments_admission_id_foreign; 
+Type: FK CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT sentence_adjustments_admission_id_foreign FOREIGN KEY 
+(admission_id) REFERENCES public.admissions(id) ON DELETE CASCADE;
+  
+  
+> -- Name: sentence_adjustments sentence_adjustments_approved_by_foreign; 
+Type: FK CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT sentence_adjustments_approved_by_foreign FOREIGN KEY 
+(approved_by) REFERENCES public.users(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: session_attendance session_attendance_admission_id_foreign; Type: 
+FK CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT session_attendance_admission_id_foreign FOREIGN KEY 
+(admission_id) REFERENCES public.admissions(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: session_attendance session_attendance_inmate_id_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT session_attendance_inmate_id_foreign FOREIGN KEY 
+(inmate_id) REFERENCES public.inmates(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: session_attendance session_attendance_recorded_by_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT session_attendance_recorded_by_foreign FOREIGN KEY 
+(recorded_by) REFERENCES public.users(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: session_attendance session_attendance_session_id_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT session_attendance_session_id_foreign FOREIGN KEY 
+(session_id) REFERENCES public.activity_sessions(id) ON DELETE CASCADE;
+  
+  
+> -- Name: users users_role_id_foreign; Type: FK CONSTRAINT; Schema: public; 
+Owner: -
+  --
+  
+>     ADD CONSTRAINT users_role_id_foreign FOREIGN KEY (role_id) REFERENCES 
+public.roles(id) ON DELETE SET NULL;
+  
+  
+> -- Name: visitation_denials visitation_denials_denied_by_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT visitation_denials_denied_by_foreign FOREIGN KEY 
+(denied_by) REFERENCES public.users(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: visitation_denials 
+visitation_denials_visitation_session_id_foreign; Type: FK CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT visitation_denials_visitation_session_id_foreign FOREIGN 
+KEY (visitation_session_id) REFERENCES public.visitation_sessions(id) ON 
+DELETE CASCADE;
+  
+  
+> -- Name: visitation_items visitation_items_inspected_by_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT visitation_items_inspected_by_foreign FOREIGN KEY 
+(inspected_by) REFERENCES public.users(id) ON DELETE SET NULL;
+  
+  
+> -- Name: visitation_items visitation_items_visitation_session_id_foreign; 
+Type: FK CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT visitation_items_visitation_session_id_foreign FOREIGN 
+KEY (visitation_session_id) REFERENCES public.visitation_sessions(id) ON 
+DELETE CASCADE;
+  
+  
+> -- Name: visitation_rules visitation_rules_created_by_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT visitation_rules_created_by_foreign FOREIGN KEY 
+(created_by) REFERENCES public.users(id) ON DELETE RESTRICT;
+  
+  
+> -- Name: visitation_rules visitation_rules_inmate_id_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT visitation_rules_inmate_id_foreign FOREIGN KEY 
+(inmate_id) REFERENCES public.inmates(id) ON DELETE CASCADE;
+  
+  
+> -- Name: visitation_sessions visitation_sessions_admission_id_foreign; Type: 
+FK CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT visitation_sessions_admission_id_foreign FOREIGN KEY 
+(admission_id) REFERENCES public.admissions(id) ON DELETE CASCADE;
+  
+  
+> -- Name: visitation_sessions visitation_sessions_inmate_id_foreign; Type: FK 
+CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT visitation_sessions_inmate_id_foreign FOREIGN KEY 
+(inmate_id) REFERENCES public.inmates(id) ON DELETE CASCADE;
+  
+  
+> -- Name: visitation_sessions visitation_sessions_pdf_created_by_foreign; 
+Type: FK CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT visitation_sessions_pdf_created_by_foreign FOREIGN KEY 
+(pdf_created_by) REFERENCES public.users(id) ON DELETE SET NULL;
+  
+  
+> -- Name: visitation_sessions 
+visitation_sessions_supervising_officer_id_foreign; Type: FK CONSTRAINT; 
+Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT visitation_sessions_supervising_officer_id_foreign 
+FOREIGN KEY (supervising_officer_id) REFERENCES public.users(id) ON DELETE SET 
+NULL;
+  
+  
+> -- Name: visitation_sessions visitation_sessions_visitor_id_foreign; Type: 
+FK CONSTRAINT; Schema: public; Owner: -
+  --
+  
+>     ADD CONSTRAINT visitation_sessions_visitor_id_foreign FOREIGN KEY 
+(visitor_id) REFERENCES public.visitors(id) ON DELETE CASCADE;
+  
+  
+> -- Name: visitors visitors_approved_by_foreign; Type: FK CONSTRAINT; Schema: 
+public; Owner: -
+  --
+  
+>     ADD CONSTRAINT visitors_approved_by_foreign FOREIGN KEY (approved_by) 
+REFERENCES public.users(id) ON DELETE SET NULL;
+  
+  
+
+
