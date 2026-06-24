@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/useAuth';
 import {
   MdHome,
   MdPerson,
+  MdAdd,
   MdDashboard,
   MdPeople,
   MdAssignment,
@@ -97,7 +98,13 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
         {
           to: '/admissions',
           icon: MdAssignment,
-          title: 'Admissions',
+          title: 'Admissions Register',
+          show: role === ROLES.RECEPTION_OFFICER
+        },
+        {
+          to: '/admissions/new',
+          icon: MdAdd,
+          title: 'New Admission',
           show: role === ROLES.RECEPTION_OFFICER
         }
       ]

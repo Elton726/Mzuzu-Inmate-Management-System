@@ -27,11 +27,8 @@ import React from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { ThemeContext } from './contexts/ThemeContextCreate';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { useAuth } from './contexts/useAuth';
-import { useContext } from 'react';
-import { MdDarkMode, MdLightMode } from 'react-icons/md';
 import { ROLES } from './utils/helpers';
 import LoginPage from './modules/auth/pages/LoginPage';
 import HomePage from './modules/home/pages/HomePage';
@@ -79,7 +76,6 @@ import { ToastContainer } from 'react-toastify';
  */
 const AppContent = () => {
   const { isAuthenticated, loading } = useAuth();
-  const { theme, toggleTheme } = useContext(ThemeContext);
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 
