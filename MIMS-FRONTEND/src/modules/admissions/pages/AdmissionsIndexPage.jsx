@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useDebouncedValue } from '../../../utils/useDebouncedValue';
 import { searchInmates, listInmates } from '../services/inmateService';
@@ -162,9 +162,11 @@ const InmateRow = ({ inmate }) => {
 };
 
 export default function AdmissionsIndexPage() {
+  const [searchParams] = useSearchParams();
+  const urlSearchQuery = searchParams.get('search') || searchParams.get('q') || '';
   const [loading, setLoading] = useState(false);
   const [inmates, setInmates] = useState([]);
-  const [searchInput, setSearchInput] = useState('');
+  const [searchInput, setSearchInput] = useState(urlSearchQuery);
   const debouncedSearchQuery = useDebouncedValue(searchInput, 300);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -204,6 +206,11 @@ export default function AdmissionsIndexPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearchQuery, sortBy, sortOrder, perPage]);
+
+  useEffect(() => {
+    setSearchInput(urlSearchQuery);
+    setCurrentPage(1);
+  }, [urlSearchQuery]);
 
   useEffect(() => {
     loadInmates();

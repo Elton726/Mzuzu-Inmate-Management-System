@@ -1,88 +1,357 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
 import { NotificationBell } from './common/NotificationBell';
 import { useNotification } from '../contexts/useNotification';
-import UserAvatarWithRole from './common/UserAvatarWithRole';
 import { useContext } from 'react';
 import { ThemeContext } from '../contexts/ThemeContextCreate';
-import { MdDarkMode, MdLightMode } from 'react-icons/md';
+import { getRoleDisplayName, getRoleName, ROLES } from '../utils/helpers';
+import { useDebouncedValue } from '../utils/useDebouncedValue';
+import { searchInmates } from '../modules/admissions/services/inmateService';
+import {
+  MdAdd,
+  MdDarkMode,
+  MdArrowForward,
+  MdLightMode,
+  MdMenu,
+  MdOutlineArticle,
+  MdSearch,
+  MdVisibility,
+} from 'react-icons/md';
+
+const getPageTitle = (pathname, role) => {
+  if (pathname === '/') return 'Dashboard';
+  if (pathname.startsWith('/admissions/new')) return 'New Admission';
+  if (pathname.startsWith('/admissions/')) return 'Admission Details';
+  if (pathname.startsWith('/admissions')) return 'Admissions Register';
+  if (pathname.startsWith('/inmates/')) return 'Inmate Profile';
+  if (pathname.startsWith('/admin')) return 'Administration';
+  if (pathname.startsWith('/releases')) return 'Releases';
+  if (pathname.startsWith('/visitation')) return 'Visitation';
+  if (pathname.startsWith('/officer')) return 'Officer Dashboard';
+  if (pathname.startsWith('/profile')) return 'Profile';
+  return role === ROLES.RECEPTION_OFFICER ? 'Dashboard' : 'MIMS';
+};
+
+const getHeaderCopy = (pathname, user, role) => {
+  const roleLabel = getRoleDisplayName(user) || 'Officer';
+
+  if (pathname === '/' && role === ROLES.RECEPTION_OFFICER) {
+    return {
+      title: `Good morning, ${roleLabel}`,
+      subtitle: "Here's what's happening with admissions today.",
+    };
+  }
+
+  if (pathname.startsWith('/admissions')) {
+    return {
+      title: pathname.startsWith('/admissions/new') ? 'Create a new admission' : 'Admissions workspace',
+      subtitle: 'Search, review, and continue admission work from the system records.',
+    };
+  }
+
+  return {
+    title: `Good morning, ${roleLabel}`,
+    subtitle: user?.name ? `Signed in as ${user.name}.` : 'Welcome back.',
+  };
+};
+
+const getCurrentAdmission = (inmate) => inmate?.current_admission || inmate?.currentAdmission || null;
+
+const getFullName = (inmate) =>
+  [inmate?.first_name, inmate?.last_name].filter(Boolean).join(' ') || 'Unnamed inmate';
+
+const formatInmateType = (type) => {
+  const labels = {
+    convict: 'Convict',
+    remandee: 'General Remandee',
+    murder_remandee: 'Murder Remandee',
+  };
+
+  return labels[type] || 'No active admission';
+};
 
 export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
-  const { user, isAdmin, logout } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { notifications, markAsRead, clearAll } = useNotification();
   const { theme, toggleTheme } = useContext(ThemeContext);
-  const navigate = useNavigate();
+  const location = useLocation();
+  const role = getRoleName(user);
+  const searchRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [searchPending, setSearchPending] = useState(false);
+  const debouncedSearchQuery = useDebouncedValue(searchInput, 250);
+  const canSearchAdmissions = role === ROLES.RECEPTION_OFFICER;
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
+  const pageTitle = useMemo(() => getPageTitle(location.pathname, role), [location.pathname, role]);
+  const headerCopy = useMemo(
+    () => getHeaderCopy(location.pathname, user, role),
+    [location.pathname, user, role]
+  );
+  const isAdmissionsModule = location.pathname.startsWith('/admissions');
+
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setSearchOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, []);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    window.setTimeout(() => searchInputRef.current?.focus(), 0);
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (!canSearchAdmissions || debouncedSearchQuery.trim().length < 2) return undefined;
+
+    let active = true;
+    searchInmates({
+      q: debouncedSearchQuery.trim(),
+      per_page: 6,
+      page: 1,
+      sort_by: 'id',
+      sort_order: 'desc',
+    })
+      .then((data) => {
+        if (!active) return;
+        setSearchResults(Array.isArray(data?.data) ? data.data : []);
+        setSearchError('');
+        setSearchPending(false);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setSearchResults([]);
+        setSearchError(error?.message || 'Search failed');
+        setSearchPending(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [canSearchAdmissions, debouncedSearchQuery]);
+
+  const handleSearch = (event) => {
+    event.preventDefault();
+    if (searchInput.trim().length >= 2) setSearchOpen(true);
+  };
+
+  const handleSearchChange = (event) => {
+    const value = event.target.value;
+    setSearchInput(value);
+    setSearchError('');
+
+    if (value.trim().length < 2) {
+      setSearchResults([]);
+      setSearchOpen(false);
+      setSearchPending(false);
+    } else {
+      setSearchPending(true);
+      setSearchOpen(true);
+    }
   };
 
   if (!user) return null;
 
   return (
-    <nav className="bg-malawiBlack text-white shadow-lg">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex justify-between items-center h-16 pr-12">
-          <div className="flex items-center gap-2">
-            {!sidebarOpen && (
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="p-2 rounded hover:bg-zinc-800 text-malawiGold transition-all duration-200 flex items-center justify-center border border-zinc-800"
-                title="Open Sidebar"
-              >
-                <span className="text-xl">☰</span>
-              </button>
-            )}
-            <Link
-              to="/profile"
-              className="rounded px-3 py-2 transition hover:bg-gray-800"
-              title="Open profile"
-            >
-              <UserAvatarWithRole user={user} showEmail={false} size="sm" tone="dark" />
-            </Link>
+    <header className="border-b border-gray-200 bg-white shadow-sm">
+      <div className="px-4 py-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-3">
+              {!sidebarOpen && (
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(true)}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50"
+                  title="Open sidebar"
+                >
+                  <MdMenu className="text-2xl" />
+                </button>
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-500">{pageTitle}</p>
+                <h1 className="mt-2 truncate text-2xl font-bold text-gray-950">
+                  {headerCopy.title}
+                </h1>
+                <p className="mt-1 text-sm text-gray-500">{headerCopy.subtitle}</p>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center space-x-4">
-            {isAdmin && (
-              <Link
-                to="/admin/dashboard"
-                className="hover:bg-gray-800 px-3 py-2 rounded transition"
-              >
-                Admin Dashboard
-              </Link>
-            )}
-
-            <button
-              onClick={toggleTheme}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-zinc-800 hover:bg-zinc-700 text-white transition-colors duration-250 flex-shrink-0"
-              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {theme === 'dark' ? (
-                <MdDarkMode className="h-5 w-5 text-malawiGold" />
-              ) : (
-                <MdLightMode className="h-5 w-5 text-malawiGold" />
+          <div className="flex min-w-0 flex-col gap-3 xl:flex-1">
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              {isAdmissionsModule && role === ROLES.RECEPTION_OFFICER && (
+                <div className="flex flex-wrap items-center gap-3">
+                  <Link
+                    to="/admissions"
+                    className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 text-sm font-bold leading-tight text-gray-800 shadow-sm transition hover:bg-gray-50"
+                  >
+                    <MdOutlineArticle className="shrink-0 text-lg" />
+                    <span className="min-w-0">Open Admissions Register</span>
+                  </Link>
+                </div>
               )}
-            </button>
 
-            <NotificationBell
-              notifications={notifications}
-              onMarkAsRead={markAsRead}
-              onClearAll={clearAll}
-            />
+              {isAdmin && (
+                <Link
+                  to="/admin/dashboard"
+                  className="inline-flex h-10 items-center justify-center rounded-md border border-gray-300 bg-white px-4 text-sm font-bold text-gray-800 shadow-sm transition hover:bg-gray-50"
+                >
+                  Admin Dashboard
+                </Link>
+              )}
 
-            <button
-              onClick={handleLogout}
-              className="min-w-24 bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition"
-              title="Logout"
-            >
-              Logout
-            </button>
+              <div className="flex items-center justify-end gap-3">
+                {canSearchAdmissions && (
+                  <div ref={searchRef} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setSearchOpen((open) => !open)}
+                      className={`inline-flex h-10 w-10 items-center justify-center rounded-full border shadow-sm transition ${
+                        searchOpen
+                          ? 'border-blue-600 bg-blue-50 text-blue-700'
+                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                      aria-label="Search inmates"
+                      title="Search inmates"
+                    >
+                      <MdSearch className="h-5 w-5" />
+                    </button>
+
+                    {searchOpen && (
+                      <div className="absolute right-0 top-12 z-50 w-[min(92vw,440px)] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl">
+                        <form onSubmit={handleSearch} className="border-b border-gray-100 p-3">
+                          <div className="relative">
+                            <MdSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xl text-gray-400" />
+                            <input
+                              ref={searchInputRef}
+                              name="search"
+                              type="search"
+                              value={searchInput}
+                              onChange={handleSearchChange}
+                              placeholder="Search inmate, prison no., National ID"
+                              className="h-10 w-full rounded-md border border-gray-300 bg-white pl-10 pr-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                            />
+                          </div>
+                        </form>
+
+                        <div className="border-b border-gray-100 px-4 py-2 text-xs font-bold uppercase text-gray-500">
+                          Search results
+                        </div>
+                        {searchInput.trim().length < 2 ? (
+                          <div className="px-4 py-4 text-sm text-gray-500">
+                            Type at least 2 characters to search system records.
+                          </div>
+                        ) : searchPending ? (
+                          <div className="px-4 py-4 text-sm text-gray-500">Searching system records...</div>
+                        ) : searchError ? (
+                          <div className="px-4 py-4 text-sm text-red-600">{searchError}</div>
+                        ) : searchResults.length === 0 ? (
+                          <div className="px-4 py-4 text-sm text-gray-500">No matching inmates found.</div>
+                        ) : (
+                          <div className="max-h-96 overflow-y-auto">
+                            {searchResults.map((inmate) => {
+                              const admission = getCurrentAdmission(inmate);
+                              return (
+                                <div key={inmate.id} className="border-b border-gray-100 px-4 py-3 last:border-b-0">
+                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div className="min-w-0">
+                                      <div className="truncate text-sm font-bold text-gray-950">
+                                        {getFullName(inmate)}
+                                      </div>
+                                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                                        <span>{inmate.prison_number || 'No prison number'}</span>
+                                        {inmate.national_id && <span>National ID {inmate.national_id}</span>}
+                                        <span>{formatInmateType(admission?.inmate_type)}</span>
+                                      </div>
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-2">
+                                      <Link
+                                        to={`/inmates/${inmate.id}`}
+                                        onClick={() => setSearchOpen(false)}
+                                        className="inline-flex h-8 items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+                                      >
+                                        <MdVisibility />
+                                        View
+                                      </Link>
+                                      {admission?.id ? (
+                                        <Link
+                                          to={`/admissions/${admission.id}`}
+                                          onClick={() => setSearchOpen(false)}
+                                          className="inline-flex h-8 items-center gap-1 rounded-md bg-blue-700 px-2.5 text-xs font-bold text-white hover:bg-blue-800"
+                                        >
+                                          Admission
+                                          <MdArrowForward />
+                                        </Link>
+                                      ) : (
+                                        <Link
+                                          to={`/admissions/new?inmateId=${inmate.id}`}
+                                          onClick={() => setSearchOpen(false)}
+                                          className="inline-flex h-8 items-center gap-1 rounded-md bg-blue-700 px-2.5 text-xs font-bold text-white hover:bg-blue-800"
+                                        >
+                                          Admit
+                                          <MdArrowForward />
+                                        </Link>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <button
+                  onClick={toggleTheme}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50"
+                  aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                >
+                  {theme === 'dark' ? (
+                    <MdDarkMode className="h-5 w-5 text-blue-700" />
+                  ) : (
+                    <MdLightMode className="h-5 w-5 text-blue-700" />
+                  )}
+                </button>
+
+                <NotificationBell
+                  notifications={notifications}
+                  onMarkAsRead={markAsRead}
+                  onClearAll={clearAll}
+                  buttonClassName="!text-gray-700 hover:!bg-gray-100"
+                />
+
+                <Link to="/profile" className="flex items-center gap-3 rounded-md px-2 py-1.5 transition hover:bg-gray-50">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-bold text-gray-600">
+                    {(user?.name || user?.email || 'R').slice(0, 1).toUpperCase()}
+                  </div>
+                  <div className="hidden text-left sm:block">
+                    <div className="text-sm font-bold text-gray-950">{getRoleDisplayName(user) || 'Officer'}</div>
+                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                      Online
+                    </div>
+                  </div>
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </nav>
+    </header>
   );
 };
 

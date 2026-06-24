@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
  * - Clear all notifications
  * - Click outside to close dropdown
  */
-export const NotificationBell = ({ notifications = [], onMarkAsRead, onClearAll }) => {
+export const NotificationBell = ({ notifications = [], onMarkAsRead, onClearAll, buttonClassName = '' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
@@ -61,7 +61,7 @@ export const NotificationBell = ({ notifications = [], onMarkAsRead, onClearAll 
       {/* Bell Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-white hover:bg-blue-700 rounded-lg transition duration-200"
+        className={`relative p-2 text-white hover:bg-blue-700 rounded-lg transition duration-200 ${buttonClassName}`}
         aria-label="Notifications"
       >
         <BiBell size={24} />
