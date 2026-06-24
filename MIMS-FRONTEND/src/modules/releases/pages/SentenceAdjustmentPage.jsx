@@ -177,6 +177,7 @@ export default function SentenceAdjustmentPage() {
                   <option value="remission">Remission</option>
                   <option value="pardon">Pardon</option>
                   <option value="reduction">Reduction</option>
+                  <option value="good_behaviour">Good Behaviour</option>
                 </select>
                 {errors.adjustment_type && (
                   <p className="text-red-600 text-sm mt-1">{errors.adjustment_type.message}</p>
