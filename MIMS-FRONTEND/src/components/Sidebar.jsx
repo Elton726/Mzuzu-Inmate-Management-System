@@ -7,6 +7,7 @@ import {
   MdDashboard,
   MdPeople,
   MdAssignment,
+  MdHomeWork,
   MdHistory,
   MdSchedule,
   MdLocalActivity,
@@ -96,8 +97,15 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
       items: [
         {
           to: '/admissions',
+          end: true,
           icon: MdAssignment,
           title: 'Admissions',
+          show: role === ROLES.RECEPTION_OFFICER
+        },
+        {
+          to: '/admissions/cells',
+          icon: MdHomeWork,
+          title: 'Cell Management',
           show: role === ROLES.RECEPTION_OFFICER
         }
       ]
@@ -188,6 +196,12 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
           to: '/admin/audit-logs',
           icon: MdHistory,
           title: 'Audit Logs',
+          show: isAdmin
+        },
+        {
+          to: '/admin/cells',
+          icon: MdHomeWork,
+          title: 'Cell Management',
           show: isAdmin
         },
         {

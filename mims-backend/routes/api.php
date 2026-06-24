@@ -60,6 +60,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // Resource routes
         Route::apiResource('users', AdminUserController::class)->middleware('throttle:100,60,user');
 
+        Route::get('/cells', [CellController::class, 'index']);
+        Route::post('/cells', [CellController::class, 'store']);
+        Route::put('/cells/{cell}', [CellController::class, 'update']);
+        Route::delete('/cells/{cell}', [CellController::class, 'destroy']);
+
         // Activity Allocation - Officer Duty Roster Management
         Route::prefix('duty-rosters')->group(function () {
             Route::get('/', [OfficerDutyRosterController::class, 'index']);
@@ -107,10 +112,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         Route::post('/admissions', [AdmissionController::class, 'store'])->middleware('throttle:30,60,user');
 
-        Route::get('/cells', [CellController::class, 'index'])->middleware('throttle:60,60,user');
-        Route::get('/cells/available', [CellController::class, 'available'])->middleware('throttle:60,60,user');
         Route::get('/activities', [ActivityController::class, 'index'])->middleware('throttle:60,60,user');
         Route::post('/documents', [DocumentController::class, 'store'])->middleware('throttle:30,60,user');
+    });
+
+    Route::middleware(['role:reception_officer,admin'])->group(function () {
+        Route::get('/cells', [CellController::class, 'index'])->middleware('throttle:60,60,user');
+        Route::get('/cells/available', [CellController::class, 'available'])->middleware('throttle:60,60,user');
     });
 
     Route::middleware(['role:reception_officer,station_officer'])->group(function () {

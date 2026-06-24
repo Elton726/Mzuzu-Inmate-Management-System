@@ -13,6 +13,7 @@ class Cell extends Model
     protected $fillable = [
         'cell_number',
         'block',
+        'gender',
         'security_classification',
         'capacity',
         'current_occupancy',

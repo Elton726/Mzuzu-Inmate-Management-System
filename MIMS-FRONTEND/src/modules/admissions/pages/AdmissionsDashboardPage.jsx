@@ -295,6 +295,11 @@ export default function AdmissionsDashboardPage() {
                     Open Admissions Register
                   </Button>
                 </Link>
+                <Link to="/admissions/cells">
+                  <Button variant="outline" className="!border-gray-300 hover:!border-malawiGreen !text-gray-700 hover:!bg-green-50 transition duration-200">
+                    View Cell Management
+                  </Button>
+                </Link>
               </div>
             </div>
 
@@ -427,6 +432,12 @@ export default function AdmissionsDashboardPage() {
               <Link to="/admissions" className="w-full">
                 <button className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition text-sm">
                   <span className="flex items-center gap-2"><MdAssignment /> Admissions Register</span>
+                  <MdArrowForward />
+                </button>
+              </Link>
+              <Link to="/admissions/cells" className="w-full">
+                <button className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition text-sm">
+                  <span className="flex items-center gap-2"><MdHome /> Cell Management</span>
                   <MdArrowForward />
                 </button>
               </Link>

@@ -85,10 +85,12 @@ class AdmissionController extends Controller
             ]);
 
             $classification = $this->mapInmateTypeToSecurityClassification($validated['inmate_type']);
-            $cell = $this->cellAllocationService->findAvailableCell($classification);
+            $gender = in_array($inmate->gender, ['male', 'female'], true) ? $inmate->gender : null;
+            $cell = $this->cellAllocationService->findAvailableCell($classification, $gender);
 
             if (!$cell) {
-                abort(422, "No available {$classification} security cell could be found for automatic allocation.");
+                $genderText = $gender ? " {$gender}" : '';
+                abort(422, "No available{$genderText} {$classification} security cell could be found for automatic allocation.");
             }
 
             $this->cellAllocationService->allocate($inmate->id, $admission->id, $cell->id);

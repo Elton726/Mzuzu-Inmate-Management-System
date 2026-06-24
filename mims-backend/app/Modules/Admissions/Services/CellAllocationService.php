@@ -7,13 +7,18 @@ use App\Modules\Admissions\Models\CellAllocation;
 
 class CellAllocationService
 {
-    public function findAvailableCell(string $securityClassification): ?Cell
+    public function findAvailableCell(string $securityClassification, ?string $gender = null): ?Cell
     {
-        return Cell::query()
+        $query = Cell::query()
             ->where('security_classification', $securityClassification)
             ->where('status', 'available')
-            ->whereColumn('current_occupancy', '<', 'capacity')
-            ->orderBy('current_occupancy')
+            ->whereColumn('current_occupancy', '<', 'capacity');
+
+        if (in_array($gender, ['male', 'female'], true)) {
+            $query->where('gender', $gender);
+        }
+
+        return $query->orderBy('current_occupancy')
             ->orderBy('id')
             ->first();
     }
