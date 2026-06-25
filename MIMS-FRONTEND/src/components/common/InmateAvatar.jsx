@@ -55,10 +55,10 @@ export default function InmateAvatar({
 
   const initials = getInitials(firstName || inmate?.first_name, lastName || inmate?.last_name, name);
   const src = photo && !hasError ? `${SERVER_BASE_URL}/storage/${photo}` : null;
-  const sizeClass = sizeClasses[size] || sizeClasses.md;
+  const sizeClass = size === 'custom' ? '' : (sizeClasses[size] || sizeClasses.md);
 
   return (
-    <div className={`relative overflow-hidden rounded-xl bg-malawiBlack text-white flex items-center justify-center ${sizeClass} ${className}`}>
+    <div className={`relative overflow-hidden flex items-center justify-center bg-malawiBlack text-white ${sizeClass} ${className}`}>
       {src ? (
         <img
           src={src}
