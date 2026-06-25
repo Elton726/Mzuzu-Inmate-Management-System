@@ -7,7 +7,6 @@ import Select from '../../../../components/common/Select';
 import Textarea from '../../../../components/common/Textarea';
 import Button from '../../../../components/common/Button';
 import Spinner from '../../../../components/common/Spinner';
-import TimeClockInput from '../../../../components/common/TimeClockInput';
 import { useToast } from '../../../../contexts/useToast';
 import { useAuth } from '../../../../contexts/useAuth';
 import * as officerSessionService from '../services/officerSessionService';
@@ -31,15 +30,7 @@ const pad2 = (n) => String(n).padStart(2, '0');
 
 const toTimeString = (date) => `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 
-const roundToMinutes = (date, stepMinutes) => {
-  const d = new Date(date);
-  const minutes = d.getMinutes();
-  const rounded = Math.round(minutes / stepMinutes) * stepMinutes;
-  d.setMinutes(rounded, 0, 0);
-  return d;
-};
-
-const addMinutes = (timeStr, minutesToAdd) => {
+const addMinutesToTime = (timeStr, minutesToAdd) => {
   if (!timeStr) return '';
   const [h, m] = String(timeStr).split(':').map((v) => Number(v));
   if (!Number.isFinite(h) || !Number.isFinite(m)) return '';
@@ -79,13 +70,12 @@ export default function OfficerSessionFormPage() {
       activity_id: '',
       session_date: '',
       session_time: '',
-      supervising_officer_id: user?.id ?? '',
       start_time: '',
       end_time: '',
       status: 'scheduled',
       notes: '',
     }),
-    [user]
+    []
   );
 
   const form = useForm({ defaultValues: defaults });
@@ -121,7 +111,6 @@ export default function OfficerSessionFormPage() {
           activity_id: s.activity_id ?? '',
           session_date: s.session_date ?? '',
           session_time: s.session_time ?? '',
-          supervising_officer_id: s.supervising_officer_id ?? (user?.id ?? ''),
           start_time: s.start_time ? String(s.start_time).slice(0, 5) : '',
           end_time: s.end_time ? String(s.end_time).slice(0, 5) : '',
           status: s.status ?? 'scheduled',
@@ -134,7 +123,7 @@ export default function OfficerSessionFormPage() {
       }
     };
     load();
-  }, [id, isEdit, form, toast, user]);
+  }, [id, isEdit, form, toast]);
 
   useEffect(() => {
     if (isEdit) return;
@@ -156,12 +145,24 @@ export default function OfficerSessionFormPage() {
     return sessionPeriodPresets.some((p) => p.value === sessionTime) ? sessionTime : 'Custom';
   }, [isInternal, sessionTime]);
 
-  const startTime = form.watch('start_time');
-  const endTime = form.watch('end_time');
-
+  // Auto-calculate start and end times when activity is selected
   useEffect(() => {
     if (isEdit) return;
     if (!selectedActivity) return;
+
+    const currentStart = form.getValues('start_time');
+    const currentEnd = form.getValues('end_time');
+
+    // Only set times if they haven't been set yet
+    if (!currentStart) {
+      const now = toTimeString(new Date());
+      form.setValue('start_time', now, { shouldDirty: true });
+
+      // Calculate duration: 2 hours for internal, 3 hours for external
+      const durationMinutes = selectedActivity.activity_type === 'internal' ? 120 : 180;
+      const endTime = addMinutesToTime(now, durationMinutes);
+      form.setValue('end_time', endTime, { shouldDirty: true });
+    }
 
     if (selectedActivity.activity_type === 'internal') {
       const currentDate = form.getValues('session_date');
@@ -176,29 +177,6 @@ export default function OfficerSessionFormPage() {
     if (!preset) return;
 
     form.setValue('session_time', preset.value, { shouldValidate: true, shouldDirty: true });
-
-    const currentStart = form.getValues('start_time');
-    const currentEnd = form.getValues('end_time');
-    if (!currentStart) form.setValue('start_time', preset.start);
-    if (!currentEnd) form.setValue('end_time', preset.end);
-  };
-
-  const setStartToNow = () => {
-    const next = toTimeString(roundToMinutes(new Date(), 5));
-    form.setValue('start_time', next, { shouldDirty: true });
-  };
-
-  const setEndFromStart = (mins) => {
-    const base = startTime || toTimeString(roundToMinutes(new Date(), 5));
-    if (!startTime) {
-      form.setValue('start_time', base, { shouldDirty: true });
-    }
-    form.setValue('end_time', addMinutes(base, mins), { shouldDirty: true });
-  };
-
-  const bumpEnd = (mins) => {
-    if (!endTime) return setEndFromStart(mins);
-    form.setValue('end_time', addMinutes(endTime, mins), { shouldDirty: true });
   };
 
   const onSubmit = async (data) => {
@@ -207,7 +185,6 @@ export default function OfficerSessionFormPage() {
         activity_id: Number(data.activity_id),
         session_date: data.session_date,
         session_time: data.session_time,
-        supervising_officer_id: Number(data.supervising_officer_id || user?.id),
         start_time: data.start_time || null,
         end_time: data.end_time || null,
         status: data.status,
@@ -300,7 +277,6 @@ export default function OfficerSessionFormPage() {
                   {...form.register('activity_id', { required: 'Activity is required' })}
                   options={activityOptions}
                   error={form.formState.errors.activity_id?.message}
-                  hint={activitiesLoading ? 'Loading activities…' : 'Only active activities are listed.'}
                 />
                 <Input
                   label="Session date"
@@ -334,71 +310,21 @@ export default function OfficerSessionFormPage() {
                   />
                 )}
                 <Input
-                  label="Supervising officer ID"
-                  type="number"
-                  {...form.register('supervising_officer_id')}
+                  label="Start time"
+                  type="text"
                   disabled
-                  hint="Defaults to your user id"
+                  value={form.getValues('start_time') || 'Auto-set on creation'}
+                  hint="Automatically set when session is created"
+                />
+                <Input
+                  label="End time"
+                  type="text"
+                  disabled
+                  value={form.getValues('end_time') || 'Auto-calculated based on activity type'}
+                  hint={isInternal ? 'Internal activities: 2 hours duration' : 'External activities: 3 hours duration'}
                 />
                 <input type="hidden" {...form.register('start_time')} />
-                <TimeClockInput
-                  label="Start time"
-                  value={startTime}
-                  disabled={loading || isEdit}
-                  onChange={(v) => form.setValue('start_time', v || null, { shouldDirty: true })}
-                  hint="Set HH:MM (24-hour clock)."
-                />
-                <div className="-mt-2 md:col-span-2 flex flex-wrap gap-2">
-                  <Button type="button" variant="outline" className="px-3 py-1 text-xs" onClick={setStartToNow} disabled={isEdit}>
-                    Start: Now
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="px-3 py-1 text-xs"
-                    onClick={() => form.setValue('start_time', '', { shouldDirty: true })}
-                    disabled={isEdit || !startTime}
-                  >
-                    Clear start
-                  </Button>
-                  <Button type="button" variant="outline" className="px-3 py-1 text-xs" onClick={() => setEndFromStart(30)} disabled={isEdit}>
-                    End = Start + 30m
-                  </Button>
-                  <Button type="button" variant="outline" className="px-3 py-1 text-xs" onClick={() => setEndFromStart(60)} disabled={isEdit}>
-                    End = Start + 1h
-                  </Button>
-                  <Button type="button" variant="outline" className="px-3 py-1 text-xs" onClick={() => setEndFromStart(120)} disabled={isEdit}>
-                    End = Start + 2h
-                  </Button>
-                </div>
                 <input type="hidden" {...form.register('end_time')} />
-                <TimeClockInput
-                  label="End time"
-                  value={endTime}
-                  disabled={loading || isEdit}
-                  onChange={(v) => form.setValue('end_time', v || null, { shouldDirty: true })}
-                  hint="Optional. Must be after start time."
-                />
-                <div className="-mt-2 flex flex-wrap gap-2">
-                  <Button type="button" variant="outline" className="px-3 py-1 text-xs" onClick={() => bumpEnd(15)} disabled={isEdit || (!startTime && !endTime)}>
-                    +15m
-                  </Button>
-                  <Button type="button" variant="outline" className="px-3 py-1 text-xs" onClick={() => bumpEnd(30)} disabled={isEdit || (!startTime && !endTime)}>
-                    +30m
-                  </Button>
-                  <Button type="button" variant="outline" className="px-3 py-1 text-xs" onClick={() => bumpEnd(-15)} disabled={isEdit || !endTime}>
-                    −15m
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="px-3 py-1 text-xs"
-                    onClick={() => form.setValue('end_time', '', { shouldDirty: true })}
-                    disabled={isEdit || !endTime}
-                  >
-                    Clear end
-                  </Button>
-                </div>
                 {!isInternal && derivedSessionPeriod === 'Custom' && (
                   <Input
                     label="Session label"
