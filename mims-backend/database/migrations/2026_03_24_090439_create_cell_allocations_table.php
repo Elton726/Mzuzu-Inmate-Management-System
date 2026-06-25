@@ -15,6 +15,7 @@ return new class extends Migration
                 $table->id();
                 $table->string('cell_number', 20)->unique();
                 $table->string('block', 10);
+                $table->enum('gender', ['male', 'female'])->default('male');
                 $table->enum('security_classification', ['maximum', 'medium', 'minimum']);
                 $table->unsignedInteger('capacity');
                 $table->integer('current_occupancy')->default(0);
@@ -22,6 +23,7 @@ return new class extends Migration
                 $table->timestamps();
 
                 $table->index(['security_classification', 'status']);
+                $table->index(['gender', 'security_classification', 'status']);
             });
         }
 

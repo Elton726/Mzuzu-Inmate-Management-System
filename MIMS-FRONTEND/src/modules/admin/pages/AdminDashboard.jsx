@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { MdPeople, MdAdminPanelSettings, MdBarChart, MdPerson, MdGavel, MdSchedule } from 'react-icons/md';
+import { MdPeople, MdAdminPanelSettings, MdBarChart, MdPerson, MdGavel, MdSchedule, MdHomeWork } from 'react-icons/md';
 import apiService from '../../../services/apiService';
 import { useToast } from '../../../contexts/useToast';
 import UserAvatarWithRole from '../../../components/common/UserAvatarWithRole';
@@ -333,6 +333,16 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        <div className="mb-8">
+          <Link
+            to="/admin/cells"
+            className="inline-flex items-center gap-2 rounded bg-malawiBlack px-4 py-2 font-semibold text-malawiGold shadow transition hover:opacity-90"
+          >
+            <MdHomeWork className="text-xl" />
+            Manage Cells
+          </Link>
+        </div>
+
         <h2 className="text-2xl font-semibold mb-6">Prison Population Statistics</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
           {populationCards.map((card) => (
@@ -370,6 +380,9 @@ export default function AdminDashboard() {
             </Link>
             <Link to="/admin/audit-logs" className="bg-malawiGreen text-white px-4 py-2 rounded shadow hover:opacity-90 transition">
               View Audit Logs
+            </Link>
+            <Link to="/admin/cells" className="bg-malawiBlack text-malawiGold px-4 py-2 rounded shadow hover:opacity-90 transition">
+              Manage Cells
             </Link>
           </div>
         </div>

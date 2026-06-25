@@ -17,28 +17,56 @@ import {
   MdOutlineArticle,
   MdSearch,
   MdVisibility,
+  MdHome,
+  MdDashboard,
+  MdPeople,
+  MdHistory,
+  MdSchedule,
+  MdLocalActivity,
+  MdCheckCircle,
+  MdEditCalendar,
+  MdExitToApp,
+  MdPerson,
 } from 'react-icons/md';
 
 const getPageTitle = (pathname, role) => {
-  if (pathname === '/') return 'Dashboard';
-  if (pathname.startsWith('/admissions/new')) return 'New Admission';
-  if (pathname.startsWith('/admissions/')) return 'Admission Details';
-  if (pathname.startsWith('/admissions')) return 'Admissions Register';
-  if (pathname.startsWith('/inmates/')) return 'Inmate Profile';
-  if (pathname.startsWith('/admin')) return 'Administration';
-  if (pathname.startsWith('/releases')) return 'Releases';
-  if (pathname.startsWith('/visitation')) return 'Visitation';
-  if (pathname.startsWith('/officer')) return 'Officer Dashboard';
-  if (pathname.startsWith('/profile')) return 'Profile';
-  return role === ROLES.RECEPTION_OFFICER ? 'Dashboard' : 'MIMS';
+  if (pathname === '/') return { title: 'Home', icon: MdHome };
+  if (pathname.startsWith('/admissions/new')) return { title: 'New Admission', icon: MdAdd };
+  if (pathname.startsWith('/admissions/')) return { title: 'Admission Details', icon: MdOutlineArticle };
+  if (pathname.startsWith('/admissions')) return { title: 'Admissions Register', icon: MdOutlineArticle };
+  if (pathname.startsWith('/inmates/')) return { title: 'Inmate Profile', icon: MdPerson };
+  if (pathname.startsWith('/admin/dashboard')) return { title: 'Admin Dashboard', icon: MdDashboard };
+  if (pathname.startsWith('/admin/users')) return { title: 'User Management', icon: MdPeople };
+  if (pathname.startsWith('/admin/audit-logs')) return { title: 'Audit Logs', icon: MdHistory };
+  if (pathname.startsWith('/admin/duty-rosters')) return { title: 'Duty Rosters', icon: MdSchedule };
+  if (pathname.startsWith('/admin/activities')) return { title: 'Activities', icon: MdLocalActivity };
+  if (pathname.startsWith('/releases/approval')) return { title: 'Release Approval', icon: MdCheckCircle };
+  if (pathname.startsWith('/releases/sentences')) return { title: 'Sentence Lengths', icon: MdEditCalendar };
+  if (pathname.startsWith('/releases/confirmation')) return { title: 'Confirm Release', icon: MdExitToApp };
+  if (pathname.startsWith('/releases/confirmed')) return { title: 'Confirmed Releases', icon: MdHistory };
+  if (pathname.startsWith('/releases/history')) return { title: 'Release History', icon: MdHistory };
+  if (pathname.startsWith('/visitation/visitors')) return { title: 'Visitation', icon: MdPerson };
+  if (pathname.startsWith('/visitation/visitors')) return { title: 'Visitation', icon: MdPerson };
+  if (pathname.startsWith('/visitation')) return { title: 'Visitation', icon: MdLocalActivity };
+  if (pathname.startsWith('/officer')) return { title: 'Officer Dashboard', icon: MdDashboard };
+  if (pathname.startsWith('/profile')) return { title: 'Profile', icon: MdPerson };
+  return { title: role === ROLES.RECEPTION_OFFICER ? 'Home' : 'MIMS', icon: MdHome };
+};
+
+const getTimeOfDayGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
 };
 
 const getHeaderCopy = (pathname, user, role) => {
   const roleLabel = getRoleDisplayName(user) || 'Officer';
+  const greeting = getTimeOfDayGreeting();
 
   if (pathname === '/' && role === ROLES.RECEPTION_OFFICER) {
     return {
-      title: `Good morning, ${roleLabel}`,
+      title: `${greeting}, ${roleLabel}`,
       subtitle: "Here's what's happening with admissions today.",
     };
   }
@@ -51,7 +79,7 @@ const getHeaderCopy = (pathname, user, role) => {
   }
 
   return {
-    title: `Good morning, ${roleLabel}`,
+    title: `${greeting}, ${roleLabel}`,
     subtitle: user?.name ? `Signed in as ${user.name}.` : 'Welcome back.',
   };
 };
@@ -178,7 +206,10 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
                 </button>
               )}
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-gray-500">{pageTitle}</p>
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-500">
+                  <pageTitle.icon className="text-lg" />
+                  <span>{pageTitle.title}</span>
+                </div>
                 <h1 className="mt-2 truncate text-2xl font-bold text-gray-950">
                   {headerCopy.title}
                 </h1>

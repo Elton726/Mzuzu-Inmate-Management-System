@@ -18,7 +18,7 @@ class StoreSentenceAdjustmentRequest extends FormRequest
     {
         return [
             'admission_id' => ['required', 'integer', 'exists:admissions,id'],
-            'adjustment_type' => ['required', 'string', Rule::in(['remission', 'pardon', 'reduction'])],
+            'adjustment_type' => ['required', 'string', Rule::in(['remission', 'pardon', 'reduction', 'good_behaviour'])],
             'adjustment_days' => ['required', 'integer', 'min:1'],
             'effective_date' => ['required', 'date'],
             'reason' => ['nullable', 'string'],

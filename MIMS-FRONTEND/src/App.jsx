@@ -47,6 +47,7 @@ import OfficerSessionDetailPage from './modules/activityAllocation/officer/pages
 import AdmissionFormPage from './modules/admissions/pages/AdmissionFormPage';
 import AdmissionShowPage from './modules/admissions/pages/AdmissionShowPage';
 import AdmissionsIndexPage from './modules/admissions/pages/AdmissionsIndexPage';
+import CellManagementPage from './modules/admissions/pages/CellManagementPage';
 import InmateDetailPage from './modules/admissions/pages/InmateDetailPage';
 import ReleaseApprovalPage from './modules/releases/pages/ReleaseApprovalPage';
 import ReleaseConfirmationPage from './modules/releases/pages/ReleaseConfirmationPage';
@@ -165,6 +166,14 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admissions/cells"
+            element={
+              <ProtectedRoute allowedRoles={['reception_officer']}>
+                <CellManagementPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Inmate detail routes - admissions module stays with reception officers */}
           <Route
@@ -256,6 +265,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute requireAdmin={true}>
                 <AuditLogsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/cells"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <CellManagementPage adminMode />
               </ProtectedRoute>
             }
           />

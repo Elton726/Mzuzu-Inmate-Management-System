@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Modules\Release\Requests\ApproveReleaseRequest;
 use App\Modules\Release\Requests\CancelReleaseRequest;
 use App\Modules\Release\Services\ReleaseService;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -141,7 +143,7 @@ class ReleaseApprovalController extends Controller
         $validated = $request->validate([
             'q' => ['nullable', 'string', 'min:2'],
             'status' => ['nullable', 'string', 'in:approved,confirmed,cancelled'],
-            'format' => ['required', 'string', 'in:csv'],
+            'format' => ['required', 'string', 'in:csv,pdf'],
         ]);
 
         $query = $validated['q'] ?? null;
@@ -183,6 +185,29 @@ class ReleaseApprovalController extends Controller
             return response($csv, 200, [
                 'Content-Type' => 'text/csv',
                 'Content-Disposition' => 'attachment; filename="release-history.csv"',
+            ]);
+        }
+
+        if ($format === 'pdf') {
+            $options = new Options();
+            $options->set('defaultFont', 'DejaVu Sans');
+            $options->set('isRemoteEnabled', true);
+
+            $dompdf = new Dompdf($options);
+            $dompdf->loadHtml(view('release.history_pdf', [
+                'records' => $records,
+                'filters' => [
+                    'search' => $query,
+                    'status' => $status,
+                ],
+                'generatedAt' => now(),
+            ])->render());
+            $dompdf->setPaper('a4', 'landscape');
+            $dompdf->render();
+
+            return response($dompdf->output(), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="release-history.pdf"',
             ]);
         }
 

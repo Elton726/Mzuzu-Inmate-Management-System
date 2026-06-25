@@ -12,15 +12,15 @@ class AdmissionModuleSeeder extends Seeder
     {
         Cell::firstOrCreate(
             ['cell_number' => 'A-101'],
-            ['block' => 'A', 'security_classification' => 'maximum', 'capacity' => 4, 'status' => 'available'],
+            ['block' => 'A', 'gender' => 'male', 'security_classification' => 'maximum', 'capacity' => 4, 'status' => 'available'],
         );
         Cell::firstOrCreate(
             ['cell_number' => 'B-201'],
-            ['block' => 'B', 'security_classification' => 'medium', 'capacity' => 6, 'status' => 'available'],
+            ['block' => 'B', 'gender' => 'male', 'security_classification' => 'medium', 'capacity' => 6, 'status' => 'available'],
         );
         Cell::firstOrCreate(
             ['cell_number' => 'C-301'],
-            ['block' => 'C', 'security_classification' => 'minimum', 'capacity' => 8, 'status' => 'available'],
+            ['block' => 'C', 'gender' => 'female', 'security_classification' => 'minimum', 'capacity' => 8, 'status' => 'available'],
         );
 
         Activity::firstOrCreate(

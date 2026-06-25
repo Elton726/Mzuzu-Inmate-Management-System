@@ -8,6 +8,7 @@ import {
   MdDashboard,
   MdPeople,
   MdAssignment,
+  MdHomeWork,
   MdHistory,
   MdSchedule,
   MdLocalActivity,
@@ -97,6 +98,7 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
       items: [
         {
           to: '/admissions',
+          end: true,
           icon: MdAssignment,
           title: 'Admissions Register',
           show: role === ROLES.RECEPTION_OFFICER
@@ -105,6 +107,12 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
           to: '/admissions/new',
           icon: MdAdd,
           title: 'New Admission',
+          show: role === ROLES.RECEPTION_OFFICER
+        },
+        {
+          to: '/admissions/cells',
+          icon: MdHomeWork,
+          title: 'Cell Management',
           show: role === ROLES.RECEPTION_OFFICER
         }
       ]
@@ -198,6 +206,12 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
           show: isAdmin
         },
         {
+          to: '/admin/cells',
+          icon: MdHomeWork,
+          title: 'Cell Management',
+          show: isAdmin
+        },
+        {
           to: '/admin/duty-rosters',
           icon: MdSchedule,
           title: 'Duty Rosters',
@@ -232,7 +246,7 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
           />
           {!isCollapsed && (
             <span className="text-white text-base font-bold tracking-wide truncate">
-              Mzuzu MIMS
+              Mzuzu-MIMS
             </span>
           )}
         </div>

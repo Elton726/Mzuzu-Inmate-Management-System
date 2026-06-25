@@ -13,7 +13,7 @@ class SentenceAdjustmentFactory extends Factory
     {
         return [
             'admission_id' => null, // Should be set explicitly
-            'adjustment_type' => $this->faker->randomElement(['remission', 'pardon', 'reduction']),
+            'adjustment_type' => $this->faker->randomElement(['remission', 'pardon', 'reduction', 'good_behaviour']),
             'adjustment_days' => $this->faker->numberBetween(30, 365),
             'effective_date' => $this->faker->dateTime(),
             'reason' => $this->faker->sentence(),
@@ -39,6 +39,13 @@ class SentenceAdjustmentFactory extends Factory
     {
         return $this->state([
             'adjustment_type' => 'reduction',
+        ]);
+    }
+
+    public function goodBehaviour(): static
+    {
+        return $this->state([
+            'adjustment_type' => 'good_behaviour',
         ]);
     }
 }

@@ -86,72 +86,86 @@ body {
 }
 
 .dark body {
-  @apply bg-slate-800 text-white;
+  background-color: #0f172a;
+  color: #f8fafc;
 }
 
 .dark .bg-malawiGold {
-  background-color: #1f2937;
+  background-color: #fde68a;
+}
+
+.dark .text-malawiGold {
+  color: #fde68a;
+}
+
+.dark .bg-malawiRed {
+  background-color: #991b1b;
+}
+
+.dark .text-malawiRed {
+  color: #fecaca;
+}
+
+.dark .bg-malawiGreen {
+  background-color: #065f46;
+}
+
+.dark .border-malawiGreen {
+  border-color: #166534;
+}
+
+.dark .border-malawiGold {
+  border-color: #f59e0b;
 }
 
 .dark .bg-white {
   background-color: #0f172a;
 }
 
-.dark .text-gray-900 {
-  color: #f8fafc;
-}
-
+.dark .text-gray-900,
 .dark .text-black,
 .dark .text-malawiBlack {
   color: #f8fafc;
 }
 
 .dark .text-gray-800 {
-  color: #f1f5f9;
+  color: #e2e8f0;
 }
 
-.dark .text-gray-700 {
-  color: #cbd5e1;
-}
-
+.dark .text-gray-700,
 .dark .text-gray-600,
 .dark .text-gray-500 {
   color: #94a3b8;
 }
 
-.dark .bg-gray-50 {
-  background-color: #1e293b;
-}
-
+.dark .bg-gray-50,
 .dark .bg-gray-100 {
-  background-color: #1e293b;
+  background-color: #111827;
 }
 
 .dark .bg-gray-200,
 .dark .bg-gray-300 {
-  background-color: #334155;
+  background-color: #1f2937;
 }
 
-.dark .border-gray-200 {
-  border-color: #334155;
-}
-
+.dark .border-gray-200,
+.dark .border-gray-300,
 .dark .border-black,
-.dark .border-malawiBlack,
-.dark .border-gray-300 {
-  border-color: #64748b;
+.dark .border-malawiBlack {
+  border-color: #475569;
 }
 
 .dark .hover\:bg-white:hover,
 .dark .hover\:bg-gray-50:hover,
 .dark .hover\:bg-gray-100:hover,
-.dark .hover\:bg-gray-200:hover {
-  background-color: #1e293b;
+.dark .hover\:bg-gray-200:hover,
+.dark .hover\:bg-malawiGold:hover {
+  background-color: #1f2937;
 }
 
 .dark .focus\:bg-gray-50:focus,
 .dark .focus\:bg-gray-100:focus {
-  background-color: #1e293b;
+  background-color: #1f2937;
 }
 
 .dark .hover\:text-gray-700:hover,

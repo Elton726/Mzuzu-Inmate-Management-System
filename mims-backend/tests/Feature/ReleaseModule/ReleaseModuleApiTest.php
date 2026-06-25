@@ -96,7 +96,10 @@ class ReleaseModuleApiTest extends TestCase
     {
         $stationOfficer = $this->userWithRole('station_officer');
         $gatekeeper = $this->userWithRole('gatekeeper');
-        $admission = $this->createAdmission();
+        $admission = $this->createAdmission([
+            'projected_release_date' => CarbonImmutable::today()->toDateString(),
+            'original_release_date' => CarbonImmutable::today()->toDateString(),
+        ]);
 
         $workflow = ReleaseWorkflow::query()->create([
             'admission_id' => $admission->id,
@@ -192,5 +195,57 @@ class ReleaseModuleApiTest extends TestCase
             'id' => $store->json('adjustment.id'),
         ]);
         $this->assertSame('2026-05-30', $admission->fresh()->projected_release_date?->toDateString());
+    }
+
+    public function test_station_officer_can_apply_good_behaviour_adjustment(): void
+    {
+        $stationOfficer = $this->userWithRole('station_officer');
+        $admission = $this->createAdmission([
+            'projected_release_date' => '2026-05-30',
+            'original_release_date' => '2026-05-30',
+        ]);
+
+        $response = $this->actingAs($stationOfficer, 'sanctum')->postJson("/api/admissions/{$admission->id}/adjustments", [
+            'admission_id' => $admission->id,
+            'adjustment_type' => 'good_behaviour',
+            'adjustment_days' => 10,
+            'effective_date' => '2026-04-20',
+            'reason' => 'Sustained good behaviour record',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonFragment([
+                'new_projected_release_date' => '2026-05-20',
+                'total_adjustment_days' => 10,
+            ]);
+
+        $this->assertDatabaseHas('sentence_adjustments', [
+            'admission_id' => $admission->id,
+            'adjustment_type' => 'good_behaviour',
+            'adjustment_days' => 10,
+        ]);
+    }
+
+    public function test_release_history_can_be_exported_as_pdf(): void
+    {
+        $stationOfficer = $this->userWithRole('station_officer');
+        $admission = $this->createAdmission([
+            'projected_release_date' => CarbonImmutable::today()->toDateString(),
+            'original_release_date' => CarbonImmutable::today()->toDateString(),
+        ]);
+
+        ReleaseWorkflow::query()->create([
+            'admission_id' => $admission->id,
+            'approved_by' => $stationOfficer->id,
+            'approved_at' => now(),
+            'status' => 'approved',
+        ]);
+
+        $response = $this->actingAs($stationOfficer, 'sanctum')
+            ->get('/api/releases/history/export?format=pdf');
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', $response->baseResponse->getContent());
     }
 }
