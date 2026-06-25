@@ -17,7 +17,8 @@ import {
   MdEditCalendar,
   MdChevronLeft,
   MdChevronRight,
-  MdLogout
+  MdLogout,
+  MdBarChart
 } from 'react-icons/md';
 import { ROLES, getRoleDisplayName, getRoleName } from '../utils/helpers';
 import logo from '/cuffs.png';
@@ -113,6 +114,12 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
           to: '/admissions/cells',
           icon: MdHomeWork,
           title: 'Cell Management',
+          show: role === ROLES.RECEPTION_OFFICER
+        },
+        {
+          to: '/admissions/reports',
+          icon: MdBarChart,
+          title: 'Reports',
           show: role === ROLES.RECEPTION_OFFICER
         }
       ]

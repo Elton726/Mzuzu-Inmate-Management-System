@@ -8,7 +8,7 @@ import { useNotification } from '../../../contexts/useNotification';
 import { listCells } from '../services/cellService';
 import { listInmates } from '../services/inmateService';
 import { formatDate } from '../../../utils/helpers';
-import apiService from '../../../services/apiService';
+import apiService, { SERVER_BASE_URL } from '../../../services/apiService';
 import {
   MdAssignment,
   MdCheckCircle,
@@ -34,6 +34,18 @@ const getInmateInitials = (inmate) => {
   const f = inmate?.first_name?.[0] || '';
   const l = inmate?.last_name?.[0] || '';
   return (f + l).toUpperCase() || 'IN';
+};
+
+const getInmatePhotoUrl = (inmate) => {
+  const rawPath = inmate?.photo_path || inmate?.photoPath;
+  if (!rawPath) return null;
+
+  const normalizedPath = String(rawPath).replace(/\\/g, '/');
+  if (/^https?:\/\//i.test(normalizedPath)) {
+    return normalizedPath;
+  }
+
+  return `${SERVER_BASE_URL}/storage/${normalizedPath.replace(/^\/?storage\//, '')}`;
 };
 
 const getCellOccupancyPercent = (cell) => {
@@ -110,6 +122,29 @@ function QueueCard({ title, subtitle, emptyText, children }) {
         )}
       </div>
     </Card>
+  );
+}
+
+function InmatePhotoAvatar({ inmate, className = 'h-10 w-10 rounded-full' }) {
+  const [failedPhotoUrl, setFailedPhotoUrl] = useState(null);
+  const photoUrl = getInmatePhotoUrl(inmate);
+  const fullName = `${inmate?.first_name ?? ''} ${inmate?.last_name ?? ''}`.trim();
+
+  if (photoUrl && failedPhotoUrl !== photoUrl) {
+    return (
+      <img
+        src={photoUrl}
+        alt={fullName || 'Inmate photo'}
+        className={`${className} shrink-0 object-cover bg-gray-100 border border-gray-200 shadow-sm`}
+        onError={() => setFailedPhotoUrl(photoUrl)}
+      />
+    );
+  }
+
+  return (
+    <div className={`${className} flex shrink-0 items-center justify-center bg-malawiBlack text-malawiGold border border-gray-200 font-bold shadow-sm`}>
+      {getInmateInitials(inmate)}
+    </div>
   );
 }
 
@@ -327,6 +362,7 @@ export default function AdmissionsDashboardPage() {
                 </div>
                 {admissionQueue[0] ? (
                   <div className="mt-4 space-y-3">
+                    <InmatePhotoAvatar inmate={admissionQueue[0]} className="h-16 w-16 rounded-2xl" />
                     <div className="text-2xl font-bold text-gray-900">
                       {admissionQueue[0].first_name} {admissionQueue[0].last_name}
                     </div>
@@ -514,9 +550,7 @@ export default function AdmissionsDashboardPage() {
             {admissionQueue.map((inmate) => (
               <div key={inmate.id} className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 transition hover:bg-gray-50 duration-200">
                 <div className="flex items-start gap-4">
-                  <div className="flex shrink-0 items-center justify-center rounded-full font-bold h-10 w-10 bg-malawiBlack text-malawiGold border border-gray-200">
-                    {getInmateInitials(inmate)}
-                  </div>
+                  <InmatePhotoAvatar inmate={inmate} />
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -565,9 +599,7 @@ export default function AdmissionsDashboardPage() {
             {activeAdmissionQueue.map((inmate) => (
               <div key={inmate.id} className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 transition hover:bg-gray-50 duration-200">
                 <div className="flex items-start gap-4">
-                  <div className="flex shrink-0 items-center justify-center rounded-full font-bold h-10 w-10 bg-malawiBlack text-malawiGold border border-gray-200">
-                    {getInmateInitials(inmate)}
-                  </div>
+                  <InmatePhotoAvatar inmate={inmate} />
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -663,9 +695,7 @@ export default function AdmissionsDashboardPage() {
             {recentlyAdded.map((inmate) => (
               <div key={inmate.id} className="rounded-xl border border-gray-200 bg-white p-4 transition hover:bg-gray-50 duration-200">
                 <div className="flex items-center gap-4">
-                  <div className="flex shrink-0 items-center justify-center rounded-full font-bold h-10 w-10 bg-malawiBlack text-malawiGold border border-gray-200">
-                    {getInmateInitials(inmate)}
-                  </div>
+                  <InmatePhotoAvatar inmate={inmate} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <div>

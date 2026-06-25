@@ -153,6 +153,16 @@ class ApiService {
   }
 
   /**
+   * Helper GET request method
+   * @param {string} path - API endpoint path
+   * @param {Object} options - Additional fetch options
+   * @returns {Promise<Object>} API response data
+   */
+  async get(path, options = {}) {
+    return this.request('general', path, { method: 'GET', ...options });
+  }
+
+  /**
    * Make authenticated form-data API request
    * @param {string} rateLimitKey - Key for rate limit tracking
    * @param {string} path - API endpoint path
@@ -503,6 +513,16 @@ class ApiService {
   }
 
   // ============ STATISTICS ENDPOINTS ============
+
+  /**
+   * Get admissions report
+   * @param {Object} params - Query parameters (period, date)
+   * @returns {Promise<Object>} Admissions report data
+   */
+  async getAdmissionsReport(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request('admissions_ops', `/reports/admissions?${queryString}`, { method: 'GET' });
+  }
 
   /**
    * Get population statistics

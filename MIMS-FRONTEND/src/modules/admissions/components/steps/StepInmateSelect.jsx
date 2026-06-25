@@ -7,6 +7,7 @@ import { MdCameraAlt, MdCloudUpload, MdDelete } from 'react-icons/md';
 import FormField from '../../../../components/common/FormField';
 import { inmateSchema } from '../../schemas/admissionSchemas';
 import { checkDuplicate, createInmate } from '../../services/inmateService';
+import { uploadDocument } from '../../services/documentService';
 import { toast } from 'react-toastify';
 import CameraCapture from '../CameraCapture';
 
@@ -166,8 +167,27 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
       };
 
       const created = await createInmate(payload);
-      toast.success(`Inmate created (${created?.prison_number || created?.id})`);
-      onSelected({ inmate: created, created: true, inmateDraft: form, photo });
+      let inmateWithPhoto = created;
+
+      if (photo) {
+        const photoRes = await uploadDocument({
+          inmateId: created.id,
+          admissionId: null,
+          documentType: 'inmate_photo',
+          description: 'Inmate photo',
+          file: photo
+        });
+
+        if (photoRes?.inmate?.photo_path) {
+          inmateWithPhoto = {
+            ...created,
+            photo_path: photoRes.inmate.photo_path
+          };
+        }
+      }
+
+      toast.success(`Inmate created (${inmateWithPhoto?.prison_number || inmateWithPhoto?.id})`);
+      onSelected({ inmate: inmateWithPhoto, created: true, inmateDraft: form });
     } catch (err) {
       const msg = err?.response?.data?.message || err.message || 'Failed to create inmate';
       toast.error(msg);
