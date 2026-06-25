@@ -27,7 +27,11 @@ class DatabaseSeeder extends Seeder
         $this->call(AdmissionModuleSeeder::class);
         $this->call(CellSeeder::class);
 
+        // Seed female inmates with their current admissions + active cell allocations.
+        $this->call(FemaleInmateSeeder::class);
+
         // Create a regular user you can use for smoke testing.
+
         $defaultRole = Role::firstOrCreate(['name' => 'officer_on_duty'], ['description' => null]);
         User::updateOrCreate(
             ['email' => 'test@example.com'],

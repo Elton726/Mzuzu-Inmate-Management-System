@@ -12,6 +12,7 @@ use App\Modules\Admissions\Controllers\Api\AdmissionController;
 use App\Modules\Admissions\Controllers\Api\CellController;
 use App\Modules\Admissions\Controllers\Api\DocumentController;
 use App\Modules\Admissions\Controllers\Api\InmateController;
+use App\Modules\Admissions\Controllers\Api\ReportController as AdmissionsReportController;
 use App\Modules\ActivityAllocation\Controllers\Officer\ActivitySessionController;
 use App\Modules\ActivityAllocation\Controllers\Officer\AvailableActivitiesController;
 use App\Modules\ActivityAllocation\Controllers\Officer\ExternalActivityAllocationController;
@@ -114,6 +115,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         Route::get('/activities', [ActivityController::class, 'index'])->middleware('throttle:60,60,user');
         Route::post('/documents', [DocumentController::class, 'store'])->middleware('throttle:30,60,user');
+
+        // Admissions reporting
+        Route::get('/reports/admissions', [AdmissionsReportController::class, 'index'])->middleware('throttle:30,60,user');
     });
 
     Route::middleware(['role:reception_officer,admin'])->group(function () {
