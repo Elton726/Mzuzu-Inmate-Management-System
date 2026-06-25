@@ -8,6 +8,7 @@ import { ThemeContext } from '../contexts/ThemeContextCreate';
 import { getRoleDisplayName, getRoleName, ROLES } from '../utils/helpers';
 import { useDebouncedValue } from '../utils/useDebouncedValue';
 import { searchInmates } from '../modules/admissions/services/inmateService';
+import { listCells } from '../modules/admissions/services/cellService';
 import {
   MdAdd,
   MdDarkMode,
@@ -27,17 +28,20 @@ import {
   MdEditCalendar,
   MdExitToApp,
   MdPerson,
+  MdHomeWork,
 } from 'react-icons/md';
 
 const getPageTitle = (pathname, role) => {
   if (pathname === '/') return { title: 'Home', icon: MdHome };
   if (pathname.startsWith('/admissions/new')) return { title: 'New Admission', icon: MdAdd };
+  if (pathname.startsWith('/admissions/cells')) return { title: 'Cell Management', icon: MdHomeWork };
   if (pathname.startsWith('/admissions/')) return { title: 'Admission Details', icon: MdOutlineArticle };
   if (pathname.startsWith('/admissions')) return { title: 'Admissions Register', icon: MdOutlineArticle };
   if (pathname.startsWith('/inmates/')) return { title: 'Inmate Profile', icon: MdPerson };
   if (pathname.startsWith('/admin/dashboard')) return { title: 'Admin Dashboard', icon: MdDashboard };
   if (pathname.startsWith('/admin/users')) return { title: 'User Management', icon: MdPeople };
   if (pathname.startsWith('/admin/audit-logs')) return { title: 'Audit Logs', icon: MdHistory };
+  if (pathname.startsWith('/admin/cells')) return { title: 'Cell Management', icon: MdHomeWork };
   if (pathname.startsWith('/admin/duty-rosters')) return { title: 'Duty Rosters', icon: MdSchedule };
   if (pathname.startsWith('/admin/activities')) return { title: 'Activities', icon: MdLocalActivity };
   if (pathname.startsWith('/releases/approval')) return { title: 'Release Approval', icon: MdCheckCircle };
@@ -99,6 +103,24 @@ const formatInmateType = (type) => {
   return labels[type] || 'No active admission';
 };
 
+const normalizeCells = (data) => {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.data)) return data.data;
+  return [];
+};
+
+const getCellSearchText = (cell) => [
+  cell?.cell_number,
+  cell?.block,
+  cell?.gender,
+  cell?.security_classification,
+  cell?.status,
+  `block ${cell?.block || ''}`,
+  `cell ${cell?.cell_number || ''}`,
+].filter(Boolean).join(' ').toLowerCase();
+
+const getCellLabel = (cell) => `Block ${cell?.block || '-'} | Cell ${cell?.cell_number || '-'}`;
+
 export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
   const { user, isAdmin } = useAuth();
   const { notifications, markAsRead, clearAll } = useNotification();
@@ -108,12 +130,13 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
   const searchRef = useRef(null);
   const searchInputRef = useRef(null);
   const [searchInput, setSearchInput] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
+  const [inmateResults, setInmateResults] = useState([]);
+  const [cellResults, setCellResults] = useState([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchError, setSearchError] = useState('');
   const [searchPending, setSearchPending] = useState(false);
   const debouncedSearchQuery = useDebouncedValue(searchInput, 250);
-  const canSearchAdmissions = role === ROLES.RECEPTION_OFFICER;
+  const canSearchSystem = Boolean(user);
 
   const pageTitle = useMemo(() => getPageTitle(location.pathname, role), [location.pathname, role]);
   const headerCopy = useMemo(
@@ -121,6 +144,7 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
     [location.pathname, user, role]
   );
   const isAdmissionsModule = location.pathname.startsWith('/admissions');
+  const isCellPage = location.pathname.startsWith('/admissions/cells') || location.pathname.startsWith('/admin/cells');
 
   useEffect(() => {
     const handlePointerDown = (event) => {
@@ -139,33 +163,52 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
   }, [searchOpen]);
 
   useEffect(() => {
-    if (!canSearchAdmissions || debouncedSearchQuery.trim().length < 2) return undefined;
+    const query = debouncedSearchQuery.trim();
+    if (!canSearchSystem || query.length < 2) return undefined;
 
     let active = true;
-    searchInmates({
-      q: debouncedSearchQuery.trim(),
+
+    const inmateSearch = searchInmates({
+      q: query,
       per_page: 6,
       page: 1,
       sort_by: 'id',
       sort_order: 'desc',
-    })
-      .then((data) => {
+    });
+
+    const cellSearch = isCellPage
+      ? listCells().then((data) =>
+          normalizeCells(data)
+            .filter((cell) => getCellSearchText(cell).includes(query.toLowerCase()))
+            .slice(0, 8)
+        )
+      : Promise.resolve([]);
+
+    Promise.allSettled([inmateSearch, cellSearch])
+      .then(([inmateResponse, cellResponse]) => {
         if (!active) return;
-        setSearchResults(Array.isArray(data?.data) ? data.data : []);
-        setSearchError('');
-        setSearchPending(false);
+
+        const nextInmates = inmateResponse.status === 'fulfilled'
+          ? (Array.isArray(inmateResponse.value?.data) ? inmateResponse.value.data : [])
+          : [];
+        const nextCells = cellResponse.status === 'fulfilled' ? cellResponse.value : [];
+
+        setInmateResults(nextInmates);
+        setCellResults(nextCells);
+
+        const errors = [];
+        if (inmateResponse.status === 'rejected') errors.push(inmateResponse.reason?.message || 'Inmate search failed');
+        if (cellResponse.status === 'rejected') errors.push(cellResponse.reason?.message || 'Cell search failed');
+        setSearchError(errors.join(' · '));
       })
-      .catch((error) => {
-        if (!active) return;
-        setSearchResults([]);
-        setSearchError(error?.message || 'Search failed');
-        setSearchPending(false);
+      .finally(() => {
+        if (active) setSearchPending(false);
       });
 
     return () => {
       active = false;
     };
-  }, [canSearchAdmissions, debouncedSearchQuery]);
+  }, [canSearchSystem, debouncedSearchQuery, isCellPage]);
 
   const handleSearch = (event) => {
     event.preventDefault();
@@ -178,7 +221,8 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
     setSearchError('');
 
     if (value.trim().length < 2) {
-      setSearchResults([]);
+      setInmateResults([]);
+      setCellResults([]);
       setSearchOpen(false);
       setSearchPending(false);
     } else {
@@ -242,7 +286,7 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
               )}
 
               <div className="flex items-center justify-end gap-3">
-                {canSearchAdmissions && (
+                {canSearchSystem && (
                   <div ref={searchRef} className="relative">
                     <button
                       type="button"
@@ -252,8 +296,8 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
                           ? 'border-blue-600 bg-blue-50 text-blue-700'
                           : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                       }`}
-                      aria-label="Search inmates"
-                      title="Search inmates"
+                      aria-label={isCellPage ? 'Search cells and inmates' : 'Search inmates'}
+                      title={isCellPage ? 'Search cells and inmates' : 'Search inmates'}
                     >
                       <MdSearch className="h-5 w-5" />
                     </button>
@@ -269,14 +313,14 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
                               type="search"
                               value={searchInput}
                               onChange={handleSearchChange}
-                              placeholder="Search inmate, prison no., National ID"
+                              placeholder={isCellPage ? 'Search cells, blocks, inmates...' : 'Search inmate, prison no., National ID'}
                               className="h-10 w-full rounded-md border border-gray-300 bg-white pl-10 pr-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                             />
                           </div>
                         </form>
 
                         <div className="border-b border-gray-100 px-4 py-2 text-xs font-bold uppercase text-gray-500">
-                          Search results
+                          {isCellPage ? 'Page and system results' : 'Inmate results'}
                         </div>
                         {searchInput.trim().length < 2 ? (
                           <div className="px-4 py-4 text-sm text-gray-500">
@@ -284,13 +328,53 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
                           </div>
                         ) : searchPending ? (
                           <div className="px-4 py-4 text-sm text-gray-500">Searching system records...</div>
-                        ) : searchError ? (
+                        ) : searchError && inmateResults.length === 0 && cellResults.length === 0 ? (
                           <div className="px-4 py-4 text-sm text-red-600">{searchError}</div>
-                        ) : searchResults.length === 0 ? (
-                          <div className="px-4 py-4 text-sm text-gray-500">No matching inmates found.</div>
+                        ) : inmateResults.length === 0 && cellResults.length === 0 ? (
+                          <div className="px-4 py-4 text-sm text-gray-500">
+                            No matching {isCellPage ? 'cells or inmates' : 'inmates'} found.
+                          </div>
                         ) : (
                           <div className="max-h-96 overflow-y-auto">
-                            {searchResults.map((inmate) => {
+                            {isCellPage && cellResults.length > 0 && (
+                              <div>
+                                <div className="bg-gray-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-gray-500">
+                                  Cells
+                                </div>
+                                {cellResults.map((cell) => (
+                                  <div key={cell.id} className="border-b border-gray-100 px-4 py-3">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                      <div className="min-w-0">
+                                        <div className="truncate text-sm font-bold text-gray-950">
+                                          {getCellLabel(cell)}
+                                        </div>
+                                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                                          <span>{cell.gender ? `${cell.gender} cells` : 'Gender unassigned'}</span>
+                                          <span>{cell.security_classification || 'No security level'}</span>
+                                          <span>{cell.status || 'No status'}</span>
+                                          <span>{cell.current_occupancy ?? 0}/{cell.capacity ?? 0} occupied</span>
+                                        </div>
+                                      </div>
+                                      <Link
+                                        to={location.pathname.startsWith('/admin') ? '/admin/cells' : '/admissions/cells'}
+                                        onClick={() => setSearchOpen(false)}
+                                        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md bg-blue-700 px-2.5 text-xs font-bold text-white hover:bg-blue-800"
+                                      >
+                                        Open Cells
+                                        <MdArrowForward />
+                                      </Link>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {inmateResults.length > 0 && (
+                              <div className="bg-gray-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-gray-500">
+                                Inmates
+                              </div>
+                            )}
+                            {inmateResults.map((inmate) => {
                               const admission = getCurrentAdmission(inmate);
                               return (
                                 <div key={inmate.id} className="border-b border-gray-100 px-4 py-3 last:border-b-0">

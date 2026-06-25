@@ -16,6 +16,7 @@ import { useToast } from '../../../contexts/useToast';
 import { createCell, deleteCell, listCells, updateCell } from '../services/cellService';
 
 const SECURITY_LEVELS = [
+  { value: 'all', label: 'All Levels', tone: 'border-gray-200 bg-gray-50 text-gray-700' },
   { value: 'maximum', label: 'Maximum', tone: 'border-red-200 bg-red-50 text-red-700' },
   { value: 'medium', label: 'Medium', tone: 'border-yellow-200 bg-yellow-50 text-yellow-700' },
   { value: 'minimum', label: 'Minimum', tone: 'border-green-200 bg-green-50 text-green-700' },
@@ -26,6 +27,8 @@ const GENDER_GROUPS = [
   { value: 'female', label: 'Female Cells' },
   { value: 'unassigned', label: 'Unassigned Cells' },
 ];
+
+const FORM_SECURITY_LEVELS = SECURITY_LEVELS.filter((level) => level.value !== 'all');
 
 const emptyForm = {
   cell_number: '',
@@ -62,7 +65,11 @@ const normalizeCells = (data) => {
   return [];
 };
 
-function SummaryTile({ label, value, helper, icon: Icon }) {
+const getCellBlock = (cell) => String(cell?.block || 'Unassigned');
+
+function SummaryTile({ label, value, helper, icon }) {
+  const SummaryIcon = icon;
+
   return (
     <Card className="border border-gray-200 shadow-sm">
       <div className="flex items-start justify-between gap-3">
@@ -71,7 +78,7 @@ function SummaryTile({ label, value, helper, icon: Icon }) {
           <p className="mt-2 text-3xl font-black text-gray-900">{value}</p>
           <p className="mt-1 text-xs text-gray-500">{helper}</p>
         </div>
-        <Icon className="text-2xl text-malawiGreen" />
+        <SummaryIcon className="text-2xl text-malawiGreen" />
       </div>
     </Card>
   );
@@ -172,6 +179,83 @@ function CellSection({ gender, cells, adminMode, onEdit, onDelete }) {
   );
 }
 
+function TabButton({ active, children, count, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        'inline-flex min-h-10 items-center justify-center gap-2 rounded border px-3 py-2 text-sm font-bold transition',
+        active
+          ? 'border-malawiGreen bg-green-50 text-malawiGreen shadow-sm'
+          : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+      ].join(' ')}
+    >
+      <span>{children}</span>
+      <span className={active ? 'rounded bg-white px-2 py-0.5 text-xs text-malawiGreen' : 'rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600'}>
+        {count}
+      </span>
+    </button>
+  );
+}
+
+function CellTabbedPanel({ gender, security, block, cells, adminMode, onEdit, onDelete }) {
+  const occupied = cells.reduce((sum, cell) => sum + Number(cell.current_occupancy || 0), 0);
+  const capacity = cells.reduce((sum, cell) => sum + Number(cell.capacity || 0), 0);
+  const securityCells = security.value === 'all'
+    ? cells
+    : cells.filter((cell) => cell.security_classification === security.value);
+  const shownCells = block.value === 'all'
+    ? securityCells
+    : securityCells.filter((cell) => getCellBlock(cell) === block.value);
+  const shownOccupied = shownCells.reduce((sum, cell) => sum + Number(cell.current_occupancy || 0), 0);
+  const shownCapacity = shownCells.reduce((sum, cell) => sum + Number(cell.capacity || 0), 0);
+
+  return (
+    <section className="space-y-4">
+      {gender.value === 'unassigned' && cells.length > 0 && (
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+          These cells do not include a stored gender assignment yet. They are separated here until the backend records male or female cell designation.
+        </div>
+      )}
+
+      <Card className="border border-gray-200 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <MdShield className="text-xl text-gray-700" />
+            <div>
+              <h3 className="font-bold text-gray-900">{gender.label} | {security.label} | {block.label}</h3>
+              <p className="text-xs text-gray-500">
+                Showing {shownCells.length} of {securityCells.length} filtered cell(s) | {shownOccupied}/{shownCapacity} occupied
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className={`rounded border px-3 py-1 text-xs font-bold ${security.tone}`}>
+              {shownCapacity ? Math.round((shownOccupied / shownCapacity) * 100) : 0}% shown full
+            </span>
+            <span className="rounded border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-bold text-gray-600">
+              Overall {capacity ? Math.round((occupied / capacity) * 100) : 0}% full
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {shownCells.length ? (
+            shownCells.map((cell) => (
+              <CellCard key={cell.id} cell={cell} adminMode={adminMode} onEdit={onEdit} onDelete={onDelete} />
+            ))
+          ) : (
+            <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500 md:col-span-2 xl:col-span-3">
+              No {security.value === 'all' ? '' : `${security.label.toLowerCase()} security `}cells found for {gender.label.toLowerCase()} in {block.label.toLowerCase()}.
+            </div>
+          )}
+        </div>
+      </Card>
+    </section>
+  );
+}
+
 export default function CellManagementPage({ adminMode = false }) {
   const toast = useToast();
   const [cells, setCells] = useState([]);
@@ -179,6 +263,9 @@ export default function CellManagementPage({ adminMode = false }) {
   const [saving, setSaving] = useState(false);
   const [editingCell, setEditingCell] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [activeGender, setActiveGender] = useState('male');
+  const [activeSecurity, setActiveSecurity] = useState('all');
+  const [activeBlock, setActiveBlock] = useState('all');
 
   const loadCells = async () => {
     try {
@@ -208,6 +295,33 @@ export default function CellManagementPage({ adminMode = false }) {
     const occupied = cells.reduce((sum, cell) => sum + Number(cell.current_occupancy || 0), 0);
     return { capacity, occupied, available: Math.max(0, capacity - occupied) };
   }, [cells]);
+
+  const activeGenderOption = GENDER_GROUPS.find((gender) => gender.value === activeGender) || GENDER_GROUPS[0];
+  const activeSecurityOption = SECURITY_LEVELS.find((level) => level.value === activeSecurity) || SECURITY_LEVELS[0];
+  const activeGenderCells = grouped[activeGenderOption.value] || [];
+  const activeSecurityCells = activeSecurity === 'all'
+    ? activeGenderCells
+    : activeGenderCells.filter((cell) => cell.security_classification === activeSecurity);
+  const blockOptions = useMemo(() => {
+    const uniqueBlocks = Array.from(new Set(activeSecurityCells.map(getCellBlock))).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    return [
+      { value: 'all', label: 'All Blocks' },
+      ...uniqueBlocks.map((block) => ({ value: block, label: `Block ${block}` }))
+    ];
+  }, [activeSecurityCells]);
+  const activeBlockOption = blockOptions.find((block) => block.value === activeBlock) || blockOptions[0];
+
+  const securityCount = (level) => (
+    level.value === 'all'
+      ? activeGenderCells.length
+      : activeGenderCells.filter((cell) => cell.security_classification === level.value).length
+  );
+
+  const blockCount = (block) => (
+    block.value === 'all'
+      ? activeSecurityCells.length
+      : activeSecurityCells.filter((cell) => getCellBlock(cell) === block.value).length
+  );
 
   const startEdit = (cell) => {
     setEditingCell(cell);
@@ -324,7 +438,7 @@ export default function CellManagementPage({ adminMode = false }) {
                 <label className="text-sm font-semibold text-gray-700">
                   Security
                   <select className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.security_classification} onChange={(event) => setForm({ ...form, security_classification: event.target.value })}>
-                    {SECURITY_LEVELS.map((level) => <option key={level.value} value={level.value}>{level.label}</option>)}
+                    {FORM_SECURITY_LEVELS.map((level) => <option key={level.value} value={level.value}>{level.label}</option>)}
                   </select>
                 </label>
                 <label className="text-sm font-semibold text-gray-700">
@@ -348,18 +462,86 @@ export default function CellManagementPage({ adminMode = false }) {
           </Card>
         )}
 
-        <div className="space-y-8">
-          {GENDER_GROUPS.map((gender) => (
-            <CellSection
-              key={gender.value}
-              gender={gender}
-              cells={grouped[gender.value]}
-              adminMode={adminMode}
-              onEdit={startEdit}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
+        <Card className="border border-gray-200 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Cell Classifications</h2>
+              <p className="text-sm text-gray-500">Switch between male and female cells, then narrow the view by security level.</p>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-500">
+              <MdWc className="text-lg text-malawiGreen" />
+              Gender
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Cell gender groups">
+            {GENDER_GROUPS.map((gender) => (
+              <TabButton
+                key={gender.value}
+                active={activeGender === gender.value}
+                count={grouped[gender.value]?.length || 0}
+                onClick={() => {
+                  setActiveGender(gender.value);
+                  setActiveSecurity('all');
+                  setActiveBlock('all');
+                }}
+              >
+                {gender.label}
+              </TabButton>
+            ))}
+          </div>
+
+          <div className="mt-5 border-t border-gray-100 pt-4">
+            <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-500">
+              <MdShield className="text-lg text-malawiGreen" />
+              Security Level
+            </div>
+            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Cell security classifications">
+              {SECURITY_LEVELS.map((level) => (
+                <TabButton
+                  key={level.value}
+                  active={activeSecurity === level.value}
+                  count={securityCount(level)}
+                  onClick={() => {
+                    setActiveSecurity(level.value);
+                    setActiveBlock('all');
+                  }}
+                >
+                  {level.label}
+                </TabButton>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-5 border-t border-gray-100 pt-4">
+            <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-500">
+              <MdHomeWork className="text-lg text-malawiGreen" />
+              Block
+            </div>
+            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Cell block classifications">
+              {blockOptions.map((block) => (
+                <TabButton
+                  key={block.value}
+                  active={activeBlockOption.value === block.value}
+                  count={blockCount(block)}
+                  onClick={() => setActiveBlock(block.value)}
+                >
+                  {block.label}
+                </TabButton>
+              ))}
+            </div>
+          </div>
+        </Card>
+
+        <CellTabbedPanel
+          gender={activeGenderOption}
+          security={activeSecurityOption}
+          block={activeBlockOption}
+          cells={activeGenderCells}
+          adminMode={adminMode}
+          onEdit={startEdit}
+          onDelete={handleDelete}
+        />
       </div>
     </div>
   );

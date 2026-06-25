@@ -99,7 +99,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Inmate Admission Module
     // Search must be defined before the implicit inmate binding route so /inmates/search does not match /inmates/{inmate}
     Route::get('/inmates/search', [InmateController::class, 'search'])
-        ->middleware(['role:reception_officer,station_officer,visitation_officer,gatekeeper,admin', 'throttle:60,60,user']);
+        ->middleware(['role:reception_officer,station_officer,visitation_officer,gatekeeper,officer_on_duty,admin', 'throttle:60,60,user']);
 
     Route::middleware(['role:reception_officer,station_officer'])->group(function () {
         Route::get('/inmates', [InmateController::class, 'index'])->middleware('throttle:60,60,user');
