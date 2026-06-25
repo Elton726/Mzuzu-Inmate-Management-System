@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { useDebouncedValue } from '../../../utils/useDebouncedValue';
 import { searchInmates, listInmates } from '../services/inmateService';
 import { formatDate } from '../../../utils/helpers';
+import InmateAvatar from '../../../components/common/InmateAvatar';
 import {
   MdSearch,
   MdSort,
@@ -64,14 +65,6 @@ const StatusBadge = ({ admitted }) =>
     </span>
   );
 
-const InmateAvatar = ({ first, last }) => {
-  const initials = getInitials(first, last);
-  return (
-    <div className="w-10 h-10 rounded-xl bg-malawiBlack flex items-center justify-center shrink-0 shadow-sm">
-      <span className="text-sm font-extrabold text-malawiGold">{initials}</span>
-    </div>
-  );
-};
 
 /* ─── main component ────────────────────────────────────────────────── */
 
@@ -102,7 +95,7 @@ const InmateRow = ({ inmate }) => {
         ${inmate.neverAdmitted ? 'bg-yellow-50/60' : 'hover:bg-gray-50/70'}`}
     >
       <div className="flex items-start sm:items-center gap-4 flex-1 min-w-0">
-        <InmateAvatar first={inmate.first_name} last={inmate.last_name} />
+        <InmateAvatar inmate={inmate} size="md" />
 
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">

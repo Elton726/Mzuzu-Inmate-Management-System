@@ -4,6 +4,7 @@ import { MdAssignment, MdCalendarToday, MdDescription, MdGavel, MdHomeWork, MdOp
 import apiService, { SERVER_BASE_URL } from '../../../services/apiService';
 import { useToast } from '../../../contexts/useToast';
 import { formatDate } from '../../../utils/helpers';
+import InmateAvatar from '../../../components/common/InmateAvatar';
 
 const titleCase = (value) =>
   String(value || '')
@@ -122,20 +123,7 @@ export default function AdmissionShowPage() {
     <div className="mx-auto max-w-7xl px-4 py-6">
       <div className="mb-6 rounded-lg border border-gray-200 bg-white shadow-sm">
         <div className="grid gap-6 p-5 lg:grid-cols-[auto_1fr_auto]">
-          {inmate.photo_path ? (
-            <img
-              src={`${SERVER_BASE_URL}/storage/${inmate.photo_path}`}
-              alt={`${inmate.first_name} ${inmate.last_name}`}
-              className="h-36 w-28 rounded-lg border border-gray-200 object-cover"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          ) : (
-            <div className="flex h-36 w-28 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 text-xs font-semibold text-gray-500">
-              No photo
-            </div>
-          )}
+          <InmateAvatar inmate={inmate} size="lg" className="rounded-lg border border-gray-200" />
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
