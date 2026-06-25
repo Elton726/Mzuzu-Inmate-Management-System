@@ -75,6 +75,13 @@ const getHeaderCopy = (pathname, user, role) => {
     };
   }
 
+  if (pathname === '/' && role === ROLES.OFFICER_ON_DUTY) {
+    return {
+      title: 'Home',
+      subtitle: 'Activity allocation and session management.',
+    };
+  }
+
   if (pathname.startsWith('/admissions')) {
     return {
       title: pathname.startsWith('/admissions/new') ? 'Create a new admission' : 'Admissions workspace',

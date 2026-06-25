@@ -1,26 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { MdChevronRight } from 'react-icons/md';
 import Card from '../../../../components/common/Card';
 import Spinner from '../../../../components/common/Spinner';
 import Button from '../../../../components/common/Button';
-import Input from '../../../../components/common/Input';
-import Select from '../../../../components/common/Select';
+import { useAuth } from '../../../../contexts/useAuth';
 import { useToast } from '../../../../contexts/useToast';
 import * as officerActivityService from '../services/officerActivityService';
 import * as officerSessionService from '../services/officerSessionService';
-
-const typeOptions = [
-  { value: '', label: 'All activities' },
-  { value: 'internal', label: 'Internal only' },
-  { value: 'external', label: 'External only' },
-];
-
-const statusTone = {
-  scheduled: 'bg-amber-100 text-amber-800',
-  in_progress: 'bg-blue-100 text-blue-800',
-  completed: 'bg-green-100 text-green-800',
-  cancelled: 'bg-red-100 text-red-800',
-};
 
 const securityTone = {
   maximum: 'bg-red-100 text-red-700',
@@ -35,61 +22,37 @@ const formatStatusLabel = (value) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
 
-const formatSessionMeta = (session) => {
-  const bits = [
-    session?.session_date || 'No date',
-    session?.session_time || 'No time',
-    formatStatusLabel(session?.status || 'scheduled'),
-  ];
-
-  return bits.join(' • ');
+const getTimeOfDayGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good Morning';
+  if (hour < 18) return 'Good Afternoon';
+  return 'Good Evening';
 };
 
-function MetricCard({ label, value, helper, accent }) {
+function MetricCard({ label, value, description, accent, action }) {
   return (
-    <div className={`rounded-3xl border p-5 shadow-sm ${accent}`}>
-      <div className="text-sm font-semibold uppercase tracking-[0.18em]">{label}</div>
-      <div className="mt-3 text-4xl font-black">{value}</div>
-      <div className="mt-2 text-sm opacity-80">{helper}</div>
+    <div className={`flex min-h-[160px] flex-col rounded-2xl border border-gray-200 border-t-4 bg-white p-5 shadow-sm ${accent.card}`}>
+      <div className={`text-xs font-bold uppercase tracking-widest ${accent.label}`}>{label}</div>
+      <div className="mt-3 flex flex-1 flex-col justify-center">
+        <div className={`text-4xl font-black tracking-tight ${accent.value}`}>{value}</div>
+        <p className={`mt-2 text-sm leading-relaxed ${accent.description}`}>{description}</p>
+      </div>
+      {action ? <div className="mt-4 flex justify-end">{action}</div> : null}
     </div>
   );
 }
 
-function ActionTile({ title, description, action, secondary, tone = 'light' }) {
-  const tones = {
-    light: 'bg-white border border-gray-200 text-gray-800',
-    dark: 'bg-malawiBlack text-malawiGold border border-malawiBlack',
-    green: 'bg-malawiGreen text-white border border-malawiGreen',
-  };
-
+function ProgressMetricCard({ label, value, subtitle, progress, accent, barClass = 'bg-malawiGreen' }) {
   return (
-    <div className={`rounded-3xl p-5 shadow-sm ${tones[tone] || tones.light}`}>
-      <div className="text-lg font-bold">{title}</div>
-      <p className="mt-2 text-sm opacity-90">{description}</p>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {action}
-        {secondary}
-      </div>
-    </div>
-  );
-}
-
-function SessionRow({ session }) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3">
-      <div>
-        <div className="font-semibold text-gray-900">{session.activity?.name ?? `Activity #${session.activity_id}`}</div>
-        <div className="text-sm text-gray-500">{formatSessionMeta(session)}</div>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone[session.status] || 'bg-gray-100 text-gray-700'}`}>
-          {formatStatusLabel(session.status)}
-        </span>
-        <Link to={`/officer/activity-sessions/${session.id}`}>
-          <Button variant="outline" className="px-3 py-1 text-xs">
-            Open
-          </Button>
-        </Link>
+    <div className={`rounded-2xl border p-5 shadow-sm ${accent}`}>
+      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">{label}</div>
+      <div className="mt-2 text-3xl font-black text-gray-900">{value}</div>
+      <p className="mt-1 text-sm text-gray-600">{subtitle}</p>
+      <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-gray-200">
+        <div
+          className={`h-full rounded-full transition-all duration-300 ${barClass}`}
+          style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+        />
       </div>
     </div>
   );
@@ -142,6 +105,7 @@ function ActivityQueueCard({ title, subtitle, emptyText, activities, renderActio
 }
 
 export default function OfficerAvailableActivitiesPage() {
+  const { user } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -252,12 +216,10 @@ export default function OfficerAvailableActivitiesPage() {
     [sessions]
   );
 
-  const spotlightSession = openSessions[0] ?? sessions[0] ?? null;
-  const recentSessions = sessions.slice(0, 4);
+  const greeting = getTimeOfDayGreeting();
+  const displayName = user?.name || 'Officer';
   const internalQueue = internalActivities.slice(0, 5);
   const externalQueue = externalActivities.slice(0, 5);
-  const firstInternal = internalActivities[0] ?? null;
-  const firstExternal = externalActivities[0] ?? null;
 
   if (loading) {
     return (
@@ -272,55 +234,20 @@ export default function OfficerAvailableActivitiesPage() {
   return (
     <div className="min-h-screen bg-malawiGold px-4 py-8 md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="overflow-hidden rounded-[2rem] bg-malawiBlack text-white shadow-2xl">
-          <div className="grid gap-8 px-6 py-8 md:grid-cols-[1.4fr_0.9fr] md:px-8">
-            <div>
-              <div className="inline-flex rounded-full bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-malawiGold">
-                Officer On Duty
-              </div>
-              <h1 className="mt-4 text-3xl font-black tracking-tight md:text-5xl">
-                Activity Allocation Dashboard
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-white/80 md:text-base">
-                Start sessions, move into attendance quickly, and follow up on external allocations from one working screen.
-              </p>
-
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Button onClick={load} className="bg-malawiGold text-malawiBlack hover:opacity-90">
-                  Refresh Dashboard
-                </Button>
-                <Link to="/officer/activity-sessions">
-                  <Button variant="outline" className="!border-white !text-white hover:!bg-white hover:!text-malawiBlack">
-                    View All Sessions
-                  </Button>
-                </Link>
-              </div>
-            </div>
-
-            <div className="rounded-[1.5rem] bg-white/8 p-5 backdrop-blur-sm">
-              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-malawiGold">Session spotlight</div>
-              {spotlightSession ? (
-                <div className="mt-4 space-y-3">
-                  <div className="text-2xl font-bold">{spotlightSession.activity?.name ?? `Activity #${spotlightSession.activity_id}`}</div>
-                  <div className="text-sm text-white/75">{formatSessionMeta(spotlightSession)}</div>
-                  <div className="flex flex-wrap gap-2">
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone[spotlightSession.status] || 'bg-gray-100 text-gray-700'}`}>
-                      {formatStatusLabel(spotlightSession.status)}
-                    </span>
-                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
-                      Officer session queue
-                    </span>
-                  </div>
-                  <Link to={`/officer/activity-sessions/${spotlightSession.id}`}>
-                    <Button className="mt-2 w-full">Open Session Workspace</Button>
-                  </Link>
-                </div>
-              ) : (
-                <div className="mt-4 rounded-2xl border border-dashed border-white/20 px-4 py-6 text-sm text-white/70">
-                  No recent sessions yet. Use the action tiles below to start today’s work.
-                </div>
-              )}
-            </div>
+        <section className="rounded-2xl bg-malawiBlack p-6 text-white shadow-xl md:p-8">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-malawiGold">🏠 Home</span>
+            <span className="rounded-full bg-white/10 px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/75">
+              Officer On Duty
+            </span>
+          </div>
+          <h1 className="mt-4 text-3xl font-black tracking-tight md:text-4xl lg:text-5xl">
+            {greeting}, {displayName}
+          </h1>
+          <div className="mt-6">
+            <Button onClick={load} className="bg-malawiGold text-malawiBlack hover:opacity-90">
+              Refresh
+            </Button>
           </div>
         </section>
 
@@ -328,144 +255,79 @@ export default function OfficerAvailableActivitiesPage() {
           <MetricCard
             label="Active Activities"
             value={activities.length}
-            helper="All activities available for officer actions"
-            accent="border-malawiBlack/10 bg-white text-gray-900"
+            description="All activities available for officer actions"
+            accent={{
+              card: 'border-t-green-800',
+              label: 'text-green-900',
+              value: 'text-green-900',
+              description: 'text-gray-600',
+            }}
           />
           <MetricCard
             label="Internal Activities"
             value={internalActivities.length}
-            helper="Ready for daily session tracking"
-            accent="border-green-200 bg-green-50 text-green-900"
+            description="Ready for daily session tracking"
+            accent={{
+              card: 'border-t-green-400 bg-green-50',
+              label: 'text-green-700',
+              value: 'text-green-800',
+              description: 'text-green-900/70',
+            }}
           />
           <MetricCard
             label="External Activities"
             value={externalActivities.length}
-            helper="Require one-time sessions or inmate allocation"
-            accent="border-blue-200 bg-blue-50 text-blue-900"
+            description="Require one-time sessions or inmate allocation"
+            accent={{
+              card: 'border-t-blue-500 bg-blue-50',
+              label: 'text-blue-700',
+              value: 'text-blue-800',
+              description: 'text-blue-900/70',
+            }}
           />
           <MetricCard
             label="Open Sessions"
             value={openSessions.length}
-            helper="Sessions still active or waiting to be completed"
-            accent="border-amber-200 bg-amber-50 text-amber-900"
-          />
-        </section>
-
-        <section className="grid gap-4 xl:grid-cols-3">
-          <ActionTile
-            title="Start Internal Work"
-            description="Jump straight into the first available internal activity and open or reuse today’s session."
-            tone="green"
+            description="Sessions still active or waiting to be completed"
+            accent={{
+              card: 'border-t-amber-600 bg-amber-50',
+              label: 'text-amber-800',
+              value: 'text-amber-900',
+              description: 'text-amber-900/70',
+            }}
             action={
-              <Button
-                onClick={() => firstInternal && openTodaySession(firstInternal)}
-                disabled={!firstInternal}
-                loading={workingAction === `internal-${firstInternal?.id}`}
-              >
-                {firstInternal ? `Open ${firstInternal.name}` : 'No internal activity'}
-              </Button>
-            }
-            secondary={
-              <Link to="/officer/activity-sessions/new">
-                <Button variant="outline" className="!border-white !text-white hover:!bg-white hover:!text-malawiGreen">
-                  New Session Form
-                </Button>
-              </Link>
-            }
-          />
-          <ActionTile
-            title="Handle External Allocation"
-            description="Move into allocation or create the one-time external session for the next external activity in queue."
-            tone="dark"
-            action={
-              <Button
-                onClick={() => firstExternal && openAllocation(firstExternal)}
-                disabled={!firstExternal}
-              >
-                {firstExternal ? 'Open Allocation Queue' : 'No external activity'}
-              </Button>
-            }
-            secondary={
-              <Button
-                variant="outline"
-                className="!border-malawiGold !text-malawiGold hover:!bg-malawiGold hover:!text-malawiBlack"
-                onClick={() => firstExternal && openExternalOnceSession(firstExternal)}
-                disabled={!firstExternal}
-                loading={workingAction === `external-${firstExternal?.id}`}
-              >
-                Create One-Time Session
-              </Button>
-            }
-          />
-          <ActionTile
-            title="Useful Shortcuts"
-            description="Open the core module screens officers use most during a duty period."
-            action={
-              <Link to="/officer/activity-sessions">
-                <Button>Session Register</Button>
-              </Link>
-            }
-            secondary={
-              <Link to="/officer/activity-sessions/new">
-                <Button variant="outline">Manual Session Setup</Button>
-              </Link>
+              openSessions.length > 0 ? (
+                <Link to="/officer/activity-sessions">
+                  <Button
+                    variant="outline"
+                    className="gap-1 border-amber-300 bg-white/80 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                  >
+                    View
+                    <MdChevronRight className="text-base" />
+                  </Button>
+                </Link>
+              ) : null
             }
           />
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <Card className="rounded-3xl shadow-lg">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Recent Session Activity</h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Pick up ongoing work or reopen a recently created session.
-                </p>
-              </div>
-              <Link to="/officer/activity-sessions">
-                <Button variant="outline">Full Register</Button>
-              </Link>
-            </div>
-
-            <div className="mt-5 space-y-3">
-              {recentSessions.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-sm text-gray-500">
-                  No sessions available yet.
-                </div>
-              ) : (
-                recentSessions.map((session) => <SessionRow key={session.id} session={session} />)
-              )}
-            </div>
-          </Card>
-
-          <Card className="rounded-3xl shadow-lg">
-            <h2 className="text-xl font-bold text-gray-900">Activity Filters</h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Narrow the activity workspace below by name or type.
-            </p>
-            <div className="mt-5 grid gap-4 md:grid-cols-3 xl:grid-cols-1">
-              <Input
-                label="Search"
-                value={filters.search ?? ''}
-                onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-                placeholder="Activity name"
-              />
-              <Select
-                label="Type"
-                value={filters.activity_type ?? ''}
-                onChange={(e) => setFilters((prev) => ({ ...prev, activity_type: e.target.value }))}
-                options={typeOptions}
-              />
-              <div className="flex items-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setFilters({ per_page: 100, activity_type: '', search: '' })}
-                >
-                  Clear Filters
-                </Button>
-              </div>
-            </div>
-          </Card>
+        <section className="grid gap-4 sm:grid-cols-2">
+          <ProgressMetricCard
+            label="Completion Rate"
+            value="80%"
+            subtitle="Activities completed today."
+            progress={80}
+            accent="border-emerald-200 bg-white"
+            barClass="bg-emerald-500"
+          />
+          <ProgressMetricCard
+            label="Participation"
+            value="45 / 60"
+            subtitle="Inmates allocated today."
+            progress={75}
+            accent="border-violet-200 bg-white"
+            barClass="bg-violet-500"
+          />
         </section>
 
         <section className="grid gap-6 xl:grid-cols-2">
