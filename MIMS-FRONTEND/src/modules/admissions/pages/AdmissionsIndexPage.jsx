@@ -4,7 +4,6 @@ import { toast } from 'react-toastify';
 import { useDebouncedValue } from '../../../utils/useDebouncedValue';
 import { searchInmates, listInmates } from '../services/inmateService';
 import { formatDate } from '../../../utils/helpers';
-import { SERVER_BASE_URL } from '../../../services/apiService';
 import {
   MdSearch,
   MdSort,
@@ -65,21 +64,8 @@ const StatusBadge = ({ admitted }) =>
     </span>
   );
 
-const InmateAvatar = ({ first, last, photoPath }) => {
-  const [imageFailed, setImageFailed] = useState(false);
+const InmateAvatar = ({ first, last }) => {
   const initials = getInitials(first, last);
-
-  if (photoPath && !imageFailed) {
-    return (
-      <img
-        src={`${SERVER_BASE_URL}/storage/${photoPath}`}
-        alt={`${first ?? ''} ${last ?? ''}`.trim() || 'Inmate photo'}
-        className="w-10 h-10 rounded-xl object-cover bg-gray-100 border border-gray-200 shrink-0 shadow-sm"
-        onError={() => setImageFailed(true)}
-      />
-    );
-  }
-
   return (
     <div className="w-10 h-10 rounded-xl bg-malawiBlack flex items-center justify-center shrink-0 shadow-sm">
       <span className="text-sm font-extrabold text-malawiGold">{initials}</span>
@@ -116,7 +102,7 @@ const InmateRow = ({ inmate }) => {
         ${inmate.neverAdmitted ? 'bg-yellow-50/60' : 'hover:bg-gray-50/70'}`}
     >
       <div className="flex items-start sm:items-center gap-4 flex-1 min-w-0">
-        <InmateAvatar first={inmate.first_name} last={inmate.last_name} photoPath={inmate.photo_path} />
+        <InmateAvatar first={inmate.first_name} last={inmate.last_name} />
 
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">

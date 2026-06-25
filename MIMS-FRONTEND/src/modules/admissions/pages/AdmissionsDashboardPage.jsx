@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Spinner from '../../../components/common/Spinner';
 import Button from '../../../components/common/Button';
 import Card from '../../../components/common/Card';
+import InmateAvatar from '../../../components/common/InmateAvatar';
 import { useToast } from '../../../contexts/useToast';
 import { useNotification } from '../../../contexts/useNotification';
 import { listCells } from '../services/cellService';
@@ -30,6 +31,7 @@ const getCurrentAdmission = (inmate) => inmate?.current_admission || inmate?.cur
 
 const getCellLabel = (cell) => `Block ${cell.block} · Cell ${cell.cell_number}`;
 
+<<<<<<< HEAD
 const getInmateInitials = (inmate) => {
   const f = inmate?.first_name?.[0] || '';
   const l = inmate?.last_name?.[0] || '';
@@ -48,6 +50,8 @@ const getInmatePhotoUrl = (inmate) => {
   return `${SERVER_BASE_URL}/storage/${normalizedPath.replace(/^\/?storage\//, '')}`;
 };
 
+=======
+>>>>>>> a2f7ef6602cd89bbf91c21f458675c2cf18c087e
 const getCellOccupancyPercent = (cell) => {
   const capacity = Number(cell?.capacity || 0);
   const occupied = Number(cell?.current_occupancy || 0);
@@ -551,6 +555,7 @@ export default function AdmissionsDashboardPage() {
               <div key={inmate.id} className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 transition hover:bg-gray-50 duration-200">
                 <div className="flex items-start gap-4">
                   <InmatePhotoAvatar inmate={inmate} />
+                  <InmateAvatar inmate={inmate} size="sm" className="shrink-0 rounded-full border border-gray-200" />
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -600,6 +605,7 @@ export default function AdmissionsDashboardPage() {
               <div key={inmate.id} className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 transition hover:bg-gray-50 duration-200">
                 <div className="flex items-start gap-4">
                   <InmatePhotoAvatar inmate={inmate} />
+                  <InmateAvatar inmate={inmate} size="sm" className="shrink-0 rounded-full border border-gray-200" />
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -696,6 +702,7 @@ export default function AdmissionsDashboardPage() {
               <div key={inmate.id} className="rounded-xl border border-gray-200 bg-white p-4 transition hover:bg-gray-50 duration-200">
                 <div className="flex items-center gap-4">
                   <InmatePhotoAvatar inmate={inmate} />
+                  <InmateAvatar inmate={inmate} size="sm" className="shrink-0 rounded-full border border-gray-200" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <div>
