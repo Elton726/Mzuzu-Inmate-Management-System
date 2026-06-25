@@ -17,6 +17,25 @@ const getAdmissionsCount = (inmate) => {
   return Number.isFinite(Number(n)) ? Number(n) : 0;
 };
 
+const isRemandeeOrMurderRemandee = (inmate) => {
+  if (!inmate) return false;
+  const activeAdmission = inmate.current_admission || inmate.currentAdmission;
+  if (activeAdmission) {
+    const type = activeAdmission.inmate_type || activeAdmission.inmateType;
+    if (type === 'remandee' || type === 'murder_remandee') {
+      return true;
+    }
+  }
+  const admissions = inmate.admissions || [];
+  if (admissions.length > 0) {
+    const type = admissions[0].inmate_type || admissions[0].inmateType;
+    if (type === 'remandee' || type === 'murder_remandee') {
+      return true;
+    }
+  }
+  return false;
+};
+
 const buildAdmissionPayload = ({ inmateId, admission, warrantDocId }) => {
   const payload = {
     inmate_id: inmateId,
@@ -81,17 +100,25 @@ export default function AdmissionFormPage() {
         const inmate = await getInmate(inmateId);
         const activeAdmission = inmate?.current_admission || inmate?.currentAdmission || null;
         const admissionsCount = inmate?.admissions_count ?? inmate?.admissionsCount ?? 0;
-        if (activeAdmission?.id) {
+        const isRemand = isRemandeeOrMurderRemandee(inmate);
+
+        if (activeAdmission?.id && !isRemand) {
           toast.error('This inmate already has an active admission. Finish it before creating a new one.');
           navigate(`/admissions/${activeAdmission.id}`);
           return;
         }
-        if (!activeAdmission?.id && admissionsCount > 0) {
+        if (!activeAdmission?.id && admissionsCount > 0 && !isRemand) {
           toast.error('This inmate already has a completed admission and cannot be admitted again through this flow.');
           navigate(`/inmates/${inmate.id}`);
           return;
         }
         setSelectedInmate(inmate);
+        if (isRemand) {
+          setAdmissionDraft((prev) => ({
+            ...prev,
+            inmateType: 'convict'
+          }));
+        }
         setCurrent(1);
         toast.success('Inmate loaded for admission');
         addNotification({ title: 'Inmate loaded', message: `Inmate ${inmate.first_name} ${inmate.last_name} loaded for admission`, type: 'info', duration: 5000, action: { label: 'Open inmate', url: `/inmates/${inmate.id}` } });
@@ -106,14 +133,15 @@ export default function AdmissionFormPage() {
   const onInmateSelected = ({ inmate, inmateDraft: draft, photo }) => {
     const activeAdmission = inmate?.current_admission || inmate?.currentAdmission || null;
     const admissionsCount = inmate?.admissions_count ?? inmate?.admissionsCount ?? 0;
+    const isRemand = isRemandeeOrMurderRemandee(inmate);
 
-    if (activeAdmission?.id) {
+    if (activeAdmission?.id && !isRemand) {
       toast.error('This inmate already has an active admission. Finish it before creating a new one.');
       navigate(`/admissions/${activeAdmission.id}`);
       return;
     }
 
-    if (!activeAdmission?.id && admissionsCount > 0) {
+    if (!activeAdmission?.id && admissionsCount > 0 && !isRemand) {
       toast.error('This inmate already has a completed admission and cannot be admitted again through this flow.');
       navigate(`/inmates/${inmate.id}`);
       return;
@@ -122,6 +150,12 @@ export default function AdmissionFormPage() {
     setSelectedInmate(inmate);
     if (draft) setInmateDraft(draft);
     if (photo) setPhotoFromInmate(photo);
+    if (isRemand) {
+      setAdmissionDraft((prev) => ({
+        ...prev,
+        inmateType: 'convict'
+      }));
+    }
     toast.success('Inmate selected');
     addNotification({ title: 'Inmate selected', message: `Selected ${inmate.first_name} ${inmate.last_name} for admission`, type: 'info', duration: 4000, action: { label: 'Open inmate', url: `/inmates/${inmate.id}` } });
     setCurrent(1);
@@ -140,12 +174,14 @@ export default function AdmissionFormPage() {
     }
     const activeAdmission = selectedInmate?.current_admission || selectedInmate?.currentAdmission || null;
     const admissionsCount = getAdmissionsCount(selectedInmate);
-    if (activeAdmission?.id) {
+    const isRemand = isRemandeeOrMurderRemandee(selectedInmate);
+
+    if (activeAdmission?.id && !isRemand) {
       toast.error('This inmate already has an active admission. Finish it before creating a new one.');
       navigate(`/admissions/${activeAdmission.id}`);
       return;
     }
-    if (admissionsCount > 0) {
+    if (admissionsCount > 0 && !isRemand) {
       toast.error('This inmate already has a completed admission and cannot be admitted again through this flow.');
       navigate(`/inmates/${selectedInmate.id}`);
       return;

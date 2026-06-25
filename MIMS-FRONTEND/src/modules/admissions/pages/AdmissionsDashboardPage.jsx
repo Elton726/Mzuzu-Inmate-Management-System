@@ -145,11 +145,14 @@ export default function AdmissionsDashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Court-date arrived reminders
+  // Court-date arrived / overdue reminders
   useEffect(() => {
     if (!inmates?.length) return;
 
     const todayIso = new Date().toISOString().slice(0, 10);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
     const dueAdmissions = [];
     const notifiedKeySet = new Set();
 
@@ -163,24 +166,32 @@ export default function AdmissionsDashboardPage() {
       const courtDate = admission.remand_next_court_date || admission.remandNextCourtDate;
       if (!courtDate) return;
 
-      const courtIso = String(courtDate).slice(0, 10);
-      if (courtIso !== todayIso) return;
+      const courtDay = new Date(courtDate);
+      courtDay.setHours(0, 0, 0, 0);
 
-      const key = `${admission.id}:${courtIso}`;
+      // Fire notification if court date is today OR has already passed (overdue)
+      if (courtDay > todayStart) return;
+
+      const courtIso = String(courtDate).slice(0, 10);
+      const key = `${admission.id}:court-due`;
       if (notifiedKeySet.has(key)) return;
       notifiedKeySet.add(key);
 
+      const isToday = courtIso === todayIso;
       dueAdmissions.push({
         admissionId: admission.id,
         inmateName: `${inmate.first_name || ''} ${inmate.last_name || ''}`.trim() || inmate.prison_number || 'Inmate',
         courtIso,
+        isToday,
       });
     });
 
-    dueAdmissions.forEach(({ admissionId, inmateName, courtIso }) => {
+    dueAdmissions.forEach(({ admissionId, inmateName, courtIso, isToday }) => {
       addNotification({
-        title: 'Court date arrived',
-        message: `${inmateName}'s court date is today (${courtIso}).`,
+        title: isToday ? '⚖️ Court date today' : '🚨 Court date overdue',
+        message: isToday
+          ? `${inmateName} must appear in court today (${courtIso}). Please arrange transport.`
+          : `${inmateName}'s court date was ${courtIso} and has passed. Action required.`,
         type: 'warning',
         duration: 0,
         action: { label: 'Open admission', url: `/admissions/${admissionId}` },
@@ -198,6 +209,7 @@ export default function AdmissionsDashboardPage() {
       const startToday = new Date(todayStart.getFullYear(), todayStart.getMonth(), todayStart.getDate());
 
       let daysRemaining = null;
+      let isOverdue = false;
       if (
         (inmateType === 'remandee' || inmateType === 'murder_remandee') &&
         courtDate
@@ -206,7 +218,10 @@ export default function AdmissionsDashboardPage() {
         if (!Number.isNaN(d.getTime())) {
           const startTarget = new Date(d.getFullYear(), d.getMonth(), d.getDate());
           const diffMs = startTarget.getTime() - startToday.getTime();
-          daysRemaining = Math.round(diffMs / (1000 * 60 * 60 * 24));
+          const rawDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+          // Clamp at 0 — timer never goes negative
+          daysRemaining = Math.max(0, rawDays);
+          isOverdue = rawDays < 0;
         }
       }
 
@@ -216,6 +231,7 @@ export default function AdmissionsDashboardPage() {
         neverAdmitted: !hasSystemReleaseHistory(inmate),
         readyForAdmission: !currentAdmission?.id,
         daysRemaining,
+        isOverdue,
       };
     }),
     [inmates]
@@ -574,18 +590,50 @@ export default function AdmissionsDashboardPage() {
                           </span>
                           {inmate.daysRemaining != null && (
                             <span className={`rounded-full border px-2.5 py-0.5 font-bold ${
-                              inmate.daysRemaining === 0 
-                                ? 'bg-yellow-50 border-yellow-200 text-yellow-700'
-                                : 'bg-gray-100 border-gray-200 text-gray-700'
+                              inmate.isOverdue
+                                ? 'bg-red-100 border-red-300 text-red-700 animate-pulse'
+                                : inmate.daysRemaining === 0
+                                  ? 'bg-yellow-50 border-yellow-200 text-yellow-700'
+                                  : 'bg-gray-100 border-gray-200 text-gray-700'
                             }`}>
-                              {inmate.daysRemaining === 0
-                                ? 'Court today'
-                                : `${inmate.daysRemaining} day(s) left`}
+                              {inmate.isOverdue
+                                ? '🚨 Court overdue!'
+                                : inmate.daysRemaining === 0
+                                  ? '⚖️ Court today!'
+                                  : `${inmate.daysRemaining} day(s) left`}
                             </span>
                           )}
                         </div>
                       </div>
                       <div className="flex gap-2">
+                        {(inmate.currentAdmission?.inmate_type === 'remandee' || inmate.currentAdmission?.inmate_type === 'murder_remandee') && (
+                          (() => {
+                            const nextCourtDate = inmate.currentAdmission.remand_next_court_date || inmate.currentAdmission.remandNextCourtDate;
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const courtDate = nextCourtDate ? new Date(nextCourtDate) : null;
+                            if (courtDate) {
+                              courtDate.setHours(0, 0, 0, 0);
+                            }
+                            const courtReached = courtDate ? today >= courtDate : false;
+
+                            return courtReached ? (
+                              <Link to={`/admissions/new?inmateId=${inmate.id}`}>
+                                <button className="px-3 py-1.5 bg-malawiGold hover:bg-yellow-400 text-gray-900 font-semibold rounded-lg text-xs transition duration-150 shadow-sm">
+                                  Admit Convict
+                                </button>
+                              </Link>
+                            ) : (
+                              <button
+                                disabled
+                                title={nextCourtDate ? `Next court date (${formatDate(nextCourtDate)}) has not been reached yet` : 'No court date specified'}
+                                className="px-3 py-1.5 bg-yellow-50 border border-yellow-200 text-gray-400 font-semibold rounded-lg text-xs cursor-not-allowed opacity-60"
+                              >
+                                Admit Convict
+                              </button>
+                            );
+                          })()
+                        )}
                         <Link to={`/admissions/${inmate.currentAdmission?.id}`}>
                           <button className="px-3 py-1.5 bg-malawiGreen hover:bg-green-800 text-white font-semibold rounded-lg text-xs transition duration-150 shadow-sm">
                             Details

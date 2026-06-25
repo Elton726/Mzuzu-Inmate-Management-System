@@ -35,17 +35,32 @@ class AdmissionController extends Controller
 
         $inmate = Inmate::findOrFail($validated['inmate_id']);
 
-        if ($inmate->currentAdmission()->exists()) {
-            abort(422, 'Inmate already has an active admission. Complete the current admission before creating a new one.');
+        $currentAdmission = $inmate->currentAdmission()->first();
+        $isTransitionFromRemand = false;
+
+        if ($currentAdmission) {
+            if (in_array($currentAdmission->inmate_type, ['remandee', 'murder_remandee']) && $validated['inmate_type'] === 'convict') {
+                $isTransitionFromRemand = true;
+            } else {
+                abort(422, 'Inmate already has an active admission. Complete the current admission before creating a new one.');
+            }
         }
 
-        if ($inmate->admissions()->exists()) {
-            abort(422, 'This inmate already has a completed admission and cannot be admitted again through this flow.');
+        if (!$isTransitionFromRemand && $inmate->admissions()->exists()) {
+            $latestAdmission = $inmate->admissions()->orderBy('created_at', 'desc')->first();
+            if ($latestAdmission && in_array($latestAdmission->inmate_type, ['remandee', 'murder_remandee']) && $validated['inmate_type'] === 'convict') {
+                // allowed
+            } else {
+                abort(422, 'This inmate already has a completed admission and cannot be admitted again through this flow.');
+            }
         }
 
         $validated['admission_type'] = $inmate->admissions()->exists() ? 'repeat' : 'first_time';
 
-        $admission = DB::transaction(function () use ($validated, $inmate, $user, $request) {
+        $admission = DB::transaction(function () use ($validated, $inmate, $user, $request, $isTransitionFromRemand) {
+            if ($isTransitionFromRemand) {
+                $inmate->currentAdmission()->update(['is_current' => false]);
+            }
             $projectedReleaseDate = null;
             $remandDurationDays = null;
             if ($validated['inmate_type'] === 'convict') {

@@ -266,6 +266,63 @@ class AdmissionModuleApiTest extends TestCase
         ]);
     }
 
+    public function test_can_admit_existing_remandee_as_convict(): void
+    {
+        $user = $this->userWithRole('reception_officer');
+        $inmate = $this->actingAs($user, 'sanctum')->postJson('/api/inmates', [
+            'first_name' => 'John',
+            'last_name' => 'Remandee',
+            'date_of_birth' => '1995-05-15',
+        ])->assertStatus(201)->json();
+
+        // Create an active remand admission
+        $admission = Admission::create([
+            'inmate_id' => $inmate['id'],
+            'admission_date' => '2026-06-01',
+            'admission_type' => 'first_time',
+            'inmate_type' => 'remandee',
+            'case_number' => 'RM-101',
+            'remand_next_court_date' => '2026-06-10',
+            'remand_duration_days' => 9,
+            'admitted_by' => $user->id,
+            'is_current' => true,
+        ]);
+
+        // Create a medium security cell for the convict auto-allocation
+        Cell::create([
+            'cell_number' => 'B-201',
+            'block' => 'B',
+            'security_classification' => 'medium',
+            'capacity' => 10,
+            'current_occupancy' => 0,
+            'status' => 'available',
+        ]);
+
+        // Admit the same inmate as a convict
+        $response = $this->actingAs($user, 'sanctum')->postJson('/api/admissions', [
+            'inmate_id' => $inmate['id'],
+            'admission_date' => '2026-06-18',
+            'inmate_type' => 'convict',
+            'case_number' => 'CR-101',
+            'sentence_years' => 5,
+            'sentence_months' => 0,
+            'sentence_start_date' => '2026-06-18',
+        ]);
+
+        $response->assertStatus(201);
+
+        // Verify that the old admission is no longer current
+        $admission->refresh();
+        $this->assertFalse($admission->is_current);
+
+        // Verify that the new admission is current
+        $newAdmission = Admission::where('inmate_id', $inmate['id'])->where('is_current', true)->first();
+        $this->assertNotNull($newAdmission);
+        $this->assertEquals('convict', $newAdmission->inmate_type);
+        $this->assertEquals('CR-101', $newAdmission->case_number);
+    }
+
+
     public function test_station_officer_cannot_access_admissions_module(): void
     {
         $station = $this->userWithRole('station_officer');

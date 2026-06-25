@@ -24,7 +24,31 @@ const daysUntil = (dateValue) => {
   const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const startTarget = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const diffMs = startTarget.getTime() - startToday.getTime();
-  return Math.round(diffMs / (1000 * 60 * 60 * 24));
+  const raw = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  // Clamp at 0 — timer never goes negative
+  return Math.max(0, raw);
+};
+
+// Returns true when court date is today or in the past
+const isCourtDue = (dateValue) => {
+  if (!dateValue) return false;
+  const d = new Date(dateValue);
+  if (Number.isNaN(d.getTime())) return false;
+  const today = new Date();
+  const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const startTarget = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return startTarget <= startToday;
+};
+
+// Returns true when court date has already passed (strictly past)
+const isCourtOverdue = (dateValue) => {
+  if (!dateValue) return false;
+  const d = new Date(dateValue);
+  if (Number.isNaN(d.getTime())) return false;
+  const today = new Date();
+  const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const startTarget = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return startTarget < startToday;
 };
 
 
@@ -79,6 +103,26 @@ export default function InmateDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Notify when court date is today or overdue for the loaded inmate
+  useEffect(() => {
+    if (!inmate?.id) return;
+    const admission = inmate.current_admission || inmate.currentAdmission;
+    if (!admission?.id) return;
+    const type = admission.inmate_type || admission.inmateType;
+    if (type !== 'remandee' && type !== 'murder_remandee') return;
+    const courtDate = admission.remand_next_court_date || admission.remandNextCourtDate;
+    if (!courtDate) return;
+
+    const overdue = isCourtOverdue(courtDate);
+    const due = isCourtDue(courtDate);
+
+    if (due && !overdue) {
+      toast.warning(`⚖️ Court date today — ${inmate.first_name} ${inmate.last_name} must appear in court today (${String(courtDate).slice(0, 10)}). Please arrange transport.`);
+    } else if (overdue) {
+      toast.error(`🚨 Court date overdue — ${inmate.first_name} ${inmate.last_name}'s court date was ${String(courtDate).slice(0, 10)} and has passed. Action required.`);
+    }
+  }, [inmate]);
 
   if (loading) {
     return (
@@ -201,13 +245,46 @@ export default function InmateDetailPage() {
                 Refresh
               </button>
               {hasActiveAdmission ? (
-                <Link
-                  to={`/admissions/${admission.id}`}
-                  className="inline-flex items-center gap-2 rounded bg-malawiGold px-3 py-2 text-sm font-semibold text-malawiBlack hover:bg-malawiRed hover:text-malawiGold transition"
-                >
-                  <MdOpenInNew className="h-4 w-4" />
-                  Active admission
-                </Link>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    to={`/admissions/${admission.id}`}
+                    className="inline-flex items-center gap-2 rounded bg-malawiGold px-3 py-2 text-sm font-semibold text-malawiBlack hover:bg-malawiRed hover:text-malawiGold transition"
+                  >
+                    <MdOpenInNew className="h-4 w-4" />
+                    Active admission
+                  </Link>
+                  {(admission?.inmate_type === 'remandee' || admission?.inmate_type === 'murder_remandee') && (
+                    (() => {
+                      const nextCourtDate = admission.remand_next_court_date || admission.remandNextCourtDate;
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const courtDate = nextCourtDate ? new Date(nextCourtDate) : null;
+                      if (courtDate) {
+                        courtDate.setHours(0, 0, 0, 0);
+                      }
+                      const courtReached = courtDate ? today >= courtDate : false;
+
+                      return courtReached ? (
+                        <Link
+                          to={`/admissions/new?inmateId=${inmate.id}`}
+                          className="inline-flex items-center gap-2 rounded bg-malawiGreen px-3 py-2 text-sm font-semibold text-white hover:bg-green-700 transition"
+                        >
+                          <MdAssignment className="h-4 w-4" />
+                          Admit as Convict
+                        </Link>
+                      ) : (
+                        <button
+                          disabled
+                          title={nextCourtDate ? `Next court date (${formatDate(nextCourtDate)}) has not been reached yet` : 'No court date specified'}
+                          className="inline-flex items-center gap-2 rounded bg-gray-200 border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-400 cursor-not-allowed opacity-60"
+                        >
+                          <MdAssignment className="h-4 w-4" />
+                          Admit as Convict
+                        </button>
+                      );
+                    })()
+                  )}
+                </div>
               ) : (
                 <Link
                   to={`/admissions/new?inmateId=${inmate.id}`}
@@ -334,9 +411,13 @@ export default function InmateDetailPage() {
                       <DetailItem
                         label="Days remaining"
                         value={admission.remand_next_court_date != null && daysUntil(admission.remand_next_court_date) != null
-                          ? `${daysUntil(admission.remand_next_court_date)} day(s)`
+                          ? isCourtOverdue(admission.remand_next_court_date)
+                            ? '🚨 Court overdue!'
+                            : daysUntil(admission.remand_next_court_date) === 0
+                              ? '⚖️ Court today!'
+                              : `${daysUntil(admission.remand_next_court_date)} day(s)`
                           : '—'}
-                        highlight={admission.remand_next_court_date && daysUntil(admission.remand_next_court_date) === 0}
+                        highlight={!!admission.remand_next_court_date && isCourtDue(admission.remand_next_court_date)}
                       />
                       <DetailItem
                         label="Remand duration"

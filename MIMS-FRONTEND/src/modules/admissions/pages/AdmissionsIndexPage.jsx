@@ -146,7 +146,7 @@ const InmateRow = ({ inmate }) => {
           <MdOpenInNew className="text-base" />
           View
         </Link>
-        {!isAdmitted && (
+        {!isAdmitted ? (
           <Link
             to={`/admissions/new?inmateId=${inmate.id}`}
             className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg
@@ -155,7 +155,39 @@ const InmateRow = ({ inmate }) => {
             <MdPlayArrow className="text-base" />
             Admit
           </Link>
-        )}
+        ) : (admission?.inmate_type === 'remandee' || admission?.inmate_type === 'murder_remandee') ? (
+          (() => {
+            const nextCourtDate = admission.remand_next_court_date || admission.remandNextCourtDate;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const courtDate = nextCourtDate ? new Date(nextCourtDate) : null;
+            if (courtDate) {
+              courtDate.setHours(0, 0, 0, 0);
+            }
+            const courtReached = courtDate ? today >= courtDate : false;
+
+            return courtReached ? (
+              <Link
+                to={`/admissions/new?inmateId=${inmate.id}`}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg
+                  bg-malawiGold text-gray-900 hover:bg-yellow-400 transition shadow-sm"
+              >
+                <MdPlayArrow className="text-base" />
+                Admit Convict
+              </Link>
+            ) : (
+              <button
+                disabled
+                title={nextCourtDate ? `Next court date (${formatDate(nextCourtDate)}) has not been reached yet` : 'No court date specified'}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg
+                  bg-yellow-50 border border-yellow-200 text-gray-400 cursor-not-allowed opacity-60"
+              >
+                <MdPlayArrow className="text-base" />
+                Admit Convict
+              </button>
+            );
+          })()
+        ) : null}
       </div>
     </div>
   );
