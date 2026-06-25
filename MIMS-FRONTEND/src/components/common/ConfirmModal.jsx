@@ -1,6 +1,5 @@
 import React from 'react';
-import Modal from './Modal';
-import Button from './Button';
+import ConfirmationModal from './ConfirmationModal';
 
 export default function ConfirmModal({
   open,
@@ -11,16 +10,16 @@ export default function ConfirmModal({
   onConfirm,
   onCancel,
 }) {
-  if (!open) return null;
-
   return (
-    <Modal title={title} onClose={onCancel} widthClass="max-w-md">
-      <p className="text-gray-700">{message}</p>
-      <div className="mt-6 flex justify-end gap-2">
-        <Button variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button variant={confirmVariant} onClick={onConfirm}>{confirmText}</Button>
-      </div>
-    </Modal>
+    <ConfirmationModal
+      open={open}
+      title={title}
+      message={message}
+      confirmText={confirmText}
+      confirmVariant={confirmVariant}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+    />
   );
 }
 

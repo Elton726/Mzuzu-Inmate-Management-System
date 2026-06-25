@@ -46,7 +46,7 @@ export default function ActivityList({ activities, onToggle, onDelete }) {
                       <Button
                         variant="danger"
                         className="px-3 py-1.5 text-sm"
-                        onClick={() => onDelete(a.id)}
+                        onClick={() => onDelete(a)}
                       >
                         Delete
                       </Button>

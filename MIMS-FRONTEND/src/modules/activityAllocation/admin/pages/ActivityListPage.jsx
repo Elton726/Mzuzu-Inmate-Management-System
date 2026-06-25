@@ -6,7 +6,7 @@ import ActivityFilters from '../components/ActivityManagement/ActivityFilters';
 import ActivityList from '../components/ActivityManagement/ActivityList';
 import Button from '../../../../components/common/Button';
 import Spinner from '../../../../components/common/Spinner';
-import ConfirmModal from '../../../../components/common/ConfirmModal';
+import ConfirmationModal from '../../../../components/common/ConfirmationModal';
 import { useToast } from '../../../../contexts/useToast';
 
 export default function ActivityListPage() {
@@ -14,7 +14,7 @@ export default function ActivityListPage() {
   const toast = useToast();
   const { activities, loading, error } = useSelector((state) => state.activity);
   const [filters, setFilters] = useState({});
-  const [deleteId, setDeleteId] = useState(null);
+  const [selectedActivity, setSelectedActivity] = useState(null);
 
   useEffect(() => {
     dispatch(fetchActivities(filters));
@@ -34,10 +34,12 @@ export default function ActivityListPage() {
   };
 
   const confirmDelete = async () => {
+    const selectedActivityId = selectedActivity?.id;
+    setSelectedActivity(null);
+
     try {
-      if (!deleteId) return;
-      await dispatch(deleteActivity(deleteId)).unwrap();
-      setDeleteId(null);
+      if (!selectedActivityId) return;
+      await dispatch(deleteActivity(selectedActivityId)).unwrap();
       toast.push({ title: 'Activity', message: 'Deleted successfully.', variant: 'success' });
     } catch (err) {
       toast.fromError(err);
@@ -62,16 +64,17 @@ export default function ActivityListPage() {
           <ActivityList
             activities={activities}
             onToggle={handleToggle}
-            onDelete={(id) => setDeleteId(id)}
+            onDelete={(activity) => setSelectedActivity(activity)}
           />
         )}
 
-        <ConfirmModal
-          open={!!deleteId}
+        <ConfirmationModal
+          open={!!selectedActivity}
           title="Delete Activity"
-          message="Are you sure you want to delete this activity? This cannot be undone."
+          message={`Are you sure you want to permanently delete the activity: ${selectedActivity?.name || 'this activity'}? This action cannot be undone.`}
+          confirmText="Delete"
           onConfirm={confirmDelete}
-          onCancel={() => setDeleteId(null)}
+          onCancel={() => setSelectedActivity(null)}
         />
       </div>
     </div>
