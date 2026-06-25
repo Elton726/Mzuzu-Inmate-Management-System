@@ -246,7 +246,7 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
           />
           {!isCollapsed && (
             <span className="text-white text-base font-bold tracking-wide truncate">
-              Mzuzu MIMS
+              Mzuzu-MIMS
             </span>
           )}
         </div>
