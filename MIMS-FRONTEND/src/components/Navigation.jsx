@@ -241,7 +241,7 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
   if (!user) return null;
 
   return (
-    <header className="border-b border-gray-200 bg-white shadow-sm">
+    <header className="border-b border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
       <div className="px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0">
@@ -456,13 +456,13 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
                   buttonClassName="!text-gray-700 hover:!bg-gray-100"
                 />
 
-                <Link to="/profile" className="flex items-center gap-3 rounded-md px-2 py-1.5 transition hover:bg-gray-50">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-bold text-gray-600">
+                <Link to="/profile" className="flex items-center gap-3 rounded-md px-2 py-1.5 transition hover:bg-gray-50 dark:hover:bg-slate-800">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-bold text-gray-600 dark:bg-slate-700 dark:text-slate-200">
                     {(user?.name || user?.email || 'R').slice(0, 1).toUpperCase()}
                   </div>
                   <div className="hidden text-left sm:block">
-                    <div className="text-sm font-bold text-gray-950">{getRoleDisplayName(user) || 'Officer'}</div>
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                    <div className="text-sm font-bold text-gray-950 dark:text-slate-200">{getRoleDisplayName(user) || 'Officer'}</div>
+                    <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400">
                       <span className="h-2 w-2 rounded-full bg-emerald-500" />
                       Online
                     </div>
