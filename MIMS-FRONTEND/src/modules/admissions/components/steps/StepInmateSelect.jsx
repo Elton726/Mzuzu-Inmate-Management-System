@@ -90,6 +90,10 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(null);
 
+  // New override states
+  const [overrideChecked, setOverrideChecked] = useState(false);
+  const [overrideJustification, setOverrideJustification] = useState('');
+
   useEffect(() => {
     if (!photo) {
       setPhotoPreview(null);
@@ -116,6 +120,30 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
   const watchYoungOffender = watch('isYoungOffender');
   const watchAge = useMemo(() => computeAgeYears(watchDob), [watchDob]);
 
+  const watchFirstName = watch('firstName');
+  const watchLastName = watch('lastName');
+  const watchNationalId = watch('nationalId');
+  const watchNationality = watch('nationality');
+  const watchGender = watch('gender');
+  const watchNextOfKinName = watch('nextOfKinName');
+  const watchNextOfKinContact = watch('nextOfKinContact');
+
+  useEffect(() => {
+    // Reset duplicates and overrides if key identifying fields change
+    setDupes(null);
+    setOverrideChecked(false);
+    setOverrideJustification('');
+  }, [
+    watchFirstName,
+    watchLastName,
+    watchDob,
+    watchNationalId,
+    watchNationality,
+    watchGender,
+    watchNextOfKinName,
+    watchNextOfKinContact
+  ]);
+
   useEffect(() => {
     const age = computeAgeYears(watchDob);
     const isYoung = typeof age === 'number' ? age < YOUNG_OFFENDER_AGE_YEARS : false;
@@ -126,28 +154,41 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
     try {
       setCreating(true);
 
-      // Check for duplicates once before creating
-      try {
-        setChecking(true);
-        const res = await checkDuplicate({
-          first_name: form.firstName,
-          last_name: form.lastName,
-          date_of_birth: toIsoDate(form.dateOfBirth),
-          national_id: form.nationalId || null
-        });
-        setDupes(res);
+      // Check for duplicates once before creating, unless already overridden
+      if (!overrideChecked) {
+        try {
+          setChecking(true);
+          const res = await checkDuplicate({
+            first_name: form.firstName,
+            last_name: form.lastName,
+            date_of_birth: toIsoDate(form.dateOfBirth),
+            national_id: form.nationalId || null,
+            nationality: form.nationality || null,
+            gender: form.gender || null,
+            next_of_kin_name: form.nextOfKinName || null,
+            next_of_kin_contact: form.nextOfKinContact || null
+          });
+          setDupes(res);
 
-        // If duplicates found, don't create - let user review
-        if (res?.has_duplicates) {
-          setCreating(false);
-          toast.warning('Please review the potential matches above before creating a new record.');
-          return;
+          // If duplicates found, don't create - let user review
+          if (res?.has_duplicates) {
+            setCreating(false);
+            toast.warning('Please review the potential matches above before creating a new record.');
+            return;
+          }
+        } catch (err) {
+          console.error('Duplicate check failed:', err);
+          // Continue with creation if check fails
+        } finally {
+          setChecking(false);
         }
-      } catch (err) {
-        console.error('Duplicate check failed:', err);
-        // Continue with creation if check fails
-      } finally {
-        setChecking(false);
+      }
+
+      // If override is checked, ensure justification note is filled
+      if (overrideChecked && !overrideJustification.trim()) {
+        toast.error('Please provide a justification note to override the duplicate warning.');
+        setCreating(false);
+        return;
       }
 
       const payload = {
@@ -163,7 +204,8 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
         next_of_kin_contact: form.nextOfKinContact || null,
         is_young_offender: Boolean(form.isYoungOffender),
         personal_belongings: form.personalBelongings || null,
-        gender: form.gender || null
+        gender: form.gender || null,
+        override_justification: overrideChecked ? overrideJustification.trim() : null
       };
 
       const created = await createInmate(payload);
@@ -411,24 +453,118 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
           </div>
 
           {/* ── Duplicate warning ── */}
-          {dupes?.has_duplicates && Array.isArray(dupes?.matches) && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3">
-              <p className="font-semibold text-yellow-900 mb-2 flex items-center gap-2">
-                <span>⚠️ Possible matches found</span>
-                {checking && <span className="text-xs font-normal">(checking…)</span>}
-              </p>
-              <p className="text-sm text-yellow-900 mb-2">
-                An inmate with similar details may already exist. Please review the matches below before creating a new record:
-              </p>
-              <ul className="list-disc ml-5 text-sm text-yellow-900 space-y-0.5">
-                {dupes.matches.slice(0, 5).map((m) => (
-                  <li key={m.id}>
-                    {m.prison_number ? `${m.prison_number} — ` : ''}{m.first_name} {m.last_name} (DOB: {m.date_of_birth || '--'})
-                  </li>
-                ))}
-              </ul>
+          {(() => {
+            const getMatchDetails = (m) => {
+              const details = [];
+              if (m.similarity_score === 100 && watchNationalId && m.national_id && watchNationalId === m.national_id) {
+                 details.push({ label: 'National ID', value: m.national_id });
+              }
+              if (watchFirstName && m.first_name && watchFirstName.trim().toLowerCase() === m.first_name.trim().toLowerCase()) {
+                details.push({ label: 'First Name', value: m.first_name });
+              }
+              if (watchLastName && m.last_name && watchLastName.trim().toLowerCase() === m.last_name.trim().toLowerCase()) {
+                details.push({ label: 'Last Name', value: m.last_name });
+              }
+              if (watchDob && m.date_of_birth) {
+                if (watchDob === m.date_of_birth) {
+                  details.push({ label: 'DOB', value: m.date_of_birth });
+                } else if (watchDob.substring(0, 7) === m.date_of_birth.substring(0, 7)) {
+                  details.push({ label: 'Month/Year of Birth', value: m.date_of_birth.substring(0, 7) });
+                } else if (watchDob.substring(0, 4) === m.date_of_birth.substring(0, 4)) {
+                  details.push({ label: 'Year of Birth', value: m.date_of_birth.substring(0, 4) });
+                }
+              }
+              if (watchGender && m.gender && watchGender === m.gender) {
+                details.push({ label: 'Gender', value: m.gender });
+              }
+              if (watchNationality && m.nationality && watchNationality.trim().toLowerCase() === m.nationality.trim().toLowerCase()) {
+                details.push({ label: 'Nationality', value: m.nationality });
+              }
+              if (watchNextOfKinName && m.next_of_kin_name && watchNextOfKinName.trim().toLowerCase() === m.next_of_kin_name.trim().toLowerCase()) {
+                details.push({ label: 'Next of Kin Name', value: m.next_of_kin_name });
+              }
+              if (watchNextOfKinContact && m.next_of_kin_contact && watchNextOfKinContact.trim() === m.next_of_kin_contact.trim()) {
+                details.push({ label: 'Next of Kin Contact', value: m.next_of_kin_contact });
+              }
+              if (details.length === 0) {
+                details.push({ label: 'Name', value: `${m.first_name} ${m.last_name}` });
+              }
+              return details;
+            };
+
+            return dupes?.has_duplicates && Array.isArray(dupes?.matches) && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-4 space-y-4 shadow-sm">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xl">⚠️</span>
+                  <h3 className="font-bold text-red-900 text-lg">Potential Duplicate Records Found</h3>
+                  {checking && <span className="text-xs font-normal text-red-700 animate-pulse">(checking…)</span>}
+                </div>
+                <p className="text-sm text-red-800 mb-4">
+                  Inmates with similar details already exist in the system. Please carefully review the matches below. Creating duplicate records can cause data inconsistency.
+                </p>
+                <div className="space-y-3">
+                  {dupes.matches.slice(0, 5).map((m) => {
+                    const matchDetails = getMatchDetails(m);
+                    const isPerfectMatch = m.similarity_score === 100;
+                    return (
+                      <div key={m.id} className={`p-3 rounded-lg border ${isPerfectMatch ? 'bg-red-100 border-red-300' : 'bg-white border-red-200'} shadow-sm`}>
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="font-semibold text-gray-900 text-base">
+                              {m.first_name} {m.last_name}
+                            </p>
+                            {m.prison_number && (
+                              <p className="text-xs font-medium text-gray-500">Prison No: {m.prison_number}</p>
+                            )}
+                          </div>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${isPerfectMatch ? 'bg-red-200 text-red-900' : 'bg-yellow-100 text-yellow-800'}`}>
+                            {m.similarity_score}% Match
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <span className="text-xs font-semibold text-gray-600 mt-0.5">Matching Details:</span>
+                          {matchDetails.map((detail, idx) => (
+                            <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-700 border border-red-100">
+                              {detail.label}: {detail.value}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-red-200 space-y-3">
+                <label className="flex items-center gap-2 text-sm text-red-900 font-bold cursor-pointer hover:bg-red-50 p-2 rounded-lg transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={overrideChecked}
+                    onChange={(e) => setOverrideChecked(e.target.checked)}
+                    className="rounded border-red-400 text-red-600 focus:ring-red-600 h-5 w-5"
+                  />
+                  <span>I confirm this is a DIFFERENT inmate (Force Admission)</span>
+                </label>
+                {overrideChecked && (
+                  <div className="space-y-1 bg-red-50 p-3 rounded-lg border border-red-200">
+                    <label className="block text-xs font-semibold text-red-800 uppercase tracking-wide">
+                      Justification Note *
+                    </label>
+                    <textarea
+                      value={overrideJustification}
+                      onChange={(e) => setOverrideJustification(e.target.value)}
+                      placeholder="Explain why this is not a duplicate (e.g., different parents, physical features, etc.)..."
+                      className="w-full px-3 py-2 border border-red-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white text-gray-800 transition"
+                      rows={2}
+                      required
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-          )}
+          );
+          })()}
 
           {/* ── Submit ── */}
           <div className="flex justify-end pt-2">

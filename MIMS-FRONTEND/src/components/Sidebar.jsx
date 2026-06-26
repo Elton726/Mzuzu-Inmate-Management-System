@@ -188,10 +188,23 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
       title: 'Visitation',
       items: [
         {
-          to: '/visitation/visitors',
+          to: '/visitation',
+          end: true,
           icon: MdPerson,
           title: 'Visitation',
           show: role === ROLES.GATEKEEPER
+        },
+        {
+          to: '/visitation/charity-pending',
+          icon: MdAssignment,
+          title: 'Charity Approvals',
+          show: role === ROLES.GATEKEEPER || role === ROLES.STATION_OFFICER
+        },
+        {
+          to: '/visitation/statistics',
+          icon: MdBarChart,
+          title: 'Visit Statistics',
+          show: role === ROLES.GATEKEEPER || role === ROLES.STATION_OFFICER
         }
       ]
     },

@@ -56,12 +56,9 @@ import ConfirmedReleasesPage from './modules/releases/pages/ConfirmedReleasesPag
 import SentenceAdjustmentPage from './modules/releases/pages/SentenceAdjustmentPage';
 import SentenceLengthPage from './modules/releases/pages/SentenceLengthPage';
 import ReleaseHistoryPage from './modules/releases/pages/ReleaseHistoryPage';
-import VisitorsPage from './modules/visitation/pages/VisitorsPage';
-import RegistrationsPage from './modules/visitation/pages/RegistrationsPage';
-import SessionsPage from './modules/visitation/pages/SessionsPage';
-import CharityPage from './modules/visitation/pages/CharityPage';
-import RulesPage from './modules/visitation/pages/RulesPage';
-import ReportsPage from './modules/visitation/pages/ReportsPage';
+import VisitationHomePage from './modules/visitation/pages/VisitationHomePage';
+import PendingCharityPage from './modules/visitation/pages/PendingCharityPage';
+import VisitationStatisticsPage from './modules/visitation/pages/VisitationStatisticsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import { Navigation } from './components/Navigation';
@@ -320,50 +317,26 @@ const AppContent = () => {
 
           {/* Visitation module routes - gatekeeper only */}
           <Route
-            path="/visitation/visitors"
+            path="/visitation"
             element={
               <ProtectedRoute allowedRoles={['gatekeeper']}>
-                <VisitorsPage />
+                <VisitationHomePage />
               </ProtectedRoute>
             }
           />
           <Route
-            path="/visitation/registrations"
+            path="/visitation/charity-pending"
             element={
-              <ProtectedRoute allowedRoles={['gatekeeper']}>
-                <RegistrationsPage />
+              <ProtectedRoute allowedRoles={['gatekeeper', 'station_officer']}>
+                <PendingCharityPage />
               </ProtectedRoute>
             }
           />
           <Route
-            path="/visitation/sessions"
+            path="/visitation/statistics"
             element={
-              <ProtectedRoute allowedRoles={['gatekeeper']}>
-                <SessionsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/visitation/charity"
-            element={
-              <ProtectedRoute allowedRoles={['gatekeeper']}>
-                <CharityPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/visitation/rules"
-            element={
-              <ProtectedRoute allowedRoles={['gatekeeper']}>
-                <RulesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/visitation/reports"
-            element={
-              <ProtectedRoute allowedRoles={['gatekeeper']}>
-                <ReportsPage />
+              <ProtectedRoute allowedRoles={['gatekeeper', 'station_officer']}>
+                <VisitationStatisticsPage />
               </ProtectedRoute>
             }
           />
