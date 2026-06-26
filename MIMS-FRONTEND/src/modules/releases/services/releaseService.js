@@ -27,6 +27,11 @@ export const listConfirmedReleases = async (params) => {
   return res.data;
 };
 
+export const listReleaseDateLookup = async (params) => {
+  const res = await apiClient.get('/releases/date-lookup', { params });
+  return res.data;
+};
+
 export const approveRelease = async (admissionId, payload) => {
   const res = await apiClient.post('/releases/approve', {
     admission_id: admissionId,
@@ -37,6 +42,39 @@ export const approveRelease = async (admissionId, payload) => {
 
 export const cancelRelease = async (workflowId, payload) => {
   const res = await apiClient.delete(`/releases/${workflowId}`, { data: payload });
+  return res.data;
+};
+
+// Pre-release clearance checklist endpoints
+export const getClearanceChecklistByAdmission = async (admissionId) => {
+  const res = await apiClient.get(`/releases/clearance-checklist/admission/${admissionId}`);
+  return res.data;
+};
+
+export const startClearanceChecklist = async (admissionId) => {
+  const res = await apiClient.post('/releases/clearance-checklist', {
+    admission_id: admissionId
+  });
+  return res.data;
+};
+
+export const clearChecklistItem = async (checklistItemId, payload) => {
+  const res = await apiClient.post('/releases/clearance-checklist/clear-item', {
+    checklist_item_id: checklistItemId,
+    verification_notes: payload?.verification_notes || undefined
+  });
+  return res.data;
+};
+
+export const unclearChecklistItem = async (checklistItemId) => {
+  const res = await apiClient.post('/releases/clearance-checklist/unclear-item', {
+    checklist_item_id: checklistItemId
+  });
+  return res.data;
+};
+
+export const completeClearanceChecklist = async (checklistId) => {
+  const res = await apiClient.put(`/releases/clearance-checklist/${checklistId}/complete`);
   return res.data;
 };
 

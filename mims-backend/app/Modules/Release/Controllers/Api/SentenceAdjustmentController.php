@@ -3,6 +3,7 @@
 namespace App\Modules\Release\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Release\Models\SentenceAdjustmentType;
 use App\Modules\Release\Requests\StoreSentenceAdjustmentRequest;
 use App\Modules\Release\Services\SentenceAdjustmentService;
 use Illuminate\Http\Request;
@@ -43,7 +44,7 @@ class SentenceAdjustmentController extends Controller
     {
         $validated = $request->validate([
             'admission_id' => ['required', 'integer', 'exists:admissions,id'],
-            'adjustment_type' => ['required', 'string', Rule::in(['remission', 'pardon', 'reduction', 'good_behaviour'])],
+            'adjustment_type' => ['required', 'string', Rule::in(SentenceAdjustmentType::activeNames())],
             'adjustment_days' => ['required', 'integer', 'min:1'],
             'effective_date' => ['required', 'date'],
             'reason' => ['nullable', 'string'],

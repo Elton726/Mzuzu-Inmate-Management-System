@@ -18,8 +18,7 @@ import {
   MdEditCalendar,
   MdChevronLeft,
   MdChevronRight,
-  MdLogout,
-  MdBarChart
+  MdLogout
 } from 'react-icons/md';
 import { ROLES, getRoleDisplayName, getRoleName } from '../utils/helpers';
 import logo from '/cuffs.png';
@@ -164,6 +163,12 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
           show: role === ROLES.STATION_OFFICER
         },
         {
+          to: '/releases/date-lookup',
+          icon: MdSchedule,
+          title: 'Release Dates',
+          show: role === ROLES.STATION_OFFICER
+        },
+        {
           to: '/releases/confirmation',
           icon: MdExitToApp,
           title: 'Confirm Release',
@@ -234,6 +239,12 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
           to: '/admin/cells',
           icon: MdHomeWork,
           title: 'Cell Management',
+          show: isAdmin
+        },
+        {
+          to: '/admin/sentence-adjustment-types',
+          icon: MdGavel,
+          title: 'Adjustment Types',
           show: isAdmin
         },
         {

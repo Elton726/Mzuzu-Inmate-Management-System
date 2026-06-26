@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ReleaseWorkflow extends Model
 {
@@ -53,6 +54,11 @@ class ReleaseWorkflow extends Model
     public function canceller(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
+    public function clearanceChecklist(): HasOne
+    {
+        return $this->hasOne(ReleaseClearanceChecklist::class, 'release_workflow_id');
     }
 
     public function scopePendingApproval(Builder $query): Builder

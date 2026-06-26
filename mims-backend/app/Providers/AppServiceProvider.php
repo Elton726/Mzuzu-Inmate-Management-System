@@ -8,6 +8,10 @@ use App\Services\RateLimitService;
 use App\Listeners\RecordAuthenticationFailure;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Auth\Events\Failed;
+use App\Modules\Release\Services\ReleaseClearanceService;
+use App\Modules\Release\Repositories\ReleaseClearanceRepository;
+use App\Modules\Release\Services\ReleaseService;
+use App\Modules\Release\Repositories\ReleaseWorkflowRepository;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -18,6 +22,24 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(RateLimitService::class, function () {
             return new RateLimitService();
+        });
+
+        // Register Release Module Services
+        $this->app->bind(ReleaseClearanceRepository::class, function ($app) {
+            return new ReleaseClearanceRepository();
+        });
+
+        $this->app->bind(ReleaseClearanceService::class, function ($app) {
+            return new ReleaseClearanceService(
+                $app->make(ReleaseClearanceRepository::class)
+            );
+        });
+
+        $this->app->bind(ReleaseService::class, function ($app) {
+            return new ReleaseService(
+                $app->make(ReleaseWorkflowRepository::class),
+                $app->make(ReleaseClearanceService::class)
+            );
         });
     }
 

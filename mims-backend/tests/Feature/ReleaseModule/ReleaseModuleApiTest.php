@@ -52,6 +52,27 @@ class ReleaseModuleApiTest extends TestCase
         ], $overrides));
     }
 
+    private function completeClearanceChecklist(User $stationOfficer, Admission $admission): void
+    {
+        $start = $this->actingAs($stationOfficer, 'sanctum')->postJson('/api/releases/clearance-checklist', [
+            'admission_id' => $admission->id,
+        ]);
+
+        $start->assertCreated();
+
+        foreach ($start->json('data.items') as $item) {
+            $this->actingAs($stationOfficer, 'sanctum')->postJson('/api/releases/clearance-checklist/clear-item', [
+                'checklist_item_id' => $item['id'],
+                'verification_notes' => 'Verified for release approval',
+            ])->assertOk();
+        }
+
+        $this->actingAs($stationOfficer, 'sanctum')
+            ->putJson('/api/releases/clearance-checklist/' . $start->json('data.checklist_id') . '/complete')
+            ->assertOk()
+            ->assertJsonPath('data.all_cleared', true);
+    }
+
     public function test_station_officer_can_list_eligible_inmates_and_approve_release(): void
     {
         $stationOfficer = $this->userWithRole('station_officer');
@@ -67,6 +88,16 @@ class ReleaseModuleApiTest extends TestCase
         $eligible->assertOk()->assertJsonFragment([
             'admission_id' => $eligibleAdmission->id,
         ]);
+
+        $this->actingAs($stationOfficer, 'sanctum')->postJson('/api/releases/approve', [
+            'admission_id' => $eligibleAdmission->id,
+            'notes' => 'Should require clearance',
+        ])->assertUnprocessable()
+            ->assertJsonFragment([
+                'error' => 'No clearance checklist found for this admission. Please initiate the clearance process first.',
+            ]);
+
+        $this->completeClearanceChecklist($stationOfficer, $eligibleAdmission);
 
         $response = $this->actingAs($stationOfficer, 'sanctum')->postJson('/api/releases/approve', [
             'admission_id' => $eligibleAdmission->id,

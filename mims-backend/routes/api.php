@@ -20,7 +20,10 @@ use App\Modules\ActivityAllocation\Controllers\Officer\ExternalActivityAllocatio
 use App\Modules\ActivityAllocation\Controllers\Officer\SessionAttendanceController;
 use App\Modules\Release\Controllers\Api\ReleaseApprovalController;
 use App\Modules\Release\Controllers\Api\ReleaseConfirmationController;
+use App\Modules\Release\Controllers\Api\ReleaseDateLookupController;
+use App\Modules\Release\Controllers\Api\ReleaseClearanceChecklistController;
 use App\Modules\Release\Controllers\Api\SentenceAdjustmentController;
+use App\Modules\Release\Controllers\Api\SentenceAdjustmentTypeController;
 use App\Modules\Visitation\Controllers\Api\CharityBookingController;
 use App\Modules\Visitation\Controllers\Api\VisitItemController;
 use App\Modules\Visitation\Controllers\Api\VisitReportController;
@@ -93,6 +96,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::patch('/{id}/activate', [ActivityManagementController::class, 'activate']);
             Route::patch('/{id}/deactivate', [ActivityManagementController::class, 'deactivate']);
             Route::delete('/{id}', [ActivityManagementController::class, 'destroy']);
+        });
+
+        // Release Module - Admin sentence adjustment types
+        Route::prefix('sentence-adjustment-types')->group(function () {
+            Route::get('/', [SentenceAdjustmentTypeController::class, 'index']);
+            Route::post('/', [SentenceAdjustmentTypeController::class, 'store']);
+            Route::get('/{sentenceAdjustmentType}', [SentenceAdjustmentTypeController::class, 'show']);
+            Route::put('/{sentenceAdjustmentType}', [SentenceAdjustmentTypeController::class, 'update']);
+            Route::delete('/{sentenceAdjustmentType}', [SentenceAdjustmentTypeController::class, 'destroy']);
         });
     });
 
@@ -173,6 +185,23 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::delete('/releases/{workflowId}', [ReleaseApprovalController::class, 'destroy'])->middleware('throttle:10,60,user');
         });
 
+        // Release clearance checklist (station officer & gatekeeper)
+        Route::middleware('role:station_officer,gatekeeper')->group(function () {
+            Route::post('/releases/clearance-checklist', [ReleaseClearanceChecklistController::class, 'store'])->middleware('throttle:30,60,user');
+            Route::get('/releases/clearance-checklist/workflow/{workflowId}', [ReleaseClearanceChecklistController::class, 'byWorkflow'])->middleware('throttle:60,60,user');
+            Route::get('/releases/clearance-checklist/admission/{admissionId}', [ReleaseClearanceChecklistController::class, 'byAdmission'])->middleware('throttle:60,60,user');
+            Route::get('/releases/clearance-checklist/available-items', [ReleaseClearanceChecklistController::class, 'availableItems'])->middleware('throttle:60,60,user');
+            Route::get('/releases/clearance-checklist/{checklistId}', [ReleaseClearanceChecklistController::class, 'show'])->middleware('throttle:60,60,user');
+            Route::post('/releases/clearance-checklist/clear-item', [ReleaseClearanceChecklistController::class, 'clearItem'])->middleware('throttle:30,60,user');
+            Route::post('/releases/clearance-checklist/unclear-item', [ReleaseClearanceChecklistController::class, 'unclearItem'])->middleware('throttle:30,60,user');
+            Route::get('/releases/clearance-checklist/{checklistId}/status', [ReleaseClearanceChecklistController::class, 'status'])->middleware('throttle:60,60,user');
+        });
+
+        // Completion of clearance checklist (station officer only)
+        Route::middleware('role:station_officer')->group(function () {
+            Route::put('/releases/clearance-checklist/{checklistId}/complete', [ReleaseClearanceChecklistController::class, 'complete'])->middleware('throttle:10,60,user');
+        });
+
         // Release confirmation (gatekeeper)
         Route::middleware('role:gatekeeper')->group(function () {
             Route::get('/releases/pending-confirmations', [ReleaseConfirmationController::class, 'index'])->middleware('throttle:60,60,user');
@@ -181,6 +210,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         // Confirmed releases (station officer)
         Route::middleware('role:station_officer')->group(function () {
+            Route::get('/releases/date-lookup', [ReleaseDateLookupController::class, 'index'])->middleware('throttle:60,60,user');
             Route::get('/releases/confirmed', [ReleaseApprovalController::class, 'confirmed'])->middleware('throttle:60,60,user');
         });
 
@@ -191,6 +221,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/admissions/{admissionId}/adjustments', [SentenceAdjustmentController::class, 'store'])->middleware('throttle:30,60,user');
             Route::post('/adjustments', [SentenceAdjustmentController::class, 'storeLegacy'])->middleware('throttle:30,60,user');
             Route::delete('/adjustments/{adjustmentId}', [SentenceAdjustmentController::class, 'destroy'])->middleware('throttle:10,60,user');
+            Route::get('/sentence-adjustment-types/available', [SentenceAdjustmentTypeController::class, 'availableTypes'])->middleware('throttle:60,60,user');
         });
 
         // Release history (station officer & gatekeeper)

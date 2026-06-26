@@ -16,7 +16,8 @@ use RuntimeException;
 class ReleaseService
 {
     public function __construct(
-        protected ReleaseWorkflowRepository $repository
+        protected ReleaseWorkflowRepository $repository,
+        protected ReleaseClearanceService $clearanceService
     ) {}
 
     public function getEligibleInmates(): Collection
@@ -36,6 +37,9 @@ class ReleaseService
         if ($this->repository->findActiveByAdmission($admissionId)) {
             throw new RuntimeException('An active release workflow already exists for this admission.');
         }
+
+        // Validate that all clearances are completed
+        $this->clearanceService->validateClearanceForApproval($admissionId);
 
         $workflow = $this->repository->createApproval([
             'admission_id' => $admissionId,
@@ -68,10 +72,6 @@ class ReleaseService
 
         if ($releaseDate->isFuture()) {
             throw new RuntimeException('Inmate cannot be confirmed yet because the release day has not yet reached.');
-        }
-
-        if (!$releaseDate->isToday()) {
-            throw new RuntimeException('Inmate can only be confirmed on the exact release date.');
         }
 
         $oldData = $workflow->toArray();
