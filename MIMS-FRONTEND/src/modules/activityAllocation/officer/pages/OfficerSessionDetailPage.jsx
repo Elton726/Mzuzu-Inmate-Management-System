@@ -38,6 +38,12 @@ export default function OfficerSessionDetailPage() {
   const [originalReport, setOriginalReport] = useState([]);
   const [filterText, setFilterText] = useState('');
   const [statusDraft, setStatusDraft] = useState('');
+  const [countdown, setCountdown] = useState({
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+    isExpired: false,
+  });
 
   const load = async () => {
     try {
@@ -65,6 +71,54 @@ export default function OfficerSessionDetailPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (!session?.start_time || !session?.end_time) return;
+    if (session.status === 'completed' || session.status === 'cancelled') return;
+
+    const updateCountdown = () => {
+      const now = new Date();
+      const [startHours, startMinutes] = String(session.start_time).split(':').map(Number);
+      const [endHours, endMinutes] = String(session.end_time).split(':').map(Number);
+
+      const startDate = new Date();
+      startDate.setHours(startHours, startMinutes, 0, 0);
+
+      const endDate = new Date();
+      endDate.setHours(endHours, endMinutes, 0, 0);
+
+      // If end time is before start time (e.g., 20:00 to 02:00), add a day to end time
+      if (endDate < startDate) {
+        endDate.setDate(endDate.getDate() + 1);
+      }
+
+      const diff = endDate - now;
+
+      if (diff <= 0) {
+        setCountdown({ hours: 0, minutes: 0, seconds: 0, isExpired: true });
+        // Auto-update status to completed if not already
+        if (session.status !== 'completed') {
+          updateStatus('completed');
+        }
+      } else {
+        const totalSeconds = Math.floor(diff / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        setCountdown({ hours, minutes, seconds, isExpired: false });
+
+        // Auto-set to in_progress if not scheduled
+        if (now >= startDate && session.status === 'scheduled') {
+          updateStatus('in_progress');
+        }
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [session]);
 
   const filteredReport = useMemo(() => {
     const q = String(filterText || '').trim().toLowerCase();
@@ -177,29 +231,51 @@ export default function OfficerSessionDetailPage() {
         </div>
 
         <Card title="Session status">
-          <div className="flex items-end gap-4 flex-wrap">
-            <div className="min-w-56">
-              <Select
-                label="Status"
-                value={statusDraft}
-                onChange={(e) => setStatusDraft(e.target.value)}
-                options={[
-                  { value: 'scheduled', label: 'Scheduled' },
-                  { value: 'in_progress', label: 'In Progress' },
-                  { value: 'completed', label: 'Completed' },
-                  { value: 'cancelled', label: 'Cancelled' },
-                ]}
-                hint="Session details stay locked, but status can still be changed."
-              />
-            </div>
-            <Button onClick={() => updateStatus()} loading={updatingStatus}>
-              Update Status
-            </Button>
-            {session.status !== 'completed' && (
-              <Button variant="outline" onClick={() => updateStatus('completed')} loading={updatingStatus}>
-                Mark Done
-              </Button>
+          <div className="space-y-4">
+            {session.start_time && session.end_time && (
+              <div className="bg-blue-50 border border-blue-200 rounded p-4">
+                <div className="text-sm text-blue-800 mb-2">Time remaining:</div>
+                <div className="text-3xl font-bold text-blue-900">
+                  {String(countdown.hours).padStart(2, '0')}:{String(countdown.minutes).padStart(2, '0')}:{String(countdown.seconds).padStart(2, '0')}
+                </div>
+                <div className="text-xs text-blue-700 mt-2">
+                  Started at: {session.start_time} | Ends at: {session.end_time}
+                </div>
+                {countdown.isExpired && (
+                  <div className="text-sm text-red-600 mt-2 font-semibold">
+                    Session time has expired
+                  </div>
+                )}
+              </div>
             )}
+            <div className="flex items-end gap-4 flex-wrap">
+              <div className="min-w-56">
+                <Select
+                  label="Status"
+                  value={statusDraft}
+                  onChange={(e) => setStatusDraft(e.target.value)}
+                  options={[
+                    { value: 'scheduled', label: 'Scheduled' },
+                    { value: 'in_progress', label: 'In Progress' },
+                    { value: 'completed', label: 'Completed' },
+                    { value: 'cancelled', label: 'Cancelled' },
+                  ]}
+                />
+              </div>
+              <Button onClick={() => updateStatus()} loading={updatingStatus}>
+                Update Status
+              </Button>
+              {session.status !== 'completed' && session.status !== 'cancelled' && (
+                <Button variant="outline" onClick={() => updateStatus('completed')} loading={updatingStatus}>
+                  Mark Done
+                </Button>
+              )}
+              {session.status !== 'cancelled' && session.status !== 'completed' && (
+                <Button variant="outline" className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200" onClick={() => updateStatus('cancelled')} loading={updatingStatus}>
+                  Cancel Activity
+                </Button>
+              )}
+            </div>
           </div>
         </Card>
 

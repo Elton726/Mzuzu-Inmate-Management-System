@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
+import ConfirmationModal from './common/ConfirmationModal';
 import {
   MdHome,
   MdPerson,
@@ -17,7 +18,6 @@ import {
   MdEditCalendar,
   MdChevronLeft,
   MdChevronRight,
-  MdGavel,
   MdLogout
 } from 'react-icons/md';
 import { ROLES, getRoleDisplayName, getRoleName } from '../utils/helpers';
@@ -55,12 +55,16 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
   const { user, isAdmin, logout, loading } = useAuth();
   const navigate = useNavigate();
   const role = getRoleName(user);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const handleLogout = async () => {
-    if (window.confirm("Are you sure you want to log out?")) {
-      await logout();
-      navigate('/login');
-    }
+  const handleLogoutClick = () => {
+    setShowLogoutModal(true);
+  };
+
+  const handleLogoutConfirm = async () => {
+    setShowLogoutModal(false);
+    await logout();
+    navigate('/login');
   };
 
   // Show loading skeleton while auth is initializing
@@ -114,6 +118,12 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
           to: '/admissions/cells',
           icon: MdHomeWork,
           title: 'Cell Management',
+          show: role === ROLES.RECEPTION_OFFICER
+        },
+        {
+          to: '/admissions/reports',
+          icon: MdBarChart,
+          title: 'Reports',
           show: role === ROLES.RECEPTION_OFFICER
         }
       ]
@@ -248,6 +258,7 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
     .filter(section => section.items.length > 0);
 
   return (
+    <>
     <aside className={`h-screen bg-zinc-950 text-gray-300 border-r border-zinc-800/80 shadow-2xl fixed top-0 left-0 z-50 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'}`}>
       {/* Header with cuffs logo */}
       <div className="flex items-center h-20 border-b border-zinc-800/80 px-4 justify-between gap-3 flex-shrink-0">
@@ -353,7 +364,7 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
             {!isCollapsed ? (
               <button
                 type="button"
-                onClick={handleLogout}
+                onClick={handleLogoutClick}
                 className="p-2 text-zinc-400 hover:text-red-500 transition-colors duration-200 rounded-lg hover:bg-zinc-900 flex-shrink-0"
                 title="Logout"
               >
@@ -362,7 +373,7 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
             ) : (
               <button
                 type="button"
-                onClick={handleLogout}
+                onClick={handleLogoutClick}
                 className="w-10 h-10 mt-1 flex items-center justify-center text-zinc-400 hover:text-red-500 transition-colors duration-200 rounded-lg hover:bg-zinc-900 flex-shrink-0"
                 title="Logout"
               >
@@ -373,5 +384,17 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
         </div>
       )}
     </aside>
+
+    <ConfirmationModal
+      open={showLogoutModal}
+      title="Confirm Logout"
+      message="Are you sure you want to log out?"
+      cancelText="Cancel"
+      confirmText="Logout"
+      confirmVariant="danger"
+      onCancel={() => setShowLogoutModal(false)}
+      onConfirm={handleLogoutConfirm}
+    />
+    </>
   );
 }

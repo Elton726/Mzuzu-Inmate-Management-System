@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Spinner from '../../../components/common/Spinner';
 import Button from '../../../components/common/Button';
 import Card from '../../../components/common/Card';
+import InmateAvatar from '../../../components/common/InmateAvatar';
 import { useToast } from '../../../contexts/useToast';
 import { useNotification } from '../../../contexts/useNotification';
 import { listCells } from '../services/cellService';
@@ -29,12 +30,6 @@ const getAdmissionsCount = (inmate) => {
 const getCurrentAdmission = (inmate) => inmate?.current_admission || inmate?.currentAdmission || null;
 
 const getCellLabel = (cell) => `Block ${cell.block} · Cell ${cell.cell_number}`;
-
-const getInmateInitials = (inmate) => {
-  const f = inmate?.first_name?.[0] || '';
-  const l = inmate?.last_name?.[0] || '';
-  return (f + l).toUpperCase() || 'IN';
-};
 
 const getCellOccupancyPercent = (cell) => {
   const capacity = Number(cell?.capacity || 0);
@@ -327,6 +322,7 @@ export default function AdmissionsDashboardPage() {
                 </div>
                 {admissionQueue[0] ? (
                   <div className="mt-4 space-y-3">
+                    <InmateAvatar inmate={admissionQueue[0]} size="custom" className="h-16 w-16 text-2xl rounded-2xl shrink-0" />
                     <div className="text-2xl font-bold text-gray-900">
                       {admissionQueue[0].first_name} {admissionQueue[0].last_name}
                     </div>
@@ -514,9 +510,7 @@ export default function AdmissionsDashboardPage() {
             {admissionQueue.map((inmate) => (
               <div key={inmate.id} className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 transition hover:bg-gray-50 duration-200">
                 <div className="flex items-start gap-4">
-                  <div className="flex shrink-0 items-center justify-center rounded-full font-bold h-10 w-10 bg-malawiBlack text-malawiGold border border-gray-200">
-                    {getInmateInitials(inmate)}
-                  </div>
+                  <InmateAvatar inmate={inmate} size="sm" className="shrink-0 rounded-full border border-gray-200" />
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -565,9 +559,7 @@ export default function AdmissionsDashboardPage() {
             {activeAdmissionQueue.map((inmate) => (
               <div key={inmate.id} className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 transition hover:bg-gray-50 duration-200">
                 <div className="flex items-start gap-4">
-                  <div className="flex shrink-0 items-center justify-center rounded-full font-bold h-10 w-10 bg-malawiBlack text-malawiGold border border-gray-200">
-                    {getInmateInitials(inmate)}
-                  </div>
+                  <InmateAvatar inmate={inmate} size="sm" className="shrink-0 rounded-full border border-gray-200" />
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -663,9 +655,7 @@ export default function AdmissionsDashboardPage() {
             {recentlyAdded.map((inmate) => (
               <div key={inmate.id} className="rounded-xl border border-gray-200 bg-white p-4 transition hover:bg-gray-50 duration-200">
                 <div className="flex items-center gap-4">
-                  <div className="flex shrink-0 items-center justify-center rounded-full font-bold h-10 w-10 bg-malawiBlack text-malawiGold border border-gray-200">
-                    {getInmateInitials(inmate)}
-                  </div>
+                  <InmateAvatar inmate={inmate} size="sm" className="shrink-0 rounded-full border border-gray-200" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <div>

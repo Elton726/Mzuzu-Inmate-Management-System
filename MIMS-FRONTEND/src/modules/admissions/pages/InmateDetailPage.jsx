@@ -15,6 +15,7 @@ import {
 import { getInmate } from '../services/inmateService';
 import { SERVER_BASE_URL } from '../../../services/apiService';
 import { formatDate } from '../../../utils/helpers';
+import InmateAvatar from '../../../components/common/InmateAvatar';
 
 const daysUntil = (dateValue) => {
   if (!dateValue) return null;
@@ -191,26 +192,7 @@ export default function InmateDetailPage() {
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
           <div className="p-5 md:p-6 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5">
             <div className="flex flex-col sm:flex-row gap-4">
-              {inmate.photo_path ? (
-                <img
-                  src={`${SERVER_BASE_URL}/storage/${inmate.photo_path}`}
-                  alt={`${inmate.first_name} ${inmate.last_name}`}
-                  className="w-28 h-36 object-cover rounded border border-gray-300 bg-gray-100"
-                  onError={(e) => {
-                    console.error('Photo loading error:', { src: e.target.src, inmate });
-                    e.target.replaceWith(
-                      Object.assign(document.createElement('div'), {
-                        className: 'w-28 h-36 rounded border border-gray-300 bg-gray-100 flex items-center justify-center text-xs text-gray-600',
-                        textContent: 'Photo unavailable'
-                      })
-                    );
-                  }}
-                />
-              ) : (
-                <div className="w-28 h-36 rounded border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center shrink-0">
-                  <p className="text-xs text-gray-500 text-center px-2">No photo</p>
-                </div>
-              )}
+              <InmateAvatar inmate={inmate} size="lg" className="rounded border border-gray-300 bg-gray-100" />
               <div className="min-w-0">
                 <div className="flex flex-wrap gap-2 text-xs font-semibold mb-3">
                   <span className="rounded bg-gray-100 px-2 py-1 text-gray-700">{formatLabel(inmate.status || 'active')}</span>

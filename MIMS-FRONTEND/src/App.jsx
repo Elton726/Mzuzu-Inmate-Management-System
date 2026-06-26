@@ -47,6 +47,7 @@ import OfficerSessionDetailPage from './modules/activityAllocation/officer/pages
 import AdmissionFormPage from './modules/admissions/pages/AdmissionFormPage';
 import AdmissionShowPage from './modules/admissions/pages/AdmissionShowPage';
 import AdmissionsIndexPage from './modules/admissions/pages/AdmissionsIndexPage';
+import AdmissionsReportPage from './modules/admissions/pages/AdmissionsReportPage';
 import CellManagementPage from './modules/admissions/pages/CellManagementPage';
 import InmateDetailPage from './modules/admissions/pages/InmateDetailPage';
 import ReleaseApprovalPage from './modules/releases/pages/ReleaseApprovalPage';
@@ -173,6 +174,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute allowedRoles={['reception_officer']}>
                 <CellManagementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admissions/reports"
+            element={
+              <ProtectedRoute allowedRoles={['reception_officer']}>
+                <AdmissionsReportPage />
               </ProtectedRoute>
             }
           />
