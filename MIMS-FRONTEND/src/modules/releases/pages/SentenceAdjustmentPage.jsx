@@ -10,6 +10,7 @@ import {
   createAdjustment,
   deleteAdjustment
 } from '../services/releaseService';
+import { listAvailableSentenceAdjustmentTypes } from '../services/sentenceAdjustmentTypeService';
 import SkeletonLoader from '../components/SkeletonLoader';
 import Button from '../../../components/common/Button';
 import Modal from '../../../components/common/Modal';
@@ -41,6 +42,8 @@ const adjustmentSchema = z.object({
 export default function SentenceAdjustmentPage() {
   const { admissionId } = useParams();
   const [loading, setLoading] = useState(false);
+  const [typesLoading, setTypesLoading] = useState(false);
+  const [adjustmentTypes, setAdjustmentTypes] = useState([]);
   const [adjustments, setAdjustments] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -55,16 +58,23 @@ export default function SentenceAdjustmentPage() {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors }
   } = useForm({
     resolver: zodResolver(adjustmentSchema),
     defaultValues: {
-      adjustment_type: 'remission',
+      adjustment_type: '',
       days: '',
       effective_date: new Date().toISOString().split('T')[0],
       reason: ''
     }
   });
+  const selectedAdjustmentType = watch('adjustment_type');
+  const selectedTypeConfig = adjustmentTypes.find((type) => type.name === selectedAdjustmentType);
+  const configuredReductionDays = selectedTypeConfig?.years_to_reduce > 0
+    ? Number(selectedTypeConfig.years_to_reduce) * 365
+    : null;
 
   const loadAdjustments = useCallback(async () => {
     if (!admissionId) return;
@@ -86,9 +96,36 @@ export default function SentenceAdjustmentPage() {
     }
   }, [admissionId, currentPage]);
 
+  const loadAdjustmentTypes = useCallback(async () => {
+    try {
+      setTypesLoading(true);
+      const response = await listAvailableSentenceAdjustmentTypes();
+      const availableTypes = Array.isArray(response.data) ? response.data : [];
+      setAdjustmentTypes(availableTypes);
+
+      if (availableTypes.length > 0) {
+        setValue('adjustment_type', availableTypes[0].name);
+      }
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to load adjustment types'));
+    } finally {
+      setTypesLoading(false);
+    }
+  }, [setValue]);
+
   useEffect(() => {
     loadAdjustments();
   }, [loadAdjustments]);
+
+  useEffect(() => {
+    loadAdjustmentTypes();
+  }, [loadAdjustmentTypes]);
+
+  useEffect(() => {
+    if (configuredReductionDays) {
+      setValue('days', configuredReductionDays);
+    }
+  }, [configuredReductionDays, setValue]);
 
   const onSubmit = async (data) => {
     if (!admissionId) return;
@@ -102,8 +139,9 @@ export default function SentenceAdjustmentPage() {
         `${data.days} days ${data.adjustment_type} applied${newReleaseDate ? `. New release date: ${newReleaseDate}` : ''}`
       );
 
+      const defaultType = adjustmentTypes[0]?.name || '';
       reset({
-        adjustment_type: 'remission',
+        adjustment_type: defaultType,
         days: '',
         effective_date: new Date().toISOString().split('T')[0],
         reason: ''
@@ -174,13 +212,21 @@ export default function SentenceAdjustmentPage() {
                   {...register('adjustment_type')}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-malawiGreen dark:bg-gray-700 dark:text-gray-100"
                 >
-                  <option value="remission">Remission</option>
-                  <option value="pardon">Pardon</option>
-                  <option value="reduction">Reduction</option>
-                  <option value="good_behaviour">Good Behaviour</option>
+                  {adjustmentTypes.length === 0 ? (
+                    <option value="">No adjustment types available</option>
+                  ) : (
+                    adjustmentTypes.map((type) => (
+                      <option key={type.name} value={type.name}>
+                        {type.name.replace(/_/g, ' ')}
+                      </option>
+                    ))
+                  )}
                 </select>
                 {errors.adjustment_type && (
                   <p className="text-red-600 text-sm mt-1">{errors.adjustment_type.message}</p>
+                )}
+                {selectedTypeConfig?.info && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{selectedTypeConfig.info}</p>
                 )}
               </div>
 
@@ -193,8 +239,14 @@ export default function SentenceAdjustmentPage() {
                   type="number"
                   {...register('days', { valueAsNumber: true })}
                   placeholder="Enter number of days"
+                  disabled={Boolean(configuredReductionDays)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-malawiGreen dark:bg-gray-700 dark:text-gray-100"
                 />
+                {configuredReductionDays && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                    This type is configured by admin to reduce {selectedTypeConfig.years_to_reduce} year{selectedTypeConfig.years_to_reduce === 1 ? '' : 's'} ({configuredReductionDays} days).
+                  </p>
+                )}
                 {errors.days && (
                   <p className="text-red-600 text-sm mt-1">{errors.days.message}</p>
                 )}
@@ -236,6 +288,7 @@ export default function SentenceAdjustmentPage() {
                 variant="primary"
                 type="submit"
                 loading={submitLoading}
+                disabled={adjustmentTypes.length === 0}
                 className="w-full"
               >
                 Apply Adjustment

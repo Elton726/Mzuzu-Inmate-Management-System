@@ -53,8 +53,10 @@ import ReleaseApprovalPage from './modules/releases/pages/ReleaseApprovalPage';
 import ReleaseConfirmationPage from './modules/releases/pages/ReleaseConfirmationPage';
 import ConfirmedReleasesPage from './modules/releases/pages/ConfirmedReleasesPage';
 import SentenceAdjustmentPage from './modules/releases/pages/SentenceAdjustmentPage';
+import SentenceAdjustmentTypesPage from './modules/releases/pages/SentenceAdjustmentTypesPage';
 import SentenceLengthPage from './modules/releases/pages/SentenceLengthPage';
 import ReleaseHistoryPage from './modules/releases/pages/ReleaseHistoryPage';
+import ReleaseDateLookupPage from './modules/releases/pages/ReleaseDateLookupPage';
 import VisitorsPage from './modules/visitation/pages/VisitorsPage';
 import RegistrationsPage from './modules/visitation/pages/RegistrationsPage';
 import SessionsPage from './modules/visitation/pages/SessionsPage';
@@ -219,6 +221,14 @@ const AppContent = () => {
             }
           />
           <Route
+            path="/releases/date-lookup"
+            element={
+              <ProtectedRoute allowedRoles={['station_officer']}>
+                <ReleaseDateLookupPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/releases"
             element={
               <ProtectedRoute allowedRoles={['station_officer', 'gatekeeper']}>
@@ -289,6 +299,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute requireAdmin={true}>
                 <ActivityListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/sentence-adjustment-types"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <SentenceAdjustmentTypesPage />
               </ProtectedRoute>
             }
           />

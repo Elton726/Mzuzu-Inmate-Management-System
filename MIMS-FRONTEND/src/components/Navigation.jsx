@@ -29,6 +29,7 @@ import {
   MdExitToApp,
   MdPerson,
   MdHomeWork,
+  MdGavel,
 } from 'react-icons/md';
 
 const getPageTitle = (pathname, role) => {
@@ -42,6 +43,7 @@ const getPageTitle = (pathname, role) => {
   if (pathname.startsWith('/admin/users')) return { title: 'User Management', icon: MdPeople };
   if (pathname.startsWith('/admin/audit-logs')) return { title: 'Audit Logs', icon: MdHistory };
   if (pathname.startsWith('/admin/cells')) return { title: 'Cell Management', icon: MdHomeWork };
+  if (pathname.startsWith('/admin/sentence-adjustment-types')) return { title: 'Sentence Adjustment Types', icon: MdGavel };
   if (pathname.startsWith('/admin/duty-rosters')) return { title: 'Duty Rosters', icon: MdSchedule };
   if (pathname.startsWith('/admin/activities')) return { title: 'Activities', icon: MdLocalActivity };
   if (pathname.startsWith('/releases/approval')) return { title: 'Release Approval', icon: MdCheckCircle };
