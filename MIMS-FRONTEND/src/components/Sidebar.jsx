@@ -18,7 +18,9 @@ import {
   MdEditCalendar,
   MdChevronLeft,
   MdChevronRight,
-  MdLogout
+  MdLogout,
+  MdBarChart,
+  MdGavel
 } from 'react-icons/md';
 import { ROLES, getRoleDisplayName, getRoleName } from '../utils/helpers';
 import logo from '/cuffs.png';
