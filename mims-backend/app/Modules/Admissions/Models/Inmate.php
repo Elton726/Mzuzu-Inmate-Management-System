@@ -26,6 +26,7 @@ class Inmate extends Model
         'next_of_kin_name',
         'next_of_kin_contact',
         'personal_belongings',
+        'override_justification',
         'photo_path',
         'status',
         'last_release_date',

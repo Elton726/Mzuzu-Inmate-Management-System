@@ -27,6 +27,7 @@ class StoreInmateRequest extends FormRequest
             'next_of_kin_name' => ['nullable', 'string', 'max:100'],
             'next_of_kin_contact' => ['nullable', 'string', 'max:50'],
             'personal_belongings' => ['nullable', 'string', 'max:500'],
+            'override_justification' => ['nullable', 'string', 'max:500'],
         ];
     }
 }

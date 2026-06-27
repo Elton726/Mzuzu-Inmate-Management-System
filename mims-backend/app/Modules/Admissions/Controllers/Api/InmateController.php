@@ -21,9 +21,10 @@ class InmateController extends Controller
     public function checkDuplicate(CheckDuplicateRequest $request)
     {
         $matches = $this->duplicateDetectionService->findPotentialDuplicates($request->validated());
+        $hasHighMatch = $matches->contains(fn ($m) => ($m['similarity_score'] ?? 0) >= 60);
 
         return response()->json([
-            'has_duplicates' => $matches->isNotEmpty(),
+            'has_duplicates' => $hasHighMatch,
             'matches' => $matches,
         ]);
     }
@@ -101,6 +102,15 @@ class InmateController extends Controller
     public function store(StoreInmateRequest $request)
     {
         $validated = $request->validated();
+
+        $matches = $this->duplicateDetectionService->findPotentialDuplicates($validated);
+        $hasHighMatch = $matches->contains(fn ($m) => ($m['similarity_score'] ?? 0) >= 60);
+
+        if ($hasHighMatch && empty($validated['override_justification'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'duplicate' => ['Potential duplicate inmate found. An override justification is required to proceed.'],
+            ]);
+        }
 
         $inmate = DB::transaction(function () use ($validated) {
             $year = now()->year;
