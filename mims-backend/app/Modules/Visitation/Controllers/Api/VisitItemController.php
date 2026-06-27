@@ -18,12 +18,23 @@ class VisitItemController extends Controller
             'notes' => $request->validated('notes'),
         ]);
 
+        if ($item->status === 'flagged') {
+            $session->update(['status' => 'flagged']);
+        }
+
         return response()->json(['data' => $item], 201);
     }
 
     public function update(VisitItem $item, UpdateVisitItemRequest $request)
     {
         $item->update($request->validated());
+        $session = $item->session;
+
+        if ($item->status === 'flagged') {
+            $session->update(['status' => 'flagged']);
+        } elseif ($session && $session->status === 'flagged' && !$session->items()->where('status', 'flagged')->exists()) {
+            $session->update(['status' => 'in_progress']);
+        }
 
         return response()->json(['data' => $item->fresh()]);
     }

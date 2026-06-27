@@ -61,6 +61,7 @@ import ReleaseDateLookupPage from './modules/releases/pages/ReleaseDateLookupPag
 import VisitationHomePage from './modules/visitation/pages/VisitationHomePage';
 import PendingCharityPage from './modules/visitation/pages/PendingCharityPage';
 import VisitationStatisticsPage from './modules/visitation/pages/VisitationStatisticsPage';
+import VisitationHistoryPage from './modules/visitation/pages/VisitationHistoryPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import { Navigation } from './components/Navigation';
@@ -355,6 +356,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute allowedRoles={['gatekeeper', 'station_officer']}>
                 <VisitationStatisticsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/visitation/history"
+            element={
+              <ProtectedRoute allowedRoles={['gatekeeper', 'station_officer']}>
+                <VisitationHistoryPage />
               </ProtectedRoute>
             }
           />

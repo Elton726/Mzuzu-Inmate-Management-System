@@ -170,6 +170,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/today-schedule', [VisitReportController::class, 'todaySchedule']);
             Route::get('/pending-charity', [VisitReportController::class, 'pendingCharity']);
             Route::get('/statistics', [VisitReportController::class, 'statistics']);
+            Route::get('/history', [VisitReportController::class, 'history']);
             Route::get('/charity-bookings/{booking}/pdf', [CharityBookingController::class, 'downloadPdf'])
                 ->middleware('signed')
                 ->name('visitation.charity-pdf');

@@ -18,7 +18,7 @@ import {
   updateVisitItem,
 } from '../services/visitationService';
 
-const emptyRegular = { full_name: '', id_type: 'National ID', id_number: '', phone: '', inmate_id: '' };
+const emptyRegular = { full_name: '', phone: '', inmate_id: '' };
 const emptyCharity = { organisation_name: '', contact_person: '', contact_person_phone: '', inmate_category: '', purpose: '', proposed_date: '', proposed_time: '', duration_minutes: 60 };
 const denialReasons = ['Prohibited items found', 'Inmate refused visit', 'Visitor ID invalid', 'Security concern', 'Other'];
 const charityCategories = [
@@ -30,7 +30,7 @@ const charityCategories = [
 const statusClass = (status) => {
   if (['completed', 'approved'].includes(status)) return 'bg-green-100 text-green-800';
   if (['checked_in', 'in_progress', 'pending'].includes(status)) return 'bg-amber-100 text-amber-800';
-  if (['denied', 'cancelled', 'rejected'].includes(status)) return 'bg-red-100 text-red-800';
+  if (['flagged', 'denied', 'cancelled', 'rejected'].includes(status)) return 'bg-red-100 text-red-800';
   return 'bg-gray-100 text-gray-700';
 };
 
@@ -124,6 +124,10 @@ export default function VisitationHomePage() {
   const [slotResult, setSlotResult] = useState(null);
   const [activeSession, setActiveSession] = useState(null);
   const [item, setItem] = useState({ item_description: '', status: 'pending', notes: '' });
+  const [checkInItems, setCheckInItems] = useState([]);
+  const [checkInItem, setCheckInItem] = useState({ item_description: '', status: 'approved', notes: '' });
+  const [flagModal, setFlagModal] = useState({ open: false, index: null, reason: '' });
+  const [activeFlagModal, setActiveFlagModal] = useState({ open: false, item: null, reason: '' });
   const [denyOpen, setDenyOpen] = useState(false);
   const [denial, setDenial] = useState({ denial_reason: 'Security concern', denial_notes: '' });
   const [pdfInfo, setPdfInfo] = useState(null);
@@ -145,16 +149,20 @@ export default function VisitationHomePage() {
     ...(schedule.sessions || []).map((session) => ({
       id: session.id,
       visitor: session.visitor?.full_name,
-      inmate: nameOf(session.inmate),
+      inmate: session.visit_type === 'charity' ? categoryName(session.charity_booking?.inmate_category || session.charityBooking?.inmate_category) : nameOf(session.inmate),
       time: session.checked_in_at || session.created_at,
+      displayTime: session.checked_in_at ? new Date(session.checked_in_at).toLocaleString() : new Date(session.created_at).toLocaleString(),
       status: session.status,
       type: session.visit_type,
+      session,
+      hasFlags: (session.items || []).some((row) => row.status === 'flagged'),
     })),
     ...(schedule.approved_charity || []).map((booking) => ({
       id: booking.id,
       visitor: booking.organisation_name,
       inmate: categoryName(booking.inmate_category),
       time: `${formatDateOnly(booking.proposed_date)} ${String(booking.proposed_time || '').slice(0, 5)}`,
+      displayTime: `${formatDateOnly(booking.proposed_date)} ${String(booking.proposed_time || '').slice(0, 5)}`,
       status: 'approved',
       type: 'charity',
       booking,
@@ -168,16 +176,38 @@ export default function VisitationHomePage() {
     setFieldErrors({});
     setSlotResult(null);
     setActiveSession(null);
+    setCheckInItems([]);
+    setCheckInItem({ item_description: '', status: 'approved', notes: '' });
+    setFlagModal({ open: false, index: null, reason: '' });
+    setActiveFlagModal({ open: false, item: null, reason: '' });
     setPdfInfo(null);
+  };
+
+  const addCheckInItem = () => {
+    if (!checkInItem.item_description.trim()) return;
+    setCheckInItems((current) => [...current, { ...checkInItem, item_description: checkInItem.item_description.trim() }]);
+    setCheckInItem({ item_description: '', status: 'approved', notes: '' });
+  };
+
+  const openCheckInFlag = (index) => {
+    setFlagModal({ open: true, index, reason: checkInItems[index]?.notes || '' });
+  };
+
+  const confirmCheckInFlag = () => {
+    setCheckInItems((current) => current.map((row, index) => (
+      index === flagModal.index ? { ...row, status: 'flagged', notes: flagModal.reason } : row
+    )));
+    setFlagModal({ open: false, index: null, reason: '' });
   };
 
   const startRegular = async () => {
     try {
       setLoading(true);
       setFieldErrors({});
-      const session = await createVisitSession({ ...regular, visit_type: 'regular' });
-      setActiveSession(session);
-      toast.success('Visitor registered. Ready for check-in.');
+      const session = await createVisitSession({ ...regular, visit_type: 'regular', items: checkInItems });
+      toast.success(session.status === 'flagged' ? 'Visit checked in and flagged for review.' : 'Visitor checked in successfully.');
+      resetFlow();
+      loadSchedule();
     } catch (err) {
       setFieldErrors(getFieldErrors(err));
       toast.error(getErrorMessage(err, 'Could not register visit'));
@@ -198,6 +228,19 @@ export default function VisitationHomePage() {
     setActiveSession(session);
     toast.success('Visitor checked out');
     loadSchedule();
+  };
+
+  const checkOutFromTable = async (session) => {
+    try {
+      setLoading(true);
+      await checkOutSession(session.id);
+      toast.success('Visitor checked out');
+      loadSchedule();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not check out visit'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDeny = async () => {
@@ -227,8 +270,24 @@ export default function VisitationHomePage() {
     const updated = await updateVisitItem(visitItem.id, { status, notes: visitItem.notes });
     setActiveSession((current) => ({
       ...current,
+      status: status === 'flagged' ? 'flagged' : current.status,
       items: (current.items || []).map((row) => (row.id === updated.id ? updated : row)),
     }));
+  };
+
+  const confirmActiveFlag = async () => {
+    if (!activeFlagModal.item) return;
+    const updated = await updateVisitItem(activeFlagModal.item.id, {
+      status: 'flagged',
+      notes: activeFlagModal.reason,
+    });
+    setActiveSession((current) => ({
+      ...current,
+      status: 'flagged',
+      items: (current.items || []).map((row) => (row.id === updated.id ? updated : row)),
+    }));
+    setActiveFlagModal({ open: false, item: null, reason: '' });
+    loadSchedule();
   };
 
   const validateCharitySlot = async () => {
@@ -301,11 +360,13 @@ export default function VisitationHomePage() {
                   <td className="px-5 py-4 font-medium text-gray-900">{row.visitor}</td>
                   <td className="px-5 py-4 text-gray-700">{row.inmate}</td>
                   <td className="px-5 py-4 capitalize text-gray-700">{row.type}</td>
-                  <td className="px-5 py-4 text-gray-700">{row.time ? new Date(row.time).toLocaleString() : '-'}</td>
+                  <td className="px-5 py-4 text-gray-700">{row.displayTime || '-'}</td>
                   <td className="px-5 py-4"><StatusBadge status={row.status} /></td>
                   <td className="px-5 py-4">
                     {row.booking ? (
                       <Button loading={loading} onClick={() => startApprovedCharity(row.booking)}>Start visit</Button>
+                    ) : row.session && row.status === 'in_progress' && !row.hasFlags ? (
+                      <Button loading={loading} onClick={() => checkOutFromTable(row.session)}>Check out</Button>
                     ) : (
                       <span className="text-sm text-gray-400">-</span>
                     )}
@@ -333,30 +394,46 @@ export default function VisitationHomePage() {
       </Modal>}
 
       {flow === 'regular' && <Modal title="Regular visit" widthClass="max-w-4xl" onClose={resetFlow}>
-        {!activeSession ? (
-          <div className="space-y-4">
+        <div className="space-y-5">
+          <div className="rounded border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+            Check in captures the visitor, inmate, and inspection items. Flagged items store the visit as flagged and prevent checkout.
+          </div>
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Full name" value={regular.full_name} error={fieldErrors.full_name?.[0]} onChange={(v) => setRegular({ ...regular, full_name: v })} />
-              <Field label="ID type" value={regular.id_type} error={fieldErrors.id_type?.[0]} onChange={(v) => setRegular({ ...regular, id_type: v })} />
-              <Field label="ID number" value={regular.id_number} error={fieldErrors.id_number?.[0]} onChange={(v) => setRegular({ ...regular, id_number: v })} />
               <Field label="Phone" value={regular.phone} error={fieldErrors.phone?.[0]} onChange={(v) => setRegular({ ...regular, phone: v })} />
             </div>
             <InmateSearch value={regular.inmate_id} error={fieldErrors.inmate_id?.[0] || fieldErrors.slot?.[0]} onChange={(id) => setRegular({ ...regular, inmate_id: id })} />
-            <div className="rounded border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">Validation runs before registration. Ineligible inmates and slot conflicts are blocked inline.</div>
-            <Button loading={loading} onClick={startRegular}>Register visitor</Button>
-          </div>
-        ) : (
-          <ActiveSession
-            session={activeSession}
-            item={item}
-            setItem={setItem}
-            onCheckIn={handleCheckIn}
-            onCheckOut={handleCheckOut}
-            onAddItem={handleAddItem}
-            onItemStatus={handleItemStatus}
-            onDeny={() => setDenyOpen(true)}
-          />
-        )}
+            <div className="rounded-lg border border-gray-200 p-4">
+              <h4 className="mb-3 flex items-center gap-2 font-semibold text-gray-900"><FiPackage /> Items brought for inmate</h4>
+              <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                <input
+                  value={checkInItem.item_description}
+                  onChange={(e) => setCheckInItem({ ...checkInItem, item_description: e.target.value })}
+                  placeholder="e.g. food parcel, blanket, toiletries"
+                  className="rounded border border-gray-300 px-3 py-2"
+                />
+                <Button onClick={addCheckInItem}>Add item</Button>
+              </div>
+              <div className="mt-4 divide-y divide-gray-100">
+                {checkInItems.length === 0 ? (
+                  <p className="text-sm text-gray-500">No items added.</p>
+                ) : checkInItems.map((row, index) => (
+                  <div key={`${row.item_description}-${index}`} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                    <div>
+                      <p className="font-medium text-gray-900">{row.item_description}</p>
+                      <StatusBadge status={row.status} />
+                      {row.notes && <p className="mt-1 text-sm text-red-700">{row.notes}</p>}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => setCheckInItems((current) => current.map((itemRow, itemIndex) => itemIndex === index ? { ...itemRow, status: 'approved', notes: '' } : itemRow))}>Approve</Button>
+                      <Button variant="danger" onClick={() => openCheckInFlag(index)}>Flag</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <Button loading={loading} onClick={startRegular}>Check in</Button>
+        </div>
       </Modal>}
 
       {flow === 'activeCharity' && activeSession && <Modal title="Approved charity visit" widthClass="max-w-4xl" onClose={resetFlow}>
@@ -368,6 +445,7 @@ export default function VisitationHomePage() {
           onCheckOut={handleCheckOut}
           onAddItem={handleAddItem}
           onItemStatus={handleItemStatus}
+          onFlagItem={(row) => setActiveFlagModal({ open: true, item: row, reason: row.notes || '' })}
           onDeny={() => setDenyOpen(true)}
         />
       </Modal>}
@@ -484,6 +562,40 @@ export default function VisitationHomePage() {
         </div>
       </Modal>}
 
+      {flagModal.open && <Modal title="Flag inspection item" onClose={() => setFlagModal({ open: false, index: null, reason: '' })}>
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Provide the reason this item should block checkout and mark the visit as flagged.
+          </p>
+          <TextArea
+            label="Flag reason"
+            value={flagModal.reason}
+            onChange={(reason) => setFlagModal((current) => ({ ...current, reason }))}
+          />
+          <div className="flex gap-3">
+            <Button variant="danger" onClick={confirmCheckInFlag}>Save flag</Button>
+            <Button variant="outline" onClick={() => setFlagModal({ open: false, index: null, reason: '' })}>Cancel</Button>
+          </div>
+        </div>
+      </Modal>}
+
+      {activeFlagModal.open && <Modal title="Flag inspection item" onClose={() => setActiveFlagModal({ open: false, item: null, reason: '' })}>
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Provide the reason this item should mark the active visit as flagged.
+          </p>
+          <TextArea
+            label="Flag reason"
+            value={activeFlagModal.reason}
+            onChange={(reason) => setActiveFlagModal((current) => ({ ...current, reason }))}
+          />
+          <div className="flex gap-3">
+            <Button variant="danger" onClick={confirmActiveFlag}>Save flag</Button>
+            <Button variant="outline" onClick={() => setActiveFlagModal({ open: false, item: null, reason: '' })}>Cancel</Button>
+          </div>
+        </div>
+      </Modal>}
+
       {denyOpen && <Modal title="Deny or cancel session" onClose={() => setDenyOpen(false)}>
         <div className="space-y-4">
           <label className="block text-sm font-semibold text-gray-700">Reason</label>
@@ -521,11 +633,12 @@ function TextArea({ label, value, onChange, error }) {
   );
 }
 
-function ActiveSession({ session, item, setItem, onCheckIn, onCheckOut, onAddItem, onItemStatus, onDeny }) {
+function ActiveSession({ session, item, setItem, onCheckIn, onCheckOut, onAddItem, onItemStatus, onFlagItem, onDeny }) {
   const [now, setNow] = useState(Date.now());
   const charityBooking = session.charity_booking || session.charityBooking;
   const durationMinutes = Number(charityBooking?.duration_minutes || 0);
   const isCharity = session.visit_type === 'charity';
+  const hasFlags = session.status === 'flagged' || (session.items || []).some((row) => row.status === 'flagged');
   const checkedInAt = session.checked_in_at ? new Date(session.checked_in_at).getTime() : null;
   const endsAt = checkedInAt && durationMinutes ? checkedInAt + durationMinutes * 60 * 1000 : null;
   const remainingMs = endsAt ? Math.max(0, endsAt - now) : null;
@@ -573,7 +686,7 @@ function ActiveSession({ session, item, setItem, onCheckIn, onCheckOut, onAddIte
       )}
       <div className="flex flex-wrap gap-3">
         {!session.checked_in_at && <Button onClick={onCheckIn}><FiUserCheck /> Check in</Button>}
-        <Button onClick={onCheckOut} disabled={session.status === 'completed'}>Check out</Button>
+        <Button onClick={onCheckOut} disabled={session.status === 'completed' || hasFlags}>Check out</Button>
         <Button variant="danger" onClick={onDeny}><FiX /> Deny / Cancel</Button>
       </div>
       <div className="rounded-lg border border-gray-200 p-4">
@@ -583,7 +696,6 @@ function ActiveSession({ session, item, setItem, onCheckIn, onCheckOut, onAddIte
           <select value={item.status} onChange={(e) => setItem({ ...item, status: e.target.value })} className="rounded border border-gray-300 px-3 py-2">
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
-            <option value="flagged">Flagged</option>
           </select>
           <Button onClick={onAddItem}>Add item</Button>
         </div>
@@ -596,7 +708,7 @@ function ActiveSession({ session, item, setItem, onCheckIn, onCheckOut, onAddIte
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => onItemStatus(row, 'approved')}>Approve</Button>
-                <Button variant="danger" onClick={() => onItemStatus(row, 'flagged')}>Flag</Button>
+                <Button variant="danger" onClick={() => onFlagItem(row)}>Flag</Button>
               </div>
             </div>
           ))}

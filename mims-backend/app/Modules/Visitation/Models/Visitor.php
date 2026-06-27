@@ -10,7 +10,7 @@ class Visitor extends Model
 {
     use UsesUuidPrimaryKey;
 
-    protected $fillable = ['full_name', 'id_type', 'id_number', 'phone'];
+    protected $fillable = ['full_name', 'phone'];
 
     public function sessions(): HasMany
     {

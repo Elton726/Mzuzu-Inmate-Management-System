@@ -47,7 +47,7 @@ export const updateVisitItem = async (itemId, payload) => {
 
 export const createCharityBooking = async (payload) => {
   const res = await apiClient.post('/visitation/charity-bookings', payload);
-  return res.data;
+  return res.data.data;
 };
 
 export const getPendingCharity = async () => {
@@ -67,6 +67,11 @@ export const rejectCharityBooking = async (id, payload = {}) => {
 
 export const getVisitStatistics = async (params = {}) => {
   const res = await apiClient.get('/visitation/statistics', { params });
+  return res.data.data;
+};
+
+export const getVisitHistory = async (params = {}) => {
+  const res = await apiClient.get('/visitation/history', { params });
   return res.data.data;
 };
 

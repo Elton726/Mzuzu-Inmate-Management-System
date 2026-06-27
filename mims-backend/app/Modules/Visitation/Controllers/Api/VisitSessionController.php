@@ -59,11 +59,34 @@ class VisitSessionController extends Controller
             $slotChecker->ensureAvailable($inmate->id, now()->toDateString(), now()->format('H:i'), 60);
         }
 
-        $session = DB::transaction(function () use ($data, $request, $booking) {
+        $session = DB::transaction(function () use ($data, $request, $booking, $slotChecker, $eligibility) {
+            $items = collect($data['items'] ?? []);
+
+            $visitTime = now()->toDateString();
+            $visitClock = now()->format('H:i');
+            $durationMinutes = 60;
+
+            // For regular visits, re-validate slot availability inside the transaction.
+            // Additionally, lock competing rows for this inmate to reduce race conditions.
+            if (!$booking) {
+                $inmate = Inmate::query()->whereKey($data['inmate_id'])->lockForUpdate()->firstOrFail();
+                $eligibility->ensureEligible($inmate);
+
+                // Lock any existing active sessions for this inmate.
+                // This prevents two concurrent requests from creating overlapping sessions.
+                // NOTE: We lock sessions that are effectively "active" (have a checked_in_at).
+                VisitSession::query()
+                    ->where('inmate_id', $inmate->id)
+                    ->whereNotNull('checked_in_at')
+                    ->whereIn('status', ['in_progress', 'checked_in', 'flagged'])
+                    ->lockForUpdate()
+                    ->get();
+
+                $slotChecker->ensureAvailable($inmate->id, $visitTime, $visitClock, $durationMinutes);
+            }
+
             $visitor = Visitor::create([
                 'full_name' => $booking ? $booking->organisation_name : $data['full_name'],
-                'id_type' => $booking ? 'Organisation' : $data['id_type'],
-                'id_number' => $booking ? strtoupper(substr($booking->id, 0, 8)) : $data['id_number'],
                 'phone' => $booking ? $booking->contact_person_phone : ($data['phone'] ?? null),
             ]);
 
@@ -71,9 +94,22 @@ class VisitSessionController extends Controller
                 'visitor_id' => $visitor->id,
                 'inmate_id' => $booking ? null : $data['inmate_id'],
                 'visit_type' => $booking ? 'charity' : ($data['visit_type'] ?? 'regular'),
-                'status' => 'checked_in',
+                'status' => $items->contains(fn ($item) => ($item['status'] ?? null) === 'flagged') ? 'flagged' : 'in_progress',
+                'checked_in_at' => now(),
                 'created_by' => $request->user()->id,
             ]);
+
+            $items->each(function ($item) use ($session) {
+                $createdItem = $session->items()->create([
+                    'item_description' => $item['item_description'],
+                    'status' => $item['status'],
+                    'notes' => $item['notes'] ?? null,
+                ]);
+
+                if (($createdItem->status ?? null) === 'flagged') {
+                    $session->update(['status' => 'flagged']);
+                }
+            });
 
             if ($booking) {
                 $booking->update(['visit_session_id' => $session->id]);
@@ -101,6 +137,12 @@ class VisitSessionController extends Controller
 
     public function checkOut(VisitSession $session)
     {
+        if ($session->status === 'flagged' || $session->items()->where('status', 'flagged')->exists()) {
+            throw ValidationException::withMessages([
+                'session' => ['Flagged visits cannot be checked out until the flag is resolved.'],
+            ]);
+        }
+
         $session->update([
             'status' => 'completed',
             'checked_out_at' => now(),

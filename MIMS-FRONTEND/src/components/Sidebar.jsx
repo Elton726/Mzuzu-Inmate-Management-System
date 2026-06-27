@@ -190,31 +190,37 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
         }
       ]
     },
-    {
-      id: 'visitation',
-      title: 'Visitation',
-      items: [
         {
-          to: '/visitation',
-          end: true,
-          icon: MdPerson,
+          id: 'visitation',
           title: 'Visitation',
-          show: role === ROLES.GATEKEEPER
+          items: [
+            {
+              to: '/visitation',
+              end: true,
+              icon: MdPerson,
+              title: 'Visitation',
+              show: role === ROLES.GATEKEEPER
+            },
+            {
+              to: '/visitation/charity-pending',
+              icon: MdAssignment,
+              title: 'Charity Approvals',
+              show: role === ROLES.GATEKEEPER || role === ROLES.STATION_OFFICER
+            },
+            {
+              to: '/visitation/statistics',
+              icon: MdBarChart,
+              title: 'Visit Statistics',
+              show: role === ROLES.GATEKEEPER || role === ROLES.STATION_OFFICER
+            },
+            {
+              to: '/visitation/history',
+              icon: MdHistory,
+              title: 'Visit History',
+              show: role === ROLES.GATEKEEPER || role === ROLES.STATION_OFFICER
+            }
+          ]
         },
-        {
-          to: '/visitation/charity-pending',
-          icon: MdAssignment,
-          title: 'Charity Approvals',
-          show: role === ROLES.GATEKEEPER || role === ROLES.STATION_OFFICER
-        },
-        {
-          to: '/visitation/statistics',
-          icon: MdBarChart,
-          title: 'Visit Statistics',
-          show: role === ROLES.GATEKEEPER || role === ROLES.STATION_OFFICER
-        }
-      ]
-    },
     {
       id: 'system',
       title: 'Administration',

@@ -11,6 +11,48 @@ use Illuminate\Support\Facades\URL;
 
 class VisitReportController extends Controller
 {
+    /**
+     * Visitation History
+     * Returns normal visits (regular sessions) and charity visits (charity bookings / sessions)
+     * within the given date range.
+     *
+     * Query params:
+     * - from: YYYY-MM-DD (optional, default: 1 month ago)
+     * - to:   YYYY-MM-DD (optional, default: today)
+     */
+    public function history(Request $request)
+    {
+        $data = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+        ]);
+
+        $from = $data['from'] ?? now()->subMonth()->startOfDay()->toDateString();
+        $to = $data['to'] ?? now()->toDateString();
+
+        // Normal/regular visit sessions
+        $normal = VisitSession::query()
+            ->with(['visitor', 'inmate', 'items'])
+            ->where('visit_type', '!=', 'charity')
+            ->whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
+            ->orderByDesc('created_at')
+            ->get();
+
+        // Charity bookings (includes those that may already be converted into sessions)
+        $charity = CharityBooking::query()
+            ->with(['inmate', 'session.visitor', 'session.inmate', 'session.items'])
+            ->whereBetween('proposed_date', [$from, $to])
+            ->orderByDesc('proposed_date')
+            ->get();
+
+        return response()->json([
+            'data' => [
+                'normal' => $normal,
+                'charity' => $charity,
+            ],
+        ]);
+    }
+
     public function todaySchedule()
     {
         $sessions = VisitSession::query()
@@ -71,11 +113,21 @@ class VisitReportController extends Controller
 
         $base = VisitSession::query()->whereBetween(DB::raw('DATE(created_at)'), [$from, $to]);
 
+        $rangeTotal = (clone $base)->count();
+
         return response()->json(['data' => [
-            'total_today' => VisitSession::whereDate('created_at', today())->count(),
-            'total_week' => VisitSession::whereBetween('created_at', [today()->startOfWeek(), today()->endOfWeek()])->count(),
-            'by_type' => (clone $base)->select('visit_type', DB::raw('COUNT(*) as total'))->groupBy('visit_type')->pluck('total', 'visit_type'),
-            'by_status' => (clone $base)->select('status', DB::raw('COUNT(*) as total'))->groupBy('status')->pluck('total', 'status'),
+            // Totals computed consistently for the validated from/to range.
+            // (UI labels use “Today/This Week”, but data is range-based.)
+            'total_today' => $rangeTotal,
+            'total_week' => $rangeTotal,
+            'by_type' => (clone $base)
+                ->select('visit_type', DB::raw('COUNT(*) as total'))
+                ->groupBy('visit_type')
+                ->pluck('total', 'visit_type'),
+            'by_status' => (clone $base)
+                ->select('status', DB::raw('COUNT(*) as total'))
+                ->groupBy('status')
+                ->pluck('total', 'status'),
         ]]);
     }
 }
