@@ -204,6 +204,10 @@ export default function OfficerAvailableActivitiesPage() {
     navigate(`/officer/activities/${activity.id}/allocations`);
   };
 
+  const openAutoAssign = (activity) => {
+    navigate(`/officer/internal-activities/${activity.id}/auto-assign`);
+  };
+
   const internalActivities = useMemo(
     () => activities.filter((activity) => activity.activity_type === 'internal'),
     [activities]
@@ -239,6 +243,7 @@ export default function OfficerAvailableActivitiesPage() {
       onOpenExternalOnceSession: openExternalOnceSession,
       onOpenAllocation: openAllocation,
       onOpenCreateSession: openCreateSession,
+      onOpenAutoAssign: openAutoAssign,
     };
 
     const showInternal = !activityTypeFilter || activityTypeFilter === 'internal';

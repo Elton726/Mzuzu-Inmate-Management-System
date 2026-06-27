@@ -44,6 +44,7 @@ import OfficerExternalActivityAllocationPage from './modules/activityAllocation/
 import OfficerSessionsPage from './modules/activityAllocation/officer/pages/OfficerSessionsPage';
 import OfficerSessionFormPage from './modules/activityAllocation/officer/pages/OfficerSessionFormPage';
 import OfficerSessionDetailPage from './modules/activityAllocation/officer/pages/OfficerSessionDetailPage';
+import InternalActivityAutoAssignPage from './modules/activityAllocation/officer/pages/InternalActivityAutoAssignPage';
 import AdmissionFormPage from './modules/admissions/pages/AdmissionFormPage';
 import AdmissionShowPage from './modules/admissions/pages/AdmissionShowPage';
 import AdmissionsIndexPage from './modules/admissions/pages/AdmissionsIndexPage';
@@ -400,6 +401,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute allowedRoles={['officer_on_duty']}>
                 <OfficerExternalActivityAllocationPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/officer/internal-activities/:activityId/auto-assign"
+            element={
+              <ProtectedRoute allowedRoles={['officer_on_duty']}>
+                <InternalActivityAutoAssignPage />
               </ProtectedRoute>
             }
           />

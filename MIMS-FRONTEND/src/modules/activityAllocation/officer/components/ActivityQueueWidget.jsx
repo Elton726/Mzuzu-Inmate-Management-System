@@ -12,6 +12,7 @@ export default function ActivityQueueWidget({
   onOpenExternalOnceSession,
   onOpenAllocation,
   onOpenCreateSession,
+  onOpenAutoAssign,
 }) {
   return (
     <Card className="rounded-3xl border border-gray-200 bg-white shadow-lg">
@@ -34,6 +35,7 @@ export default function ActivityQueueWidget({
             onOpenExternalOnceSession={onOpenExternalOnceSession}
             onOpenAllocation={onOpenAllocation}
             onOpenCreateSession={onOpenCreateSession}
+            onOpenAutoAssign={onOpenAutoAssign}
           />
         )}
       </div>

@@ -22,6 +22,7 @@ class ExternalActivityAllocationService
             'eligible_inmates' => $eligibleAdmissions->map(fn (Admission $admission) => $this->mapAdmission($admission))->values(),
             'active_assignments_count' => $this->getActiveAssignmentCount($activity->id),
             'remaining_slots' => $this->getRemainingSlots($activity),
+            'sorted_by' => 'nearest_release_date',
         ];
     }
 
@@ -103,17 +104,37 @@ class ExternalActivityAllocationService
 
     private function getEligibleAdmissions(Activity $activity, array $filters)
     {
-        $query = Admission::query()
-            ->with(['inmate'])
-            ->where('is_current', true)
-            ->whereNull('released_at')
-            ->whereDoesntHave('inmateActivities', function ($assignmentQuery) use ($activity) {
-                $assignmentQuery
-                    ->where('activity_id', $activity->id)
-                    ->whereNull('end_date');
-            })
-            ->orderBy('admission_date')
-            ->orderBy('id');
+        $driver = \Illuminate\Support\Facades\DB::getDriverName();
+
+        // Sort by projected_release_date ASC so nearest-to-release inmates appear first.
+        // NULLs (remandees with no release date) are pushed to the end.
+        if ($driver === 'pgsql') {
+            $query = Admission::query()
+                ->with(['inmate'])
+                ->where('is_current', true)
+                ->whereNull('released_at')
+                ->whereDoesntHave('inmateActivities', function ($assignmentQuery) use ($activity) {
+                    $assignmentQuery
+                        ->where('activity_id', $activity->id)
+                        ->whereNull('end_date');
+                })
+                ->orderByRaw('projected_release_date ASC NULLS LAST')
+                ->orderBy('id');
+        } else {
+            // SQLite / MySQL: use CASE to push NULLs last
+            $query = Admission::query()
+                ->with(['inmate'])
+                ->where('is_current', true)
+                ->whereNull('released_at')
+                ->whereDoesntHave('inmateActivities', function ($assignmentQuery) use ($activity) {
+                    $assignmentQuery
+                        ->where('activity_id', $activity->id)
+                        ->whereNull('end_date');
+                })
+                ->orderByRaw('CASE WHEN projected_release_date IS NULL THEN 1 ELSE 0 END')
+                ->orderBy('projected_release_date')
+                ->orderBy('id');
+        }
 
         if (!empty($filters['search'])) {
             $search = trim((string) $filters['search']);
@@ -122,6 +143,16 @@ class ExternalActivityAllocationService
                     ->where('prison_number', 'like', '%' . $search . '%')
                     ->orWhere('first_name', 'like', '%' . $search . '%')
                     ->orWhere('last_name', 'like', '%' . $search . '%');
+            });
+        }
+
+        // Optional: only show inmates releasing within N days
+        if (!empty($filters['release_window_days']) && is_numeric($filters['release_window_days'])) {
+            $windowDays = (int) $filters['release_window_days'];
+            $cutoff = now()->addDays($windowDays)->toDateString();
+            $query->where(function ($q) use ($cutoff) {
+                $q->whereNotNull('projected_release_date')
+                  ->where('projected_release_date', '<=', $cutoff);
             });
         }
 
@@ -300,6 +331,16 @@ class ExternalActivityAllocationService
 
     private function mapAdmission(Admission $admission): array
     {
+        $projectedRelease = $admission->projected_release_date;
+        $daysUntilRelease = null;
+
+        if ($projectedRelease !== null) {
+            $daysUntilRelease = (int) now()->startOfDay()->diffInDays(
+                $projectedRelease->startOfDay(),
+                false
+            );
+        }
+
         return [
             'admission_id' => $admission->id,
             'inmate_id' => $admission->inmate_id,
@@ -308,6 +349,8 @@ class ExternalActivityAllocationService
             'inmate_type' => $admission->inmate_type,
             'admission_date' => optional($admission->admission_date)->toDateString(),
             'case_number' => $admission->case_number,
+            'projected_release_date' => $projectedRelease?->toDateString(),
+            'days_until_release' => $daysUntilRelease,
         ];
     }
 

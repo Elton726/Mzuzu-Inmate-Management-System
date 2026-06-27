@@ -21,6 +21,7 @@ export default function ActivityTable({
   onOpenExternalOnceSession,
   onOpenAllocation,
   onOpenCreateSession,
+  onOpenAutoAssign,
 }) {
   return (
     <div className="overflow-x-auto">
@@ -54,13 +55,22 @@ export default function ActivityTable({
               <td className="py-3 pr-4">
                 <div className="flex flex-wrap gap-2">
                   {activityType === 'internal' ? (
-                    <Button
-                      className="px-3 py-1 text-xs"
-                      onClick={() => onOpenTodaySession(activity)}
-                      loading={workingAction === `internal-${activity.id}`}
-                    >
-                      Today’s Session
-                    </Button>
+                    <>
+                      <Button
+                        className="px-3 py-1 text-xs"
+                        onClick={() => onOpenTodaySession(activity)}
+                        loading={workingAction === `internal-${activity.id}`}
+                      >
+                        Today’s Session
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="px-3 py-1 text-xs"
+                        onClick={() => onOpenAutoAssign(activity)}
+                      >
+                        Auto Assign
+                      </Button>
+                    </>
                   ) : (
                     <>
                       <Button

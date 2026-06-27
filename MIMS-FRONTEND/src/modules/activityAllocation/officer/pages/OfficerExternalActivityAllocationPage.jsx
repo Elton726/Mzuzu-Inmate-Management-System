@@ -16,11 +16,15 @@ export default function OfficerExternalActivityAllocationPage() {
   const [payload, setPayload] = useState(null);
   const [selected, setSelected] = useState([]);
   const [search, setSearch] = useState('');
+  const [releaseWindow, setReleaseWindow] = useState('');
 
-  const load = async (nextSearch = search) => {
+  const load = async (nextSearch = search, nextWindow = releaseWindow) => {
     try {
       setLoading(true);
-      const res = await officerActivityService.getEligibleExternalActivityInmates(activityId, nextSearch ? { search: nextSearch } : {});
+      const params = {};
+      if (nextSearch) params.search = nextSearch;
+      if (nextWindow) params.release_window_days = nextWindow;
+      const res = await officerActivityService.getEligibleExternalActivityInmates(activityId, params);
       setPayload(res?.data || null);
       setSelected([]);
     } catch (err) {
@@ -31,7 +35,7 @@ export default function OfficerExternalActivityAllocationPage() {
   };
 
   useEffect(() => {
-    load('');
+    load('', '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activityId]);
 
@@ -74,7 +78,7 @@ export default function OfficerExternalActivityAllocationPage() {
         message: `${res?.data?.allocated_count || selected.length} inmate(s) allocated successfully.`,
         variant: 'success',
       });
-      await load(search);
+      await load(search, releaseWindow);
     } catch (err) {
       toast.fromError(err, { title: 'External allocation' });
     } finally {
@@ -92,7 +96,7 @@ export default function OfficerExternalActivityAllocationPage() {
         message: count > 0 ? `${count} inmate(s) allocated automatically.` : 'No eligible inmates available.',
         variant: 'success',
       });
-      await load(search);
+      await load(search, releaseWindow);
     } catch (err) {
       toast.fromError(err, { title: 'Auto allocation' });
     } finally {
@@ -119,6 +123,16 @@ export default function OfficerExternalActivityAllocationPage() {
             <p className="text-sm text-gray-600">
               {activity?.name || `Activity #${activityId}`} {activity?.externalDetails?.organization_name ? `• ${activity.externalDetails.organization_name}` : ''}
             </p>
+            <div className="mt-2 flex flex-wrap gap-2 items-center">
+              <span className="rounded-full bg-blue-100 text-blue-700 px-3 py-1 text-xs font-semibold">
+                🔀 Sorted by: Nearest Release Date
+              </span>
+              {payload?.sorted_by && (
+                <span className="rounded-full bg-green-100 text-green-700 px-3 py-1 text-xs font-semibold">
+                  Prioritized: Close Release Date
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex gap-2">
             <Link to="/officer/activities">
@@ -146,16 +160,27 @@ export default function OfficerExternalActivityAllocationPage() {
 
         <Card title="Allocate inmates">
           <div className="flex items-end justify-between gap-4 flex-wrap">
-            <div className="min-w-72">
-              <Input
-                label="Search inmates"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Prison number or name"
-              />
+            <div className="flex gap-4 flex-wrap flex-1 min-w-72">
+              <div className="min-w-64 flex-1">
+                <Input
+                  label="Search inmates"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Prison number or name"
+                />
+              </div>
+              <div className="w-48">
+                <Input
+                  label="Release within (days)"
+                  type="number"
+                  value={releaseWindow}
+                  onChange={(e) => setReleaseWindow(e.target.value)}
+                  placeholder="e.g. 90"
+                />
+              </div>
             </div>
             <div className="flex gap-2 flex-wrap">
-              <Button variant="outline" onClick={() => load(search)}>
+              <Button variant="outline" onClick={() => load(search, releaseWindow)}>
                 Search
               </Button>
               <Button variant="outline" onClick={allocateAutomatically} loading={allocating}>
@@ -179,12 +204,14 @@ export default function OfficerExternalActivityAllocationPage() {
                   <th className="py-2 pr-4">Admission</th>
                   <th className="py-2 pr-4">Type</th>
                   <th className="py-2 pr-4">Case</th>
+                  <th className="py-2 pr-4">Days Until Release</th>
+                  <th className="py-2 pr-4">Release Date</th>
                 </tr>
               </thead>
               <tbody>
                 {eligibleInmates.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-6 text-gray-600">
+                    <td colSpan={8} className="py-6 text-gray-600">
                       No eligible inmates found for this external activity.
                     </td>
                   </tr>
@@ -203,6 +230,20 @@ export default function OfficerExternalActivityAllocationPage() {
                       <td className="py-2 pr-4">{item.admission_date}</td>
                       <td className="py-2 pr-4">{item.inmate_type}</td>
                       <td className="py-2 pr-4">{item.case_number}</td>
+                      <td className="py-2 pr-4">
+                        {item.days_until_release === null ? (
+                          <span className="text-gray-400">N/A</span>
+                        ) : item.days_until_release < 0 ? (
+                          <span className="text-red-600 font-bold">Overdue ({Math.abs(item.days_until_release)} days)</span>
+                        ) : item.days_until_release <= 30 ? (
+                          <span className="text-red-600 font-bold">{item.days_until_release} days</span>
+                        ) : item.days_until_release <= 90 ? (
+                          <span className="text-amber-600 font-semibold">{item.days_until_release} days</span>
+                        ) : (
+                          <span className="text-green-700">{item.days_until_release} days</span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4">{item.projected_release_date || '—'}</td>
                     </tr>
                   ))
                 )}
