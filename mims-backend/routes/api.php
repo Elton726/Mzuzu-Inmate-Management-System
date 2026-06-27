@@ -18,6 +18,7 @@ use App\Modules\ActivityAllocation\Controllers\Officer\AvailableActivitiesContro
 use App\Modules\ActivityAllocation\Controllers\Officer\OfficerDashboardController;
 use App\Modules\ActivityAllocation\Controllers\Officer\ExternalActivityAllocationController;
 use App\Modules\ActivityAllocation\Controllers\Officer\SessionAttendanceController;
+use App\Modules\ActivityAllocation\Controllers\Officer\InternalActivityAutoAssignController;
 use App\Modules\Release\Controllers\Api\ReleaseApprovalController;
 use App\Modules\Release\Controllers\Api\ReleaseConfirmationController;
 use App\Modules\Release\Controllers\Api\ReleaseDateLookupController;
@@ -252,6 +253,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/activities/{activityId}/eligible-inmates', [ExternalActivityAllocationController::class, 'eligible'])->middleware('throttle:60,60,user');
         Route::post('/activities/{activityId}/allocations/manual', [ExternalActivityAllocationController::class, 'manual'])->middleware('throttle:30,60,user');
         Route::post('/activities/{activityId}/allocations/auto', [ExternalActivityAllocationController::class, 'auto'])->middleware('throttle:30,60,user');
+
+        // Internal Activity Rotation Auto-Assignment
+        Route::get('/internal-activities/{activityId}/rotation-status', [InternalActivityAutoAssignController::class, 'status'])->middleware('throttle:60,60,user');
+        Route::post('/internal-activities/{activityId}/auto-assign', [InternalActivityAutoAssignController::class, 'autoAssign'])->middleware('throttle:30,60,user');
     });
 
     // Sessions – accessible by officer_on_duty and admin

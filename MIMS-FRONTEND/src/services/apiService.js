@@ -28,6 +28,7 @@
 
 const API_BASE_URL = 'http://localhost:8000/api';
 export const SERVER_BASE_URL = 'http://localhost:8000';
+const REQUEST_TIMEOUT_MS = 10000;
 
 /**
  * Safely parse integer from header value
@@ -93,6 +94,25 @@ class ApiService {
     };
   }
 
+  async fetchWithTimeout(url, options = {}) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+      return await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out. Please check that the backend server is running.');
+      }
+      throw error;
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
+  }
+
   /**
    * Get current rate limit status for an endpoint
    * @param {string} key - Rate limit key (e.g., 'auth_login')
@@ -140,7 +160,7 @@ class ApiService {
    * @returns {Promise<Object>} API response data
    */
   async request(rateLimitKey, path, options = {}) {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await this.fetchWithTimeout(`${API_BASE_URL}${path}`, {
       ...options,
       headers: {
         ...this.getHeaders(),
@@ -171,7 +191,7 @@ class ApiService {
    * @returns {Promise<Object>} API response data
    */
   async requestForm(rateLimitKey, path, formData, options = {}) {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await this.fetchWithTimeout(`${API_BASE_URL}${path}`, {
       method: options.method || 'POST',
       ...options,
       body: formData,
