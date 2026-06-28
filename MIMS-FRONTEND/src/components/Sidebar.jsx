@@ -20,7 +20,8 @@ import {
   MdChevronRight,
   MdLogout,
   MdBarChart,
-  MdGavel
+  MdGavel,
+  MdSettings
 } from 'react-icons/md';
 import { ROLES, getRoleDisplayName, getRoleName } from '../utils/helpers';
 import logo from '/cuffs.png';
@@ -218,6 +219,24 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
               icon: MdHistory,
               title: 'Visit History',
               show: role === ROLES.GATEKEEPER || role === ROLES.STATION_OFFICER
+            },
+            {
+              to: '/visitation/alerts',
+              icon: MdAssignment,
+              title: 'Visit Alerts',
+              show: role === ROLES.GATEKEEPER || role === ROLES.STATION_OFFICER
+            },
+            {
+              to: '/visitation/rules',
+              icon: MdSettings,
+              title: 'Visit Rules',
+              show: role === ROLES.STATION_OFFICER
+            },
+            {
+              to: '/visitation/flag-reviews',
+              icon: MdGavel,
+              title: 'Flag Reviews',
+              show: role === ROLES.STATION_OFFICER
             }
           ]
         },

@@ -63,6 +63,9 @@ import VisitationHomePage from './modules/visitation/pages/VisitationHomePage';
 import PendingCharityPage from './modules/visitation/pages/PendingCharityPage';
 import VisitationStatisticsPage from './modules/visitation/pages/VisitationStatisticsPage';
 import VisitationHistoryPage from './modules/visitation/pages/VisitationHistoryPage';
+import VisitationRulesPage from './modules/visitation/pages/VisitationRulesPage';
+import VisitFlagReviewsPage from './modules/visitation/pages/VisitFlagReviewsPage';
+import VisitationAlertsPage from './modules/visitation/pages/VisitationAlertsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import { Navigation } from './components/Navigation';
@@ -365,6 +368,30 @@ const AppContent = () => {
             element={
               <ProtectedRoute allowedRoles={['gatekeeper', 'station_officer']}>
                 <VisitationHistoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/visitation/rules"
+            element={
+              <ProtectedRoute allowedRoles={['station_officer']}>
+                <VisitationRulesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/visitation/flag-reviews"
+            element={
+              <ProtectedRoute allowedRoles={['station_officer']}>
+                <VisitFlagReviewsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/visitation/alerts"
+            element={
+              <ProtectedRoute allowedRoles={['gatekeeper', 'station_officer']}>
+                <VisitationAlertsPage />
               </ProtectedRoute>
             }
           />

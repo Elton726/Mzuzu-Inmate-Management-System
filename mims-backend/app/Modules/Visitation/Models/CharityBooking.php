@@ -26,6 +26,10 @@ class CharityBooking extends Model
         'status',
         'approved_by',
         'approved_at',
+        'approval_notes',
+        'rejection_reason',
+        'rejected_by',
+        'rejected_at',
         'pdf_path',
         'created_by',
     ];
@@ -33,6 +37,7 @@ class CharityBooking extends Model
     protected $casts = [
         'proposed_date' => 'date',
         'approved_at' => 'datetime',
+        'rejected_at' => 'datetime',
     ];
 
     public function session(): BelongsTo
@@ -48,6 +53,11 @@ class CharityBooking extends Model
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function rejector(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
     }
 
     public function creator(): BelongsTo

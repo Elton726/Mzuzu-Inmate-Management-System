@@ -21,6 +21,7 @@ class VisitSession extends Model
         'status',
         'checked_in_at',
         'checked_out_at',
+        'expected_checkout_at',
         'denial_reason',
         'denial_notes',
         'created_by',
@@ -29,6 +30,7 @@ class VisitSession extends Model
     protected $casts = [
         'checked_in_at' => 'datetime',
         'checked_out_at' => 'datetime',
+        'expected_checkout_at' => 'datetime',
     ];
 
     public function visitor(): BelongsTo
@@ -49,6 +51,11 @@ class VisitSession extends Model
     public function items(): HasMany
     {
         return $this->hasMany(VisitItem::class);
+    }
+
+    public function events(): HasMany
+    {
+        return $this->hasMany(VisitSessionEvent::class);
     }
 
     public function charityBooking(): HasOne

@@ -196,6 +196,7 @@ function DateInput({ label, value, onChange }) {
   );
 }
 
+// eslint-disable-next-line no-unused-vars
 function MetricCard({ title, value, detail, icon: Icon, tone }) {
   const tones = {
     green: 'border-green-200 bg-white text-malawiGreen',
@@ -220,6 +221,7 @@ function MetricCard({ title, value, detail, icon: Icon, tone }) {
   );
 }
 
+// eslint-disable-next-line no-unused-vars
 function Panel({ title, subtitle, icon: Icon, children }) {
   return (
     <section className="rounded-lg border border-slate-200 bg-white shadow-sm">

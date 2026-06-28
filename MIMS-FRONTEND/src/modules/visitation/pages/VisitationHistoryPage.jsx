@@ -1,9 +1,10 @@
-rderimport React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import Button from '../../../components/common/Button';
-import { getVisitHistory } from '../services/visitationService';
+import { exportVisitHistory, getVisitHistory } from '../services/visitationService';
 import {
   FiRefreshCw,
+  FiDownload,
   FiShield,
   FiTable,
   FiTrendingUp,
@@ -201,6 +202,14 @@ export default function VisitationHistoryPage() {
     }
   };
 
+  const exportHistory = async (format) => {
+    try {
+      await exportVisitHistory({ ...filters, format }, `visitation-history-${filters.from}-to-${filters.to}`);
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to export visitation history'));
+    }
+  };
+
   useEffect(() => {
     loadHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -254,7 +263,7 @@ export default function VisitationHistoryPage() {
             </div>
           </div>
 
-          <div className="mt-5">
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3">
               <TabButton active={activeTab === 'normal'} onClick={() => setActiveTab('normal')}>
                 <span className="inline-flex items-center gap-2">
@@ -266,6 +275,10 @@ export default function VisitationHistoryPage() {
                   <FiTrendingUp /> Charity visits ({charityRows.length})
                 </span>
               </TabButton>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => exportHistory('csv')}><FiDownload /> CSV</Button>
+              <Button variant="outline" onClick={() => exportHistory('pdf')}><FiDownload /> PDF</Button>
             </div>
           </div>
         </div>

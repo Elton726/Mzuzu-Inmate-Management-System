@@ -10,6 +10,11 @@ export const checkVisitSlot = async (payload) => {
   return res.data;
 };
 
+export const searchVisitors = async (params) => {
+  const res = await apiClient.get('/visitation/visitors/search', { params });
+  return res.data.data;
+};
+
 export const createVisitSession = async (payload) => {
   const res = await apiClient.post('/visitation/sessions', payload);
   return res.data.data;
@@ -65,6 +70,21 @@ export const rejectCharityBooking = async (id, payload = {}) => {
   return res.data.data;
 };
 
+export const updateVisitorWatchlist = async (id, payload) => {
+  const res = await apiClient.put(`/visitation/visitors/${id}/watchlist`, payload);
+  return res.data.data;
+};
+
+export const getVisitationRules = async () => {
+  const res = await apiClient.get('/visitation/rules');
+  return res.data.data;
+};
+
+export const updateVisitationRules = async (rules) => {
+  const res = await apiClient.put('/visitation/rules', { rules });
+  return res.data.data;
+};
+
 export const getVisitStatistics = async (params = {}) => {
   const res = await apiClient.get('/visitation/statistics', { params });
   return res.data.data;
@@ -72,6 +92,43 @@ export const getVisitStatistics = async (params = {}) => {
 
 export const getVisitHistory = async (params = {}) => {
   const res = await apiClient.get('/visitation/history', { params });
+  return res.data.data;
+};
+
+export const exportVisitHistory = async (params = {}, filename = 'visitation-history') => {
+  const res = await apiClient.get('/visitation/history/export', { params, responseType: 'blob' });
+  const type = params.format === 'pdf' ? 'application/pdf' : 'text/csv';
+  const extension = params.format === 'pdf' ? 'pdf' : 'csv';
+  const blobUrl = window.URL.createObjectURL(new Blob([res.data], { type }));
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = `${filename}.${extension}`;
+  link.click();
+  window.URL.revokeObjectURL(blobUrl);
+};
+
+export const getVisitationAlerts = async () => {
+  const res = await apiClient.get('/visitation/alerts');
+  return res.data.data;
+};
+
+export const getFlagReviews = async () => {
+  const res = await apiClient.get('/visitation/flag-reviews');
+  return res.data.data;
+};
+
+export const resolveFlagReview = async (id, payload) => {
+  const res = await apiClient.put(`/visitation/flag-reviews/${id}/resolve`, payload);
+  return res.data.data;
+};
+
+export const getVisitationNotifications = async () => {
+  const res = await apiClient.get('/visitation/notifications');
+  return res.data.data;
+};
+
+export const markVisitationNotificationRead = async (id) => {
+  const res = await apiClient.put(`/visitation/notifications/${id}/read`);
   return res.data.data;
 };
 

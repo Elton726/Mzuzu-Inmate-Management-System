@@ -26,9 +26,13 @@ use App\Modules\Release\Controllers\Api\ReleaseClearanceChecklistController;
 use App\Modules\Release\Controllers\Api\SentenceAdjustmentController;
 use App\Modules\Release\Controllers\Api\SentenceAdjustmentTypeController;
 use App\Modules\Visitation\Controllers\Api\CharityBookingController;
+use App\Modules\Visitation\Controllers\Api\VisitFlagReviewController;
 use App\Modules\Visitation\Controllers\Api\VisitItemController;
 use App\Modules\Visitation\Controllers\Api\VisitReportController;
 use App\Modules\Visitation\Controllers\Api\VisitSessionController;
+use App\Modules\Visitation\Controllers\Api\VisitationNotificationController;
+use App\Modules\Visitation\Controllers\Api\VisitationRuleController;
+use App\Modules\Visitation\Controllers\Api\VisitorController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -151,6 +155,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Visitation Module
     Route::prefix('visitation')->group(function () {
         Route::middleware(['role:gatekeeper'])->group(function () {
+            Route::get('/visitors/search', [VisitorController::class, 'search']);
             Route::post('/slot-check', [VisitSessionController::class, 'validateSlot']);
             Route::post('/sessions', [VisitSessionController::class, 'store']);
             Route::put('/sessions/{session}/check-in', [VisitSessionController::class, 'checkIn']);
@@ -165,13 +170,22 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::middleware(['role:station_officer'])->group(function () {
             Route::put('/charity-bookings/{booking}/approve', [CharityBookingController::class, 'approve']);
             Route::put('/charity-bookings/{booking}/reject', [CharityBookingController::class, 'reject']);
+            Route::put('/visitors/{visitor}/watchlist', [VisitorController::class, 'updateWatchlist']);
+            Route::put('/rules', [VisitationRuleController::class, 'update']);
+            Route::get('/flag-reviews', [VisitFlagReviewController::class, 'index']);
+            Route::put('/flag-reviews/{review}/resolve', [VisitFlagReviewController::class, 'resolve']);
         });
 
         Route::middleware(['role:gatekeeper,station_officer'])->group(function () {
+            Route::get('/rules', [VisitationRuleController::class, 'index']);
             Route::get('/today-schedule', [VisitReportController::class, 'todaySchedule']);
             Route::get('/pending-charity', [VisitReportController::class, 'pendingCharity']);
             Route::get('/statistics', [VisitReportController::class, 'statistics']);
             Route::get('/history', [VisitReportController::class, 'history']);
+            Route::get('/history/export', [VisitReportController::class, 'exportHistory'])->middleware('throttle:10,60,user');
+            Route::get('/alerts', [VisitReportController::class, 'alerts']);
+            Route::get('/notifications', [VisitationNotificationController::class, 'index']);
+            Route::put('/notifications/{notification}/read', [VisitationNotificationController::class, 'markRead']);
             Route::get('/charity-bookings/{booking}/pdf', [CharityBookingController::class, 'downloadPdf'])
                 ->middleware('signed')
                 ->name('visitation.charity-pdf');

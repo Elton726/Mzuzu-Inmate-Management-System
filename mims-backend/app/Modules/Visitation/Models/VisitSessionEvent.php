@@ -2,24 +2,34 @@
 
 namespace App\Modules\Visitation\Models;
 
+use App\Models\User;
 use App\Modules\Visitation\Models\Concerns\UsesUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class VisitItem extends Model
+class VisitSessionEvent extends Model
 {
     use UsesUuidPrimaryKey;
 
-    protected $fillable = ['visit_session_id', 'item_description', 'status', 'notes'];
+    protected $fillable = [
+        'visit_session_id',
+        'event_type',
+        'description',
+        'metadata',
+        'created_by',
+    ];
+
+    protected $casts = [
+        'metadata' => 'array',
+    ];
 
     public function session(): BelongsTo
     {
         return $this->belongsTo(VisitSession::class, 'visit_session_id');
     }
 
-    public function flagReviews(): HasMany
+    public function creator(): BelongsTo
     {
-        return $this->hasMany(VisitItemFlagReview::class, 'visit_item_id');
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

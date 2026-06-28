@@ -134,6 +134,37 @@ export default function VisitationHistoryDetailsDrawer({ open, onClose, record, 
               );
             })()}
           </div>
+
+          <div className="mt-5">
+            <div className="text-sm font-extrabold text-slate-950 mb-2">Audit Trail</div>
+            {(() => {
+              const events = isCharity ? (record.session?.events || []) : (record.events || []);
+              if (!events || events.length === 0) {
+                return (
+                  <div className="rounded-lg border border-dashed border-slate-300 bg-white p-5 text-sm font-semibold text-slate-600">
+                    No audit events recorded.
+                  </div>
+                );
+              }
+
+              return (
+                <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+                  {events.map((event) => (
+                    <div key={event.id} className="border-b border-slate-100 px-4 py-3 last:border-b-0">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="font-bold text-slate-800">{labelize(event.event_type)}</div>
+                        <div className="text-xs font-semibold text-slate-500">
+                          {event.created_at ? new Date(event.created_at).toLocaleString() : '-'}
+                        </div>
+                      </div>
+                      {event.description && <div className="mt-1 text-sm text-slate-600">{event.description}</div>}
+                      {event.creator?.name && <div className="mt-1 text-xs text-slate-500">By {event.creator.name}</div>}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
         </div>
       </div>
     </div>

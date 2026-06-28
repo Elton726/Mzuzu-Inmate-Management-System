@@ -5,12 +5,16 @@ namespace App\Modules\Visitation\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Modules\Admissions\Models\Inmate;
 use App\Modules\Visitation\Models\CharityBooking;
+use App\Modules\Visitation\Models\VisitItemFlagReview;
 use App\Modules\Visitation\Models\Visitor;
+use App\Modules\Visitation\Models\VisitorInmateRelationship;
 use App\Modules\Visitation\Models\VisitSession;
 use App\Modules\Visitation\Requests\DenyVisitSessionRequest;
 use App\Modules\Visitation\Requests\StoreVisitSessionRequest;
 use App\Modules\Visitation\Services\InmateVisitEligibilityChecker;
+use App\Modules\Visitation\Services\VisitSessionEventLogger;
 use App\Modules\Visitation\Services\VisitSlotChecker;
+use App\Modules\Visitation\Services\VisitationNotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +25,9 @@ class VisitSessionController extends Controller
     public function store(
         StoreVisitSessionRequest $request,
         InmateVisitEligibilityChecker $eligibility,
-        VisitSlotChecker $slotChecker
+        VisitSlotChecker $slotChecker,
+        VisitSessionEventLogger $events,
+        VisitationNotificationService $notifications
     ) {
         $data = $request->validated();
         $inmate = null;
@@ -59,7 +65,7 @@ class VisitSessionController extends Controller
             $slotChecker->ensureAvailable($inmate->id, now()->toDateString(), now()->format('H:i'), 60);
         }
 
-        $session = DB::transaction(function () use ($data, $request, $booking, $slotChecker, $eligibility) {
+        $session = DB::transaction(function () use ($data, $request, $booking, $slotChecker, $eligibility, $events, $notifications) {
             $items = collect($data['items'] ?? []);
 
             $visitTime = now()->toDateString();
@@ -85,17 +91,32 @@ class VisitSessionController extends Controller
                 $slotChecker->ensureAvailable($inmate->id, $visitTime, $visitClock, $durationMinutes);
             }
 
-            $visitor = Visitor::create([
-                'full_name' => $booking ? $booking->organisation_name : $data['full_name'],
-                'phone' => $booking ? $booking->contact_person_phone : ($data['phone'] ?? null),
-            ]);
+            $visitor = $booking
+                ? Visitor::create([
+                    'full_name' => $booking->organisation_name,
+                    'phone' => $booking->contact_person_phone,
+                ])
+                : Visitor::query()->find($data['visitor_id'] ?? null);
+
+            if (! $visitor) {
+                $visitor = Visitor::create([
+                    'full_name' => $data['full_name'],
+                    'phone' => $data['phone'] ?? null,
+                ]);
+            } else {
+                $visitor->update([
+                    'full_name' => $data['full_name'] ?? $visitor->full_name,
+                    'phone' => array_key_exists('phone', $data) ? $data['phone'] : $visitor->phone,
+                ]);
+            }
 
             $session = VisitSession::create([
                 'visitor_id' => $visitor->id,
                 'inmate_id' => $booking ? null : $data['inmate_id'],
                 'visit_type' => $booking ? 'charity' : ($data['visit_type'] ?? 'regular'),
-                'status' => $items->contains(fn ($item) => ($item['status'] ?? null) === 'flagged') ? 'flagged' : 'in_progress',
+                'status' => $visitor->is_watchlisted || $items->contains(fn ($item) => ($item['status'] ?? null) === 'flagged') ? 'flagged' : 'in_progress',
                 'checked_in_at' => now(),
+                'expected_checkout_at' => now()->addMinutes($booking ? (int) $booking->duration_minutes : $durationMinutes),
                 'created_by' => $request->user()->id,
             ]);
 
@@ -108,20 +129,54 @@ class VisitSessionController extends Controller
 
                 if (($createdItem->status ?? null) === 'flagged') {
                     $session->update(['status' => 'flagged']);
+                    VisitItemFlagReview::query()->create([
+                        'visit_item_id' => $createdItem->id,
+                        'visit_session_id' => $session->id,
+                        'status' => 'pending',
+                        'notes' => $createdItem->notes,
+                        'created_by' => $session->created_by,
+                    ]);
                 }
             });
 
             if ($booking) {
                 $booking->update(['visit_session_id' => $session->id]);
+            } else {
+                VisitorInmateRelationship::query()->updateOrCreate(
+                    ['visitor_id' => $visitor->id, 'inmate_id' => $data['inmate_id']],
+                    [
+                        'relationship_type' => $data['relationship_type'] ?? 'unspecified',
+                        'notes' => $data['relationship_notes'] ?? null,
+                    ]
+                );
             }
 
-            return $session->load(['visitor', 'inmate', 'items', 'charityBooking']);
+            $events->log(
+                $session,
+                'checked_in',
+                $booking ? 'Approved charity visit session started.' : 'Regular visit checked in.',
+                ['watchlisted_visitor' => (bool) $visitor->is_watchlisted],
+                $request->user()->id
+            );
+
+            if ($visitor->is_watchlisted || $session->status === 'flagged') {
+                $notifications->forRole(
+                    'station_officer',
+                    'Visitation security review required',
+                    "{$visitor->full_name} has a flagged visit that requires review.",
+                    'warning',
+                    '/visitation/flag-reviews',
+                    ['session_id' => $session->id]
+                );
+            }
+
+            return $session->load(['visitor.watchlistedBy', 'inmate', 'items.flagReviews', 'charityBooking', 'events']);
         });
 
         return response()->json(['data' => $session], 201);
     }
 
-    public function checkIn(VisitSession $session)
+    public function checkIn(VisitSession $session, VisitSessionEventLogger $events)
     {
         if ($session->checked_in_at) {
             return response()->json(['data' => $session->load(['visitor', 'inmate', 'items'])]);
@@ -130,12 +185,15 @@ class VisitSessionController extends Controller
         $session->update([
             'status' => 'in_progress',
             'checked_in_at' => now(),
+            'expected_checkout_at' => now()->addMinutes((int) ($session->charityBooking?->duration_minutes ?? 60)),
         ]);
 
-        return response()->json(['data' => $session->load(['visitor', 'inmate', 'items'])]);
+        $events->log($session, 'checked_in', 'Visit checked in.', null, request()->user()->id);
+
+        return response()->json(['data' => $session->load(['visitor', 'inmate', 'items', 'events'])]);
     }
 
-    public function checkOut(VisitSession $session)
+    public function checkOut(VisitSession $session, VisitSessionEventLogger $events)
     {
         if ($session->status === 'flagged' || $session->items()->where('status', 'flagged')->exists()) {
             throw ValidationException::withMessages([
@@ -148,10 +206,12 @@ class VisitSessionController extends Controller
             'checked_out_at' => now(),
         ]);
 
-        return response()->json(['data' => $session->load(['visitor', 'inmate', 'items'])]);
+        $events->log($session, 'checked_out', 'Visit checked out.', null, request()->user()->id);
+
+        return response()->json(['data' => $session->load(['visitor', 'inmate', 'items', 'events'])]);
     }
 
-    public function deny(VisitSession $session, DenyVisitSessionRequest $request)
+    public function deny(VisitSession $session, DenyVisitSessionRequest $request, VisitSessionEventLogger $events)
     {
         $session->update([
             'status' => 'denied',
@@ -160,10 +220,12 @@ class VisitSessionController extends Controller
             'checked_out_at' => now(),
         ]);
 
-        return response()->json(['data' => $session->load(['visitor', 'inmate', 'items'])]);
+        $events->log($session, 'denied', 'Visit denied.', $request->validated(), $request->user()->id);
+
+        return response()->json(['data' => $session->load(['visitor', 'inmate', 'items', 'events'])]);
     }
 
-    public function cancel(VisitSession $session, Request $request)
+    public function cancel(VisitSession $session, Request $request, VisitSessionEventLogger $events)
     {
         $validated = $request->validate([
             'denial_reason' => ['nullable', 'string', 'max:255'],
@@ -177,7 +239,9 @@ class VisitSessionController extends Controller
             'checked_out_at' => now(),
         ]);
 
-        return response()->json(['data' => $session->load(['visitor', 'inmate', 'items'])]);
+        $events->log($session, 'cancelled', 'Visit cancelled.', $validated, $request->user()->id);
+
+        return response()->json(['data' => $session->load(['visitor', 'inmate', 'items', 'events'])]);
     }
 
     public function validateSlot(Request $request, InmateVisitEligibilityChecker $eligibility, VisitSlotChecker $slotChecker)

@@ -75,6 +75,7 @@ export default function PendingCharityPage() {
   const [loading, setLoading]         = useState(false);
   const [selected, setSelected]       = useState(null);
   const [rejectModal, setRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   const loadBookings = useCallback(async () => {
     try {
@@ -101,10 +102,11 @@ export default function PendingCharityPage() {
 
   const handleReject = async (booking) => {
     try {
-      await rejectCharityBooking(booking.id);
+      await rejectCharityBooking(booking.id, { reason: rejectReason });
       toast.success(`Charity booking for ${booking.organisation_name} rejected`);
       setRejectModal(false);
       setSelected(null);
+      setRejectReason('');
       loadBookings();
     } catch (err) {
       toast.error(getErrorMessage(err, 'Failed to reject booking'));
@@ -147,7 +149,7 @@ export default function PendingCharityPage() {
               booking={booking}
               canApprove={canApprove}
               onApprove={() => handleApprove(booking)}
-              onReject={() => { setSelected(booking); setRejectModal(true); }}
+              onReject={() => { setSelected(booking); setRejectReason(''); setRejectModal(true); }}
               onDownload={() => downloadPdf(booking.download_url, `charity-booking-${booking.id}.pdf`)}
             />
           ))}
@@ -179,7 +181,16 @@ export default function PendingCharityPage() {
               Are you sure you want to <strong className="text-red-600">reject</strong> the charity visit request
               from <strong>{selected.organisation_name}</strong>?
             </p>
-            <p className="text-sm text-gray-500">This action cannot be undone.</p>
+            <label className="block">
+              <span className="mb-1 block text-sm font-semibold text-gray-700">Rejection reason</span>
+              <textarea
+                rows={3}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-malawiGreen"
+                placeholder="Record why the request is being rejected"
+              />
+            </label>
             <div className="flex gap-3">
               <Button variant="danger" onClick={() => handleReject(selected)}>
                 <FiX /> Confirm Rejection
@@ -243,6 +254,16 @@ function BookingCard({ booking, canApprove, onApprove, onReject, onDownload }) {
           {booking.purpose && (
             <p className="max-w-prose text-sm text-gray-600 line-clamp-2 italic">
               "{booking.purpose}"
+            </p>
+          )}
+          {booking.rejection_reason && (
+            <p className="max-w-prose rounded border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
+              Rejection reason: {booking.rejection_reason}
+            </p>
+          )}
+          {booking.approval_notes && (
+            <p className="max-w-prose rounded border border-green-100 bg-green-50 px-3 py-2 text-sm text-green-700">
+              Approval notes: {booking.approval_notes}
             </p>
           )}
         </div>

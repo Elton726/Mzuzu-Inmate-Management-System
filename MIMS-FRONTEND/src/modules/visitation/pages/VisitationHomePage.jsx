@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
-import { FiDownload, FiPackage, FiPhone, FiPlus, FiShield, FiUser, FiUserCheck, FiX } from 'react-icons/fi';
+import { FiAlertTriangle, FiDownload, FiPackage, FiPhone, FiPlus, FiShield, FiUser, FiUserCheck, FiX } from 'react-icons/fi';
 import { FaFemale, FaMale, FaUsers } from 'react-icons/fa';
 import Button from '../../../components/common/Button';
 import Modal from '../../../components/common/Modal';
@@ -15,10 +15,11 @@ import {
   denySession,
   downloadPdf,
   getTodaySchedule,
+  searchVisitors,
   updateVisitItem,
 } from '../services/visitationService';
 
-const emptyRegular = { full_name: '', phone: '', inmate_id: '' };
+const emptyRegular = { visitor_id: '', full_name: '', phone: '', inmate_id: '', relationship_type: '', relationship_notes: '' };
 const emptyCharity = { organisation_name: '', contact_person: '', contact_person_phone: '', inmate_category: '', purpose: '', proposed_date: '', proposed_time: '', duration_minutes: 60 };
 const denialReasons = ['Prohibited items found', 'Inmate refused visit', 'Visitor ID invalid', 'Security concern', 'Other'];
 const charityCategories = [
@@ -61,7 +62,7 @@ function InmateSearch({ value, onChange, error }) {
   useEffect(() => {
     let active = true;
     if (query.trim().length < 2) {
-      setOptions([]);
+      setTimeout(() => { if (active) setOptions([]); }, 0);
       return undefined;
     }
 
@@ -114,6 +115,90 @@ function InmateSearch({ value, onChange, error }) {
   );
 }
 
+function VisitorSearch({ selected, onSelect, onClear }) {
+  const [query, setQuery] = useState('');
+  const [options, setOptions] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    if (query.trim().length < 2) {
+      setTimeout(() => { if (active) setOptions([]); }, 0);
+      return undefined;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const data = await searchVisitors({ q: query, per_page: 8 });
+        if (active) setOptions(data || []);
+      } catch {
+        if (active) setOptions([]);
+      }
+    }, 250);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [query]);
+
+  const lastVisit = selected?.sessions_max_created_at
+    ? new Date(selected.sessions_max_created_at).toLocaleDateString()
+    : null;
+
+  return (
+    <div className="rounded-lg border border-gray-200 p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h4 className="font-semibold text-gray-900">Returning visitor lookup</h4>
+          <p className="text-sm text-gray-500">Search by name or phone to reuse an existing visitor profile.</p>
+        </div>
+        {selected && <Button variant="outline" onClick={onClear}>Use new visitor</Button>}
+      </div>
+
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search existing visitor name or phone"
+        className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-malawiGreen"
+      />
+
+      {options.length > 0 && (
+        <div className="mt-2 max-h-52 overflow-auto rounded border border-gray-200 bg-white shadow">
+          {options.map((visitor) => (
+            <button
+              key={visitor.id}
+              type="button"
+              onClick={() => {
+                onSelect(visitor);
+                setQuery(`${visitor.full_name}${visitor.phone ? ` - ${visitor.phone}` : ''}`);
+                setOptions([]);
+              }}
+              className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
+            >
+              <span className="font-semibold text-gray-900">{visitor.full_name}</span>
+              {visitor.phone && <span className="ml-2 text-gray-500">{visitor.phone}</span>}
+              <span className="ml-2 text-xs text-gray-400">{visitor.sessions_count || 0} visits</span>
+              {visitor.is_watchlisted && <span className="ml-2 rounded bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">Watchlisted</span>}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {selected && (
+        <div className={`mt-3 rounded border px-3 py-2 text-sm ${selected.is_watchlisted ? 'border-red-200 bg-red-50 text-red-800' : 'border-green-200 bg-green-50 text-green-800'}`}>
+          <div className="font-semibold">{selected.full_name} selected</div>
+          <div>{selected.sessions_count || 0} previous visits{lastVisit ? ` · Last visit ${lastVisit}` : ''}</div>
+          {selected.is_watchlisted && (
+            <div className="mt-1 font-semibold">
+              Watchlist warning: {selected.watchlist_reason || 'No reason recorded.'}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function VisitationHomePage() {
   const [schedule, setSchedule] = useState({ sessions: [], approved_charity: [] });
   const [selectorOpen, setSelectorOpen] = useState(false);
@@ -121,7 +206,7 @@ export default function VisitationHomePage() {
   const [regular, setRegular] = useState(emptyRegular);
   const [charity, setCharity] = useState(emptyCharity);
   const [fieldErrors, setFieldErrors] = useState({});
-  const [slotResult, setSlotResult] = useState(null);
+
   const [activeSession, setActiveSession] = useState(null);
   const [item, setItem] = useState({ item_description: '', status: 'pending', notes: '' });
   const [checkInItems, setCheckInItems] = useState([]);
@@ -153,6 +238,7 @@ export default function VisitationHomePage() {
       time: session.checked_in_at || session.created_at,
       displayTime: session.checked_in_at ? new Date(session.checked_in_at).toLocaleString() : new Date(session.created_at).toLocaleString(),
       status: session.status,
+      isOverdue: session.is_overdue,
       type: session.visit_type,
       session,
       hasFlags: (session.items || []).some((row) => row.status === 'flagged'),
@@ -174,7 +260,7 @@ export default function VisitationHomePage() {
     setRegular(emptyRegular);
     setCharity(emptyCharity);
     setFieldErrors({});
-    setSlotResult(null);
+
     setActiveSession(null);
     setCheckInItems([]);
     setCheckInItem({ item_description: '', status: 'approved', notes: '' });
@@ -290,9 +376,7 @@ export default function VisitationHomePage() {
     loadSchedule();
   };
 
-  const validateCharitySlot = async () => {
-    // No slot check needed — visits target a category (wing), not a specific inmate
-  };
+
 
   const submitCharity = async () => {
     try {
@@ -361,7 +445,16 @@ export default function VisitationHomePage() {
                   <td className="px-5 py-4 text-gray-700">{row.inmate}</td>
                   <td className="px-5 py-4 capitalize text-gray-700">{row.type}</td>
                   <td className="px-5 py-4 text-gray-700">{row.displayTime || '-'}</td>
-                  <td className="px-5 py-4"><StatusBadge status={row.status} /></td>
+                  <td className="px-5 py-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusBadge status={row.status} />
+                      {row.isOverdue && (
+                        <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-1 text-xs font-semibold text-red-800">
+                          <FiAlertTriangle /> Overdue
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-5 py-4">
                     {row.booking ? (
                       <Button loading={loading} onClick={() => startApprovedCharity(row.booking)}>Start visit</Button>
@@ -402,7 +495,44 @@ export default function VisitationHomePage() {
               <Field label="Full name" value={regular.full_name} error={fieldErrors.full_name?.[0]} onChange={(v) => setRegular({ ...regular, full_name: v })} />
               <Field label="Phone" value={regular.phone} error={fieldErrors.phone?.[0]} onChange={(v) => setRegular({ ...regular, phone: v })} />
             </div>
+            <VisitorSearch
+              selected={regular.visitor}
+              onSelect={(visitor) => setRegular({
+                ...regular,
+                visitor,
+                visitor_id: visitor.id,
+                full_name: visitor.full_name || regular.full_name,
+                phone: visitor.phone || '',
+              })}
+              onClear={() => setRegular({ ...regular, visitor: null, visitor_id: '', full_name: '', phone: '' })}
+            />
             <InmateSearch value={regular.inmate_id} error={fieldErrors.inmate_id?.[0] || fieldErrors.slot?.[0]} onChange={(id) => setRegular({ ...regular, inmate_id: id })} />
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Relationship to inmate</label>
+                <select
+                  value={regular.relationship_type}
+                  onChange={(e) => setRegular({ ...regular, relationship_type: e.target.value })}
+                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-malawiGreen"
+                >
+                  <option value="">Select relationship</option>
+                  <option value="parent">Parent</option>
+                  <option value="spouse">Spouse</option>
+                  <option value="sibling">Sibling</option>
+                  <option value="child">Child</option>
+                  <option value="relative">Other relative</option>
+                  <option value="legal_representative">Legal representative</option>
+                  <option value="friend">Friend</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <Field
+                label="Relationship notes"
+                value={regular.relationship_notes}
+                error={fieldErrors.relationship_notes?.[0]}
+                onChange={(v) => setRegular({ ...regular, relationship_notes: v })}
+              />
+            </div>
             <div className="rounded-lg border border-gray-200 p-4">
               <h4 className="mb-3 flex items-center gap-2 font-semibold text-gray-900"><FiPackage /> Items brought for inmate</h4>
               <div className="grid gap-3 md:grid-cols-[1fr_auto]">
@@ -494,7 +624,9 @@ export default function VisitationHomePage() {
           <div>
             <label className="mb-2 block text-sm font-semibold text-gray-700">Inmates to visit</label>
             <div className="grid gap-3 md:grid-cols-3">
-              {charityCategories.map(({ value, label, Icon, tone }) => (
+              {charityCategories.map(
+                // eslint-disable-next-line no-unused-vars
+                ({ value, label, Icon, tone }) => (
                 <button
                   key={value}
                   type="button"
@@ -634,7 +766,7 @@ function TextArea({ label, value, onChange, error }) {
 }
 
 function ActiveSession({ session, item, setItem, onCheckIn, onCheckOut, onAddItem, onItemStatus, onFlagItem, onDeny }) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   const charityBooking = session.charity_booking || session.charityBooking;
   const durationMinutes = Number(charityBooking?.duration_minutes || 0);
   const isCharity = session.visit_type === 'charity';
