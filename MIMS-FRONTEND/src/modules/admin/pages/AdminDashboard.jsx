@@ -1,426 +1,494 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MdPeople, MdAdminPanelSettings, MdBarChart, MdPerson, MdGavel, MdSchedule, MdHomeWork } from 'react-icons/md';
+import {
+  MdAdminPanelSettings,
+  MdAssignmentTurnedIn,
+  MdBarChart,
+  MdCheckCircle,
+  MdError,
+  MdExitToApp,
+  MdFactCheck,
+  MdGavel,
+  MdHistory,
+  MdHomeWork,
+  MdLocalActivity,
+  MdPeople,
+  MdRefresh,
+  MdSchedule,
+  MdSecurity,
+  MdTrendingUp,
+  MdWarning,
+} from 'react-icons/md';
 import apiService from '../../../services/apiService';
 import { useToast } from '../../../contexts/useToast';
-import UserAvatarWithRole from '../../../components/common/UserAvatarWithRole';
+import { formatDate } from '../../../utils/helpers';
 
-const MONTHS = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec'
-];
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const getCurrentAdmission = (inmate) => inmate?.current_admission || inmate?.currentAdmission || null;
+const numberOrDash = (value) => (value === null || value === undefined ? '--' : value);
 
-const getInmateName = (inmate) => {
-  const name = [inmate?.first_name, inmate?.last_name].filter(Boolean).join(' ');
-  return name || 'Unnamed inmate';
+const formatLabel = (value) => {
+  if (!value) return 'Not recorded';
+  return String(value).replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
-const formatInmateType = (type) => {
-  if (!type) return 'Type unknown';
-  return type.replaceAll('_', ' ');
+const getInmateName = (inmate) => [inmate?.first_name, inmate?.last_name].filter(Boolean).join(' ') || 'Unnamed inmate';
+
+const severityStyles = {
+  critical: {
+    badge: 'bg-red-100 text-red-800',
+    border: 'border-red-200',
+    icon: 'text-red-600',
+    Icon: MdError,
+  },
+  warning: {
+    badge: 'bg-amber-100 text-amber-900',
+    border: 'border-amber-200',
+    icon: 'text-amber-600',
+    Icon: MdWarning,
+  },
+  ok: {
+    badge: 'bg-emerald-100 text-emerald-800',
+    border: 'border-emerald-200',
+    icon: 'text-emerald-600',
+    Icon: MdCheckCircle,
+  },
 };
 
-const fetchAllDashboardInmates = async () => {
-  const firstPage = await apiService.listInmates({
-    page: 1,
-    per_page: 100,
-    sort_by: 'id',
-    sort_order: 'desc',
-    include_released: true
-  });
-  const firstRows = Array.isArray(firstPage?.data) ? firstPage.data : [];
-  const lastPage = Number(firstPage?.last_page || 1);
-
-  if (lastPage <= 1) return firstRows;
-
-  const remainingPages = Array.from({ length: lastPage - 1 }, (_, index) => index + 2);
-  const pageResponses = await Promise.all(
-    remainingPages.map((page) =>
-      apiService.listInmates({
-        page,
-        per_page: 100,
-        sort_by: 'id',
-        sort_order: 'desc',
-        include_released: true
-      })
-    )
+function LoadingState() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-100">
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-malawiRed" />
+        <p className="font-semibold text-slate-700">Loading command center...</p>
+      </div>
+    </div>
   );
+}
 
-  return pageResponses.reduce((rows, page) => {
-    const pageRows = Array.isArray(page?.data) ? page.data : [];
-    return rows.concat(pageRows);
-  }, firstRows);
-};
-
-// eslint-disable-next-line no-unused-vars
-function PopulationStatCard({ icon: Icon, title, value, tone, active, onClick }) {
-  const iconColors = {
-    red: 'text-malawiRed',
-    green: 'text-malawiGreen',
-    gold: 'text-amber-500'
+function MetricCard({ icon: Icon, label, value, tone = 'slate', helper }) {
+  const tones = {
+    red: 'bg-red-50 text-red-700 ring-red-100',
+    green: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
+    amber: 'bg-amber-50 text-amber-700 ring-amber-100',
+    blue: 'bg-blue-50 text-blue-700 ring-blue-100',
+    slate: 'bg-slate-50 text-slate-700 ring-slate-100',
   };
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        'modern-card flex min-h-48 flex-col items-center justify-center text-center transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-malawiGreen dark:hover:bg-slate-800',
-        active ? 'ring-2 ring-malawiGreen' : ''
-      ].join(' ')}
-    >
-      <Icon className={`${iconColors[tone] || iconColors.green} text-4xl mb-2`} />
-      <span className="text-lg font-semibold">{title}</span>
-      <span className="text-2xl mt-2">{value ?? '--'}</span>
-    </button>
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-black uppercase tracking-widest text-slate-500">{label}</p>
+          <p className="mt-3 text-3xl font-black text-slate-950">{numberOrDash(value)}</p>
+          {helper && <p className="mt-1 text-sm text-slate-500">{helper}</p>}
+        </div>
+        <div className={`rounded-2xl p-3 ring-1 ${tones[tone] || tones.slate}`}>
+          <Icon className="h-6 w-6" />
+        </div>
+      </div>
+    </div>
   );
 }
 
-function InmateDetailsPanel({ title, inmates, loading }) {
+function ActionQueue({ items }) {
   return (
-    <section className="bg-white dark:bg-slate-900 rounded-lg shadow border border-green-700 dark:border-slate-700 overflow-hidden mb-8">
-      <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h3>
-        <p className="text-sm text-gray-600 dark:text-gray-300">
-          {loading ? 'Loading inmate names...' : `${inmates.length} record${inmates.length === 1 ? '' : 's'} shown`}
-        </p>
+    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-widest text-malawiRed">Priority queue</p>
+          <h2 className="text-2xl font-black text-slate-950">Administrative actions</h2>
+        </div>
+        <p className="text-sm text-slate-500">Sorted by operational risk.</p>
       </div>
 
-      {loading ? (
-        <div className="p-6 text-gray-600 dark:text-gray-300">Loading inmates...</div>
-      ) : inmates.length === 0 ? (
-        <div className="p-6 text-gray-600 dark:text-gray-300">No inmate names found for this section.</div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-200 dark:divide-slate-700">
-          {inmates.map((inmate) => {
-            const admission = getCurrentAdmission(inmate);
-            return (
-              <div key={inmate.id} className="p-4">
-                <p className="font-semibold text-gray-900 dark:text-white">{getInmateName(inmate)}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  {inmate.prison_number || 'No prison number'} - {inmate.status || 'No status'}
+      <div className="space-y-3">
+        {(items || []).map((item) => {
+          const styles = severityStyles[item.severity] || severityStyles.ok;
+          const Icon = styles.Icon;
+          return (
+            <div key={item.key} className={`rounded-2xl border ${styles.border} bg-slate-50 p-4`}>
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-start gap-3">
+                  <Icon className={`mt-1 h-6 w-6 ${styles.icon}`} />
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-black text-slate-950">{item.title}</h3>
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-black uppercase ${styles.badge}`}>
+                        {item.severity}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-slate-600">{item.description}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl font-black text-slate-950">{numberOrDash(item.count)}</span>
+                  {item.to ? (
+                    <Link
+                      to={item.to}
+                      className="inline-flex h-10 items-center rounded-xl bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-malawiRed"
+                    >
+                      {item.action}
+                    </Link>
+                  ) : (
+                    <span className="inline-flex h-10 items-center rounded-xl bg-slate-200 px-4 text-sm font-bold text-slate-700">
+                      {item.action}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function ModuleCard({ icon: Icon, title, subtitle, children, to, action }) {
+  return (
+    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="rounded-2xl bg-slate-950 p-3 text-malawiGold">
+            <Icon className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-slate-950">{title}</h3>
+            <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+          </div>
+        </div>
+        {to && (
+          <Link to={to} className="shrink-0 text-sm font-black text-malawiRed hover:underline">
+            {action || 'Open'}
+          </Link>
+        )}
+      </div>
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
+
+function StatLine({ label, value }) {
+  return (
+    <div className="flex items-center justify-between border-b border-slate-100 py-2 last:border-b-0">
+      <span className="text-sm text-slate-600">{label}</span>
+      <span className="font-black text-slate-950">{numberOrDash(value)}</span>
+    </div>
+  );
+}
+
+function MonthlyTrend({ data }) {
+  const rows = Array.isArray(data) ? data : [];
+  const max = Math.max(1, ...rows.map((item) => Number(item.count || 0)));
+
+  return (
+    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="rounded-2xl bg-blue-50 p-3 text-blue-700">
+          <MdTrendingUp className="h-6 w-6" />
+        </div>
+        <div>
+          <h2 className="text-xl font-black text-slate-950">Admissions trend</h2>
+          <p className="text-sm text-slate-500">Current year admissions by month.</p>
+        </div>
+      </div>
+
+      <div className="flex h-56 items-end gap-2 overflow-x-auto rounded-2xl bg-slate-50 p-4">
+        {rows.map((item) => {
+          const count = Number(item.count || 0);
+          const height = Math.max(8, Math.round((count / max) * 170));
+          return (
+            <div key={item.month} className="flex min-w-10 flex-1 flex-col items-center justify-end gap-2">
+              <span className="text-xs font-black text-slate-700">{count}</span>
+              <div
+                className="w-full rounded-t-xl bg-gradient-to-t from-malawiGreen to-malawiGold"
+                style={{ height: `${height}px` }}
+                title={`${MONTH_LABELS[(item.month || 1) - 1]}: ${count}`}
+              />
+              <span className="text-xs font-semibold text-slate-500">{MONTH_LABELS[(item.month || 1) - 1]}</span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function AuditTimeline({ events }) {
+  return (
+    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-black text-slate-950">Audit activity</h2>
+          <p className="text-sm text-slate-500">Recent administrative and system events.</p>
+        </div>
+        <Link to="/admin/audit-logs" className="text-sm font-black text-malawiRed hover:underline">
+          View all
+        </Link>
+      </div>
+
+      <div className="space-y-3">
+        {(events || []).length === 0 ? (
+          <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">No recent audit events.</p>
+        ) : (
+          events.map((event) => (
+            <div key={event.id} className="flex gap-3 rounded-2xl bg-slate-50 p-4">
+              <div className="mt-1 h-2.5 w-2.5 rounded-full bg-malawiRed" />
+              <div className="min-w-0">
+                <p className="font-bold text-slate-950">
+                  {formatLabel(event.action)} <span className="text-slate-500">on</span> {event.table_name || 'system'}
                 </p>
-                <p className="text-xs uppercase text-gray-500 dark:text-gray-400 mt-2">
-                  {formatInmateType(admission?.inmate_type)}
+                <p className="text-sm text-slate-500">
+                  {event.user?.name || 'System'} - {event.created_at ? formatDate(event.created_at) : 'Date not recorded'}
                 </p>
               </div>
-            );
-          })}
-        </div>
-      )}
+            </div>
+          ))
+        )}
+      </div>
     </section>
   );
 }
 
-function InmateMonthlyLineGraph({ data }) {
-  const width = 720;
-  const height = 260;
-  const padding = { top: 24, right: 24, bottom: 48, left: 48 };
-  const innerWidth = width - padding.left - padding.right;
-  const innerHeight = height - padding.top - padding.bottom;
-  const maxValue = Math.max(1, ...data.map((item) => item.count));
+function SampleList({ items, emptyText, renderItem }) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">{emptyText}</p>;
+  }
 
-  const points = data.map((item, index) => {
-    const x = padding.left + (innerWidth / Math.max(1, data.length - 1)) * index;
-    const y = padding.top + innerHeight - (item.count / maxValue) * innerHeight;
-    return { ...item, x, y };
-  });
-
-  const linePoints = points.map((point) => `${point.x},${point.y}`).join(' ');
-  const yTicks = [maxValue, Math.round(maxValue / 2), 0];
-
-  return (
-    <section className="bg-white dark:bg-slate-900 rounded-lg shadow border border-green-700 dark:border-slate-700 p-5">
-      <div className="mb-4">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Monthly Inmate Trend</h3>
-        <p className="text-sm text-gray-600 dark:text-gray-300">Admissions counted from January to December.</p>
-      </div>
-
-      <div className="overflow-x-auto">
-        <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[680px] w-full h-auto" role="img" aria-label="Monthly inmate line graph">
-          <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + innerHeight} stroke="#94a3b8" strokeWidth="1" />
-          <line x1={padding.left} y1={padding.top + innerHeight} x2={padding.left + innerWidth} y2={padding.top + innerHeight} stroke="#94a3b8" strokeWidth="1" />
-
-          {yTicks.map((tick) => {
-            const y = padding.top + innerHeight - (tick / maxValue) * innerHeight;
-            return (
-              <g key={tick}>
-                <line x1={padding.left} y1={y} x2={padding.left + innerWidth} y2={y} stroke="#e2e8f0" strokeWidth="1" />
-                <text x={padding.left - 12} y={y + 4} textAnchor="end" className="fill-gray-500 dark:fill-gray-300 text-xs">
-                  {tick}
-                </text>
-              </g>
-            );
-          })}
-
-          <polyline points={linePoints} fill="none" stroke="#00843D" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-
-          {points.map((point) => (
-            <g key={point.month}>
-              <circle cx={point.x} cy={point.y} r="5" fill="#D71920" stroke="#ffffff" strokeWidth="2" />
-              <text x={point.x} y={padding.top + innerHeight + 26} textAnchor="middle" className="fill-gray-700 dark:fill-gray-200 text-xs font-semibold">
-                {point.month}
-              </text>
-              <text x={point.x} y={point.y - 12} textAnchor="middle" className="fill-gray-900 dark:fill-white text-xs font-bold">
-                {point.count}
-              </text>
-            </g>
-          ))}
-        </svg>
-      </div>
-    </section>
-  );
+  return <div className="space-y-3">{items.map(renderItem)}</div>;
 }
 
 export default function AdminDashboard() {
-  const [statistics, setStatistics] = useState(null);
-  const [populationStats, setPopulationStats] = useState(null);
-  const [inmates, setInmates] = useState([]);
-  const [selectedPopulationKey, setSelectedPopulationKey] = useState('total');
+  const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [inmateListLoading, setInmateListLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const toast = useToast();
 
-  const fetchStatistics = useCallback(async () => {
+  const loadOverview = useCallback(async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
-      setInmateListLoading(true);
-      const [userStats, popStats, inmateRows] = await Promise.all([
-        apiService.getUserStatistics(),
-        apiService.getPopulationStatistics(),
-        fetchAllDashboardInmates()
-      ]);
-      setStatistics(userStats ?? {});
-      setPopulationStats(popStats ?? {});
-      setInmates(inmateRows);
+      if (silent) setRefreshing(true);
+      else setLoading(true);
+      const data = await apiService.getAdminDashboardOverview();
+      setOverview(data || {});
     } catch (err) {
       toast.fromError(err);
       console.error(err);
     } finally {
       setLoading(false);
-      setInmateListLoading(false);
+      setRefreshing(false);
     }
   }, [toast]);
 
   useEffect(() => {
-    fetchStatistics();
-  }, [fetchStatistics]);
+    loadOverview();
+  }, [loadOverview]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-malawiGold">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-malawiRed mx-auto mb-4"></div>
-          <p className="text-malawiBlack">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
+  const metrics = overview?.metrics || {};
+  const population = overview?.population || {};
+  const cells = overview?.cells || {};
+  const release = overview?.release || {};
+  const visitation = overview?.visitation || {};
+  const rosters = overview?.rosters || {};
+  const activities = overview?.activities || {};
+  const users = overview?.users || {};
+  const audit = overview?.audit || {};
+  const quickLinks = Array.isArray(overview?.quick_links) ? overview.quick_links : [];
 
-  const recent = Array.isArray(statistics?.recent_users) ? statistics.recent_users : [];
-  const populationCards = [
-    {
-      key: 'total',
-      title: 'Total Inmates',
-      value: populationStats?.total_inmates,
-      icon: MdPeople,
-      tone: 'red',
-      filter: () => true
-    },
-    {
-      key: 'active',
-      title: 'Active Inmates',
-      value: populationStats?.active_inmates,
-      icon: MdPerson,
-      tone: 'green',
-      filter: (inmate) => inmate.status === 'active'
-    },
-    {
-      key: 'convict',
-      title: 'Convicts',
-      value: populationStats?.convict_count,
-      icon: MdGavel,
-      tone: 'gold',
-      filter: (inmate) => getCurrentAdmission(inmate)?.inmate_type === 'convict'
-    },
-    {
-      key: 'remandee',
-      title: 'Remandees',
-      value: populationStats?.remandee_count,
-      icon: MdSchedule,
-      tone: 'red',
-      filter: (inmate) => getCurrentAdmission(inmate)?.inmate_type === 'remandee'
-    },
-    {
-      key: 'murder_remandee',
-      title: 'Murder Remandees',
-      value: populationStats?.murder_remandee_count,
-      icon: MdPerson,
-      tone: 'green',
-      filter: (inmate) => getCurrentAdmission(inmate)?.inmate_type === 'murder_remandee'
-    },
-    {
-      key: 'released',
-      title: 'Released',
-      value: populationStats?.released_inmates,
-      icon: MdBarChart,
-      tone: 'gold',
-      filter: (inmate) => inmate.status === 'released'
-    },
-    {
-      key: 'deceased',
-      title: 'Deceased',
-      value: populationStats?.deceased_inmates,
-      icon: MdBarChart,
-      tone: 'red',
-      filter: (inmate) => inmate.status === 'deceased'
-    },
-    {
-      key: 'transferred',
-      title: 'Transferred',
-      value: populationStats?.transferred_inmates,
-      icon: MdBarChart,
-      tone: 'green',
-      filter: (inmate) => inmate.status === 'transferred'
-    }
-  ];
-  const selectedPopulationCard = populationCards.find((card) => card.key === selectedPopulationKey) || populationCards[0];
-  const selectedInmates = inmates.filter(selectedPopulationCard.filter);
-  const monthlyData = MONTHS.map((month, index) => ({
-    month,
-    count: inmates.filter((inmate) => {
-      const admissionDate = getCurrentAdmission(inmate)?.admission_date;
-      if (!admissionDate) return false;
-      const parsed = new Date(admissionDate);
-      return !Number.isNaN(parsed.getTime()) && parsed.getMonth() === index;
-    }).length
-  }));
+  const occupancyPercent = useMemo(() => {
+    const capacity = Number(cells.capacity || 0);
+    if (capacity <= 0) return 0;
+    return Math.round((Number(cells.occupancy || 0) / capacity) * 100);
+  }, [cells.capacity, cells.occupancy]);
+
+  if (loading) return <LoadingState />;
 
   return (
-    <div className="min-h-screen bg-malawiGold p-8">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="modern-heading text-center mb-8">Administrator Dashboard</h1>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-          <div className="modern-card flex flex-col items-center">
-            <MdPeople className="text-malawiRed text-5xl mb-2" />
-            <span className="text-xl font-semibold">Total Users</span>
-            <span className="text-3xl mt-2">{statistics?.total_users ?? '--'}</span>
+    <div className="min-h-screen bg-slate-100">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <section className="overflow-hidden rounded-[2rem] bg-slate-950 text-white shadow-sm">
+          <div className="relative p-6 sm:p-8">
+            <div className="absolute right-0 top-0 h-48 w-48 rounded-bl-full bg-malawiGold/20" />
+            <div className="absolute bottom-0 right-24 h-24 w-24 rounded-t-full bg-malawiRed/30" />
+            <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.3em] text-malawiGold">Admin command center</p>
+                <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-5xl">Operate by exception.</h1>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
+                  Focus on approvals, capacity pressure, court deadlines, staffing coverage, and security events from one compact dashboard.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => loadOverview({ silent: true })}
+                  disabled={refreshing}
+                  className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-black text-slate-950 transition hover:bg-malawiGold disabled:opacity-60"
+                >
+                  <MdRefresh className={refreshing ? 'animate-spin' : ''} />
+                  {refreshing ? 'Refreshing' : 'Refresh'}
+                </button>
+                <Link to="/admin/users" className="inline-flex h-11 items-center rounded-xl bg-malawiRed px-4 text-sm font-black text-white transition hover:bg-red-700">
+                  Manage users
+                </Link>
+              </div>
+            </div>
           </div>
+        </section>
 
-          <div className="modern-card flex flex-col items-center">
-            <MdAdminPanelSettings className="text-malawiGreen text-5xl mb-2" />
-            <span className="text-xl font-semibold">Active Admins</span>
-            <span className="text-3xl mt-2">{statistics?.active_admins ?? '--'}</span>
-          </div>
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard icon={MdPeople} label="Active inmates" value={metrics.active_inmates} tone="green" />
+          <MetricCard icon={MdHomeWork} label="Available cells" value={metrics.available_cells} tone="blue" helper={`${occupancyPercent}% occupied`} />
+          <MetricCard icon={MdExitToApp} label="Release approvals" value={metrics.pending_release_approvals} tone="amber" />
+          <MetricCard icon={MdGavel} label="Court due/overdue" value={metrics.court_due_or_overdue} tone="red" />
+          <MetricCard icon={MdWarning} label="Overcrowded cells" value={metrics.overcrowded_cells} tone="red" />
+          <MetricCard icon={MdFactCheck} label="Visitation flags" value={metrics.visitation_flags} tone="amber" />
+          <MetricCard icon={MdSchedule} label="Roster gaps" value={metrics.duty_roster_gaps} tone="red" />
+          <MetricCard icon={MdHistory} label="Audit events today" value={audit.events_today} tone="slate" />
+        </section>
 
-          <div className="modern-card flex flex-col items-center">
-            <MdBarChart className="text-malawiGold text-5xl mb-2" />
-            <span className="text-xl font-semibold">Other Stats</span>
-            <span className="text-3xl mt-2">{statistics?.other_stats ?? '--'}</span>
-          </div>
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+          <ActionQueue items={overview?.action_queue || []} />
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-black text-slate-950">Quick operations</h2>
+                <p className="text-sm text-slate-500">High-frequency admin destinations.</p>
+              </div>
+              <MdAdminPanelSettings className="h-7 w-7 text-malawiRed" />
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {quickLinks.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4 font-black text-slate-800 transition hover:border-malawiRed hover:bg-white hover:text-malawiRed"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </section>
         </div>
 
-        <div className="mb-8">
-          <Link
-            to="/admin/cells"
-            className="inline-flex items-center gap-2 rounded bg-malawiBlack px-4 py-2 font-semibold text-malawiGold shadow transition hover:opacity-90"
-          >
-            <MdHomeWork className="text-xl" />
-            Manage Cells
-          </Link>
-        </div>
+        <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <ModuleCard icon={MdPeople} title="Users and roles" subtitle="Account distribution and recent registrations." to="/admin/users" action="Manage">
+            <StatLine label="Total users" value={users.total_users} />
+            {Object.entries(users.by_role || {}).map(([role, total]) => (
+              <StatLine key={role} label={formatLabel(role)} value={total} />
+            ))}
+          </ModuleCard>
 
-        <h2 className="text-2xl font-semibold mb-6">Prison Population Statistics</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
-          {populationCards.map((card) => (
-            <PopulationStatCard
-              key={card.key}
-              icon={card.icon}
-              title={card.title}
-              value={card.value}
-              tone={card.tone}
-              active={selectedPopulationKey === card.key}
-              onClick={() => setSelectedPopulationKey(card.key)}
+          <ModuleCard icon={MdHomeWork} title="Cell capacity" subtitle="Estate pressure by availability and occupancy." to="/admin/cells" action="Open cells">
+            <StatLine label="Total cells" value={cells.total_cells} />
+            <StatLine label="Capacity" value={cells.capacity} />
+            <StatLine label="Occupancy" value={cells.occupancy} />
+            <StatLine label="Maintenance" value={cells.maintenance_cells} />
+          </ModuleCard>
+
+          <ModuleCard icon={MdLocalActivity} title="Activities" subtitle="Program availability and activity setup health." to="/admin/activities" action="Manage">
+            <StatLine label="Active activities" value={activities.active_activities} />
+            <StatLine label="Inactive activities" value={activities.inactive_activities} />
+            <StatLine label="Internal" value={activities.internal_activities} />
+            <StatLine label="External" value={activities.external_activities} />
+          </ModuleCard>
+
+          <ModuleCard icon={MdExitToApp} title="Release workflow" subtitle="Approval, confirmation, and clearance workload.">
+            <StatLine label="Pending approvals" value={release.pending_approvals} />
+            <StatLine label="Pending confirmations" value={release.pending_confirmations} />
+            <StatLine label="Open clearance checklists" value={release.open_clearance_checklists} />
+            <StatLine label="Confirmed this month" value={release.confirmed_this_month} />
+          </ModuleCard>
+
+          <ModuleCard icon={MdSecurity} title="Visitation security" subtitle="Visit sessions, charity bookings, and item flags.">
+            <StatLine label="Sessions today" value={visitation.sessions_today} />
+            <StatLine label="Active sessions" value={visitation.active_sessions} />
+            <StatLine label="Denied today" value={visitation.denied_today} />
+            <StatLine label="Pending charity" value={visitation.pending_charity_bookings} />
+          </ModuleCard>
+
+          <ModuleCard icon={MdSchedule} title="Duty coverage" subtitle="Current officer coverage for activity operations." to="/admin/duty-rosters" action="Assign">
+            <StatLine label="Current officers" value={rosters.current_officer_count} />
+            <StatLine label="Coverage gaps" value={rosters.gaps} />
+            <div className="mt-3 rounded-2xl bg-slate-50 p-3">
+              {(rosters.current_officers || []).length === 0 ? (
+                <p className="text-sm text-slate-500">No active officer assigned for the current period.</p>
+              ) : (
+                rosters.current_officers.map((roster) => (
+                  <p key={roster.id} className="text-sm font-bold text-slate-800">
+                    {roster.officer?.name || 'Officer'} <span className="font-normal text-slate-500">on duty</span>
+                  </p>
+                ))
+              )}
+            </div>
+          </ModuleCard>
+        </section>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+          <MonthlyTrend data={population.monthly_admissions} />
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="rounded-2xl bg-red-50 p-3 text-red-700">
+                <MdGavel className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-slate-950">Court follow-up samples</h2>
+                <p className="text-sm text-slate-500">Due or overdue remand cases.</p>
+              </div>
+            </div>
+            <SampleList
+              items={overview?.court?.samples || []}
+              emptyText="No due or overdue court samples."
+              renderItem={(admission) => (
+                <div key={admission.id} className="rounded-2xl bg-slate-50 p-4">
+                  <p className="font-black text-slate-950">{getInmateName(admission.inmate)}</p>
+                  <p className="text-sm text-slate-500">
+                    {admission.inmate?.prison_number || 'No prison number'} - {formatLabel(admission.inmate_type)}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {admission.court_name || 'Court not recorded'} - {admission.remand_next_court_date ? formatDate(admission.remand_next_court_date) : 'No date'}
+                  </p>
+                </div>
+              )}
             />
-          ))}
+          </section>
         </div>
 
-        <InmateDetailsPanel
-          title={`${selectedPopulationCard.title} Names`}
-          inmates={selectedInmates}
-          loading={inmateListLoading}
-        />
+        <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <ModuleCard icon={MdAssignmentTurnedIn} title="Release samples" subtitle="Oldest pending workflow samples.">
+            <SampleList
+              items={release.pending_approval_samples || []}
+              emptyText="No pending release approvals."
+              renderItem={(workflow) => (
+                <div key={workflow.id} className="rounded-2xl bg-slate-50 p-4">
+                  <p className="font-black text-slate-950">{getInmateName(workflow.admission?.inmate)}</p>
+                  <p className="text-sm text-slate-500">
+                    {workflow.admission?.inmate?.prison_number || 'No prison number'} - {formatLabel(workflow.status)}
+                  </p>
+                </div>
+              )}
+            />
+          </ModuleCard>
 
-        <InmateMonthlyLineGraph data={monthlyData} />
+          <ModuleCard icon={MdWarning} title="Cell pressure samples" subtitle="Cells above recorded capacity.">
+            <SampleList
+              items={cells.overcrowded_samples || []}
+              emptyText="No overcrowded cells."
+              renderItem={(cell) => (
+                <div key={cell.id} className="rounded-2xl bg-slate-50 p-4">
+                  <p className="font-black text-slate-950">Block {cell.block || '-'} - Cell {cell.cell_number || '-'}</p>
+                  <p className="text-sm text-slate-500">
+                    {formatLabel(cell.security_classification)} - {cell.current_occupancy}/{cell.capacity} occupied
+                  </p>
+                </div>
+              )}
+            />
+          </ModuleCard>
+        </section>
 
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-semibold">Recent Activity</h2>
-          <div className="space-x-3">
-            <button
-              onClick={fetchStatistics}
-              className="bg-malawiGreen text-white px-4 py-2 rounded shadow hover:opacity-90 transition"
-            >
-              Refresh
-            </button>
-            <Link to="/admin/users" className="bg-malawiRed text-malawiGold px-4 py-2 rounded shadow hover:opacity-90 transition">
-              Manage Users
-            </Link>
-            <Link to="/admin/audit-logs" className="bg-malawiGreen text-white px-4 py-2 rounded shadow hover:opacity-90 transition">
-              View Audit Logs
-            </Link>
-            <Link to="/admin/cells" className="bg-malawiBlack text-malawiGold px-4 py-2 rounded shadow hover:opacity-90 transition">
-              Manage Cells
-            </Link>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px]">
-              <thead className="bg-gray-100 border-b">
-                <tr>
-                  <th className="px-6 py-3 text-left text-gray-700 font-semibold">User</th>
-                  <th className="px-6 py-3 text-left text-gray-700 font-semibold">Added</th>
-                  <th className="px-6 py-3 text-left text-gray-700 font-semibold">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="px-6 py-6 text-center text-gray-500">No recent users</td>
-                  </tr>
-                ) : (
-                  recent.map((user) => (
-                    <tr key={user.id} className="border-b hover:bg-gray-50 transition">
-                      <td className="px-6 py-4">
-                        <UserAvatarWithRole user={user} />
-                      </td>
-                      <td className="px-6 py-4 text-gray-600 text-sm">
-                        {user.created_at ? new Date(user.created_at).toLocaleDateString() : '--'}
-                      </td>
-                      <td className="px-6 py-4">
-                        <Link to="/admin/users" className="text-blue-600 hover:text-blue-800 font-semibold text-sm">Edit</Link>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <AuditTimeline events={audit.recent_events || []} />
       </div>
     </div>
   );

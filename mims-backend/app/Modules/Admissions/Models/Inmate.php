@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Modules\ActivityAllocation\Models\SessionAttendance;
+use App\Modules\Visitation\Models\VisitorInmateRelationship;
+use App\Modules\Visitation\Models\VisitSession;
 
 class Inmate extends Model
 {
@@ -61,5 +64,20 @@ class Inmate extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(Document::class);
+    }
+
+    public function visitSessions(): HasMany
+    {
+        return $this->hasMany(VisitSession::class);
+    }
+
+    public function visitorRelationships(): HasMany
+    {
+        return $this->hasMany(VisitorInmateRelationship::class);
+    }
+
+    public function sessionAttendances(): HasMany
+    {
+        return $this->hasMany(SessionAttendance::class);
     }
 }

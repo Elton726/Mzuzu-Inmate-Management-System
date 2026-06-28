@@ -32,6 +32,19 @@ const getAdmissionsCount = (inmate) => {
 const getCurrentAdmission = (inmate) =>
   inmate?.current_admission || inmate?.currentAdmission || null;
 
+const parseLocalDate = (dateStr) => {
+  if (!dateStr) return null;
+  const datePart = String(dateStr).split(/[T ]/)[0];
+  const parts = datePart.split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    return new Date(year, month, day);
+  }
+  return new Date(dateStr);
+};
+
 const getInitials = (first, last) =>
   `${first?.[0] ?? ''}${last?.[0] ?? ''}`.toUpperCase() || '?';
 
@@ -155,12 +168,19 @@ const InmateRow = ({ inmate }) => {
             <MdPlayArrow className="text-base" />
             Admit
           </Link>
-        ) : (admission?.inmate_type === 'remandee' || admission?.inmate_type === 'murder_remandee') ? (
+        ) : (
+          admission?.inmate_type === 'remandee' ||
+          admission?.inmate_type === 'murder_remandee' ||
+          admission?.inmateType === 'remandee' ||
+          admission?.inmateType === 'murder_remandee'
+        ) ? (
           (() => {
             const nextCourtDate = admission.remand_next_court_date || admission.remandNextCourtDate;
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            const courtDate = nextCourtDate ? new Date(nextCourtDate) : null;
+            
+            // Parse court date as local date to prevent timezone shift
+            const courtDate = parseLocalDate(nextCourtDate);
             if (courtDate) {
               courtDate.setHours(0, 0, 0, 0);
             }
@@ -271,7 +291,11 @@ export default function AdmissionsIndexPage() {
         description: 'Sentenced inmates currently admitted.',
         icon: MdGavel,
         tone: 'text-malawiGreen',
-        inmates: filteredInmates.filter((inmate) => getCurrentAdmission(inmate)?.inmate_type === 'convict'),
+        inmates: filteredInmates.filter((inmate) => {
+          const adm = getCurrentAdmission(inmate);
+          const type = adm?.inmate_type || adm?.inmateType;
+          return type === 'convict';
+        }),
       },
       {
         key: 'general_remandees',
@@ -279,7 +303,11 @@ export default function AdmissionsIndexPage() {
         description: 'Remand inmates awaiting court outcomes.',
         icon: MdSchedule,
         tone: 'text-amber-600',
-        inmates: filteredInmates.filter((inmate) => getCurrentAdmission(inmate)?.inmate_type === 'remandee'),
+        inmates: filteredInmates.filter((inmate) => {
+          const adm = getCurrentAdmission(inmate);
+          const type = adm?.inmate_type || adm?.inmateType;
+          return type === 'remandee';
+        }),
       },
       {
         key: 'murder_remandees',
@@ -287,7 +315,11 @@ export default function AdmissionsIndexPage() {
         description: 'Remand inmates registered under murder cases.',
         icon: MdPerson,
         tone: 'text-malawiRed',
-        inmates: filteredInmates.filter((inmate) => getCurrentAdmission(inmate)?.inmate_type === 'murder_remandee'),
+        inmates: filteredInmates.filter((inmate) => {
+          const adm = getCurrentAdmission(inmate);
+          const type = adm?.inmate_type || adm?.inmateType;
+          return type === 'murder_remandee';
+        }),
       },
     ],
     [filteredInmates]

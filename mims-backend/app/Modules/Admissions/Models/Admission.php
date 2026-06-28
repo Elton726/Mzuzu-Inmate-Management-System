@@ -24,6 +24,7 @@ class Admission extends Model
         'offence_description',
         'sentence_years',
         'sentence_months',
+        'sentence_days',
         'sentence_start_date',
         'projected_release_date',
         'original_release_date',

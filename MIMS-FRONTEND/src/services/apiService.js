@@ -342,6 +342,14 @@ class ApiService {
   }
 
   /**
+   * Get compact administrator command-center overview.
+   * @returns {Promise<Object>} Dashboard metrics, action queue, module health, and audit summary
+   */
+  async getAdminDashboardOverview() {
+    return this.request('admin_ops', '/admin/dashboard/overview', { method: 'GET' });
+  }
+
+  /**
    * Create new user
    * @param {Object} userData - User creation data
    * @returns {Promise<Object>} Created user data

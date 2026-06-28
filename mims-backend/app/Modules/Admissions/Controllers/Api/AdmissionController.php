@@ -12,6 +12,7 @@ use App\Modules\Admissions\Requests\Admissions\StoreAdmissionRequest;
 use App\Modules\Admissions\Services\ActivityAssignmentService;
 use App\Services\AuditLogService;
 use App\Modules\Admissions\Services\CellAllocationService;
+use App\Modules\Admissions\Services\OffenceClassificationService;
 use App\Modules\Admissions\Services\SentenceCalculationService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class AdmissionController extends Controller
 {
     public function __construct(
         private readonly SentenceCalculationService $sentenceCalculationService,
+        private readonly OffenceClassificationService $offenceClassificationService,
         private readonly CellAllocationService $cellAllocationService,
         private readonly ActivityAssignmentService $activityAssignmentService,
         private readonly AuditLogService $auditLogService,
@@ -68,6 +70,7 @@ class AdmissionController extends Controller
                     CarbonImmutable::parse($validated['sentence_start_date']),
                     (int) $validated['sentence_years'],
                     (int) ($validated['sentence_months'] ?? 0),
+                    (int) ($validated['sentence_days'] ?? 0),
                 )->toDateString();
             } else {
                 $admissionDate = CarbonImmutable::parse($validated['admission_date'])->startOfDay();
@@ -90,6 +93,7 @@ class AdmissionController extends Controller
                 'offence_description' => $validated['offence_description'] ?? null,
                 'sentence_years' => $validated['sentence_years'] ?? null,
                 'sentence_months' => $validated['sentence_months'] ?? null,
+                'sentence_days' => $validated['sentence_days'] ?? null,
                 'sentence_start_date' => $validated['sentence_start_date'] ?? null,
                 'projected_release_date' => $projectedReleaseDate,
                 'original_release_date' => $projectedReleaseDate,
@@ -99,7 +103,9 @@ class AdmissionController extends Controller
                 'is_current' => true,
             ]);
 
-            $classification = $this->mapInmateTypeToSecurityClassification($validated['inmate_type']);
+            $classification = $validated['inmate_type'] === 'convict'
+                ? $this->offenceClassificationService->getClassificationForConvict($validated['offence_description'] ?? null)
+                : $this->mapInmateTypeToSecurityClassification($validated['inmate_type']);
             $gender = in_array($inmate->gender, ['male', 'female'], true) ? $inmate->gender : null;
             $cell = $this->cellAllocationService->findAvailableCell($classification, $gender);
 
@@ -169,6 +175,7 @@ class AdmissionController extends Controller
         $validated = $request->validate([
             'sentence_years' => ['required', 'integer', 'min:0'],
             'sentence_months' => ['nullable', 'integer', 'min:0', 'max:11'],
+            'sentence_days' => ['nullable', 'integer', 'min:0', 'max:30'],
         ]);
 
         if (!$admission->is_current || $admission->released_at !== null) {
@@ -183,11 +190,13 @@ class AdmissionController extends Controller
             $before = $admission->toArray();
             $sentenceYears = (int) $validated['sentence_years'];
             $sentenceMonths = (int) ($validated['sentence_months'] ?? 0);
+            $sentenceDays = (int) ($validated['sentence_days'] ?? 0);
 
             $baseReleaseDate = $this->sentenceCalculationService->calculateProjectedReleaseDate(
                 CarbonImmutable::parse($admission->sentence_start_date),
                 $sentenceYears,
                 $sentenceMonths,
+                $sentenceDays,
             );
 
             $adjustmentDays = (int) $admission->sentenceAdjustments()->sum('adjustment_days');
@@ -196,6 +205,7 @@ class AdmissionController extends Controller
             $admission->update([
                 'sentence_years' => $sentenceYears,
                 'sentence_months' => $sentenceMonths,
+                'sentence_days' => $sentenceDays,
                 'original_release_date' => $baseReleaseDate->toDateString(),
                 'projected_release_date' => $projectedReleaseDate,
             ]);

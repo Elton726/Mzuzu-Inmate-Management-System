@@ -51,6 +51,7 @@ const buildAdmissionPayload = ({ inmateId, admission, warrantDocId }) => {
   if (admission.inmateType === 'convict') {
     payload.sentence_years = admission.sentenceYears != null && admission.sentenceYears !== '' ? Number(admission.sentenceYears) : null;
     payload.sentence_months = admission.sentenceMonths != null && admission.sentenceMonths !== '' ? Number(admission.sentenceMonths) : null;
+    payload.sentence_days = admission.sentenceDays != null && admission.sentenceDays !== '' ? Number(admission.sentenceDays) : null;
     payload.sentence_start_date = toIso(admission.sentenceStartDate);
     payload.committal_warrant_id = warrantDocId || null;
     payload.remand_warrant_id = null;

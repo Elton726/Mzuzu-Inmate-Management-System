@@ -6,9 +6,14 @@ import {
   MdBadge,
   MdContentCopy,
   MdDescription,
+  MdDirectionsRun,
   MdEventNote,
+  MdExitToApp,
+  MdFactCheck,
   MdHomeWork,
+  MdLocalActivity,
   MdOpenInNew,
+  MdPeople,
   MdRefresh,
   MdSearch
 } from 'react-icons/md';
@@ -17,10 +22,25 @@ import { SERVER_BASE_URL } from '../../../services/apiService';
 import { formatDate } from '../../../utils/helpers';
 import InmateAvatar from '../../../components/common/InmateAvatar';
 
-const daysUntil = (dateValue) => {
+// Parses a date string as a local date (avoids UTC midnight rollback in +ve timezones)
+const parseLocalDate = (dateValue) => {
   if (!dateValue) return null;
+  const datePart = String(dateValue).split(/[T ]/)[0];
+  const parts = datePart.split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const d = new Date(year, month, day);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
   const d = new Date(dateValue);
-  if (Number.isNaN(d.getTime())) return null;
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
+const daysUntil = (dateValue) => {
+  const d = parseLocalDate(dateValue);
+  if (!d) return null;
   const today = new Date();
   const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const startTarget = new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -32,9 +52,8 @@ const daysUntil = (dateValue) => {
 
 // Returns true when court date is today or in the past
 const isCourtDue = (dateValue) => {
-  if (!dateValue) return false;
-  const d = new Date(dateValue);
-  if (Number.isNaN(d.getTime())) return false;
+  const d = parseLocalDate(dateValue);
+  if (!d) return false;
   const today = new Date();
   const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const startTarget = new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -43,9 +62,8 @@ const isCourtDue = (dateValue) => {
 
 // Returns true when court date has already passed (strictly past)
 const isCourtOverdue = (dateValue) => {
-  if (!dateValue) return false;
-  const d = new Date(dateValue);
-  if (Number.isNaN(d.getTime())) return false;
+  const d = parseLocalDate(dateValue);
+  if (!d) return false;
   const today = new Date();
   const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const startTarget = new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -70,6 +88,27 @@ const getAdmissionAllocations = (admission) => {
 const getAdmissionActivities = (admission) => {
   const activities = admission?.inmate_activities || admission?.inmateActivities;
   return Array.isArray(activities) ? activities : [];
+};
+
+const getAdmissionReleaseWorkflows = (admission) => {
+  const workflows = admission?.release_workflows || admission?.releaseWorkflows;
+  return Array.isArray(workflows) ? workflows : [];
+};
+
+const getAdmissionSentenceAdjustments = (admission) => {
+  const adjustments = admission?.sentence_adjustments || admission?.sentenceAdjustments;
+  return Array.isArray(adjustments) ? adjustments : [];
+};
+
+const getChecklistItems = (workflow) => {
+  const checklist = workflow?.clearance_checklist || workflow?.clearanceChecklist;
+  const items = checklist?.items;
+  return Array.isArray(items) ? items : [];
+};
+
+const getRelationArray = (source, snakeKey, camelKey) => {
+  const value = source?.[snakeKey] || source?.[camelKey];
+  return Array.isArray(value) ? value : [];
 };
 
 function DetailItem({ label, value, highlight = false, wide = false }) {
@@ -153,6 +192,16 @@ export default function InmateDetailPage() {
   const admissionsCount = inmate.admissions_count ?? inmate.admissionsCount ?? admissions.length;
   const activeAllocations = getAdmissionAllocations(admission);
   const activeActivities = getAdmissionActivities(admission);
+  const allActivityAssignments = getRelationArray(inmate, 'inmate_activities', 'inmateActivities');
+  const visitSessions = getRelationArray(inmate, 'visit_sessions', 'visitSessions');
+  const visitorRelationships = getRelationArray(inmate, 'visitor_relationships', 'visitorRelationships');
+  const sessionAttendances = getRelationArray(inmate, 'session_attendances', 'sessionAttendances');
+  const releaseWorkflows = admissions.flatMap(getAdmissionReleaseWorkflows);
+  const sentenceAdjustments = admissions.flatMap(getAdmissionSentenceAdjustments);
+  const activeReleaseWorkflows = getAdmissionReleaseWorkflows(admission);
+  const activeSentenceAdjustments = getAdmissionSentenceAdjustments(admission);
+  const activeChecklistItems = activeReleaseWorkflows.flatMap(getChecklistItems);
+  const clearedChecklistItems = activeChecklistItems.filter((item) => item.is_cleared || item.isCleared).length;
   const filteredDocs = docs.filter((doc) => {
     const query = documentQuery.trim().toLowerCase();
     if (!query) return true;
@@ -163,6 +212,11 @@ export default function InmateDetailPage() {
   const tabs = [
     { key: 'overview', label: 'Overview', icon: MdBadge },
     { key: 'admission', label: 'Admission', icon: MdAssignment },
+    {
+      key: 'involvement',
+      label: `Involvement (${allActivityAssignments.length + visitSessions.length + releaseWorkflows.length + sessionAttendances.length})`,
+      icon: MdFactCheck
+    },
     { key: 'documents', label: `Documents (${docs.length})`, icon: MdDescription },
     { key: 'history', label: `History (${admissions.length})`, icon: MdEventNote }
   ];
@@ -328,6 +382,11 @@ export default function InmateDetailPage() {
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Identity & personal details</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <DetailItem label="Prison number" value={inmate.prison_number} />
+            {admission?.offence_description ? (
+              <DetailItem label="Offence description" value={admission.offence_description} />
+            ) : (
+              <DetailItem label="Offence description" value={'—'} />
+            )}
             <DetailItem label="Status" value={formatLabel(inmate.status)} />
             <DetailItem label="First name" value={inmate.first_name} />
             <DetailItem label="Last name" value={inmate.last_name} />
@@ -464,6 +523,206 @@ export default function InmateDetailPage() {
             </div>
           )}
         </div>
+          </div>
+        )}
+
+        {activeTab === 'involvement' && (
+          <div className="mt-5 space-y-5">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+                <div className="flex items-center gap-2 text-gray-500 text-xs font-semibold uppercase">
+                  <MdLocalActivity className="h-4 w-4" />
+                  Activities
+                </div>
+                <p className="mt-2 text-2xl font-bold text-gray-900">{allActivityAssignments.length}</p>
+              </div>
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+                <div className="flex items-center gap-2 text-gray-500 text-xs font-semibold uppercase">
+                  <MdPeople className="h-4 w-4" />
+                  Visits
+                </div>
+                <p className="mt-2 text-2xl font-bold text-gray-900">{visitSessions.length}</p>
+              </div>
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+                <div className="flex items-center gap-2 text-gray-500 text-xs font-semibold uppercase">
+                  <MdDirectionsRun className="h-4 w-4" />
+                  Attendance
+                </div>
+                <p className="mt-2 text-2xl font-bold text-gray-900">{sessionAttendances.length}</p>
+              </div>
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+                <div className="flex items-center gap-2 text-gray-500 text-xs font-semibold uppercase">
+                  <MdExitToApp className="h-4 w-4" />
+                  Release workflows
+                </div>
+                <p className="mt-2 text-2xl font-bold text-gray-900">{releaseWorkflows.length}</p>
+              </div>
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 col-span-2 lg:col-span-1">
+                <div className="flex items-center gap-2 text-gray-500 text-xs font-semibold uppercase">
+                  <MdFactCheck className="h-4 w-4" />
+                  Sentence changes
+                </div>
+                <p className="mt-2 text-2xl font-bold text-gray-900">{sentenceAdjustments.length}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">Activity assignments</h2>
+                {allActivityAssignments.length === 0 ? (
+                  <p className="text-gray-700">No activity assignments.</p>
+                ) : (
+                  <div className="border rounded divide-y">
+                    {allActivityAssignments.map((item) => (
+                      <div key={item.id} className="px-4 py-3">
+                        <div className="font-semibold text-gray-800">{item.activity?.name || 'Activity'}</div>
+                        <div className="text-sm text-gray-600">
+                          Type: <span className="font-semibold">{formatLabel(item.activity?.activity_type)}</span> ·
+                          Assigned: <span className="font-semibold">{item.assigned_date ? formatDate(item.assigned_date) : '—'}</span>
+                        </div>
+                        {item.end_date && (
+                          <div className="text-sm text-gray-600">
+                            Ended: <span className="font-semibold">{formatDate(item.end_date)}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">Activity attendance</h2>
+                {sessionAttendances.length === 0 ? (
+                  <p className="text-gray-700">No attendance records.</p>
+                ) : (
+                  <div className="border rounded divide-y max-h-96 overflow-y-auto">
+                    {sessionAttendances.map((attendance) => {
+                      const session = attendance.session || {};
+                      return (
+                        <div key={attendance.id} className="px-4 py-3">
+                          <div className="font-semibold text-gray-800">{session.activity?.name || 'Activity session'}</div>
+                          <div className="text-sm text-gray-600">
+                            Status: <span className="font-semibold">{formatLabel(attendance.attendance_status)}</span> ·
+                            Date: <span className="font-semibold">{session.session_date ? formatDate(session.session_date) : '—'}</span>
+                          </div>
+                          {attendance.notes && <div className="text-sm text-gray-600">Notes: {attendance.notes}</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">Visitation</h2>
+                {visitSessions.length === 0 ? (
+                  <p className="text-gray-700">No visit sessions recorded.</p>
+                ) : (
+                  <div className="border rounded divide-y max-h-96 overflow-y-auto">
+                    {visitSessions.map((visit) => (
+                      <div key={visit.id} className="px-4 py-3">
+                        <div className="font-semibold text-gray-800">{visit.visitor?.full_name || 'Visitor not recorded'}</div>
+                        <div className="text-sm text-gray-600">
+                          Type: <span className="font-semibold">{formatLabel(visit.visit_type)}</span> ·
+                          Status: <span className="font-semibold">{formatLabel(visit.status)}</span>
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Checked in: <span className="font-semibold">{visit.checked_in_at ? formatDate(visit.checked_in_at) : '—'}</span>
+                          {Array.isArray(visit.items) && visit.items.length > 0 && (
+                            <> · Items: <span className="font-semibold">{visit.items.length}</span></>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">Approved visitors</h2>
+                {visitorRelationships.length === 0 ? (
+                  <p className="text-gray-700">No visitor relationships recorded.</p>
+                ) : (
+                  <div className="border rounded divide-y max-h-96 overflow-y-auto">
+                    {visitorRelationships.map((relationship) => (
+                      <div key={relationship.id} className="px-4 py-3">
+                        <div className="font-semibold text-gray-800">{relationship.visitor?.full_name || 'Visitor not recorded'}</div>
+                        <div className="text-sm text-gray-600">
+                          Relationship: <span className="font-semibold">{formatLabel(relationship.relationship_type)}</span> ·
+                          Approved: <span className="font-semibold">{relationship.is_approved ? 'Yes' : 'No'}</span>
+                        </div>
+                        {relationship.notes && <div className="text-sm text-gray-600">Notes: {relationship.notes}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">Release involvement</h2>
+                {releaseWorkflows.length === 0 ? (
+                  <p className="text-gray-700">No release workflow records.</p>
+                ) : (
+                  <div className="border rounded divide-y">
+                    {releaseWorkflows.map((workflow) => {
+                      const items = getChecklistItems(workflow);
+                      const cleared = items.filter((item) => item.is_cleared || item.isCleared).length;
+                      return (
+                        <div key={workflow.id} className="px-4 py-3">
+                          <div className="font-semibold text-gray-800">Workflow #{workflow.id}</div>
+                          <div className="text-sm text-gray-600">
+                            Status: <span className="font-semibold">{formatLabel(workflow.status)}</span>
+                            {items.length > 0 && (
+                              <> · Clearance: <span className="font-semibold">{cleared}/{items.length}</span></>
+                            )}
+                          </div>
+                          {workflow.approved_at && (
+                            <div className="text-sm text-gray-600">Approved: {formatDate(workflow.approved_at)}</div>
+                          )}
+                          {workflow.confirmed_at && (
+                            <div className="text-sm text-gray-600">Confirmed: {formatDate(workflow.confirmed_at)}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {activeChecklistItems.length > 0 && (
+                  <p className="mt-3 text-sm text-gray-600">
+                    Current admission clearance: <span className="font-semibold">{clearedChecklistItems}/{activeChecklistItems.length}</span> items cleared.
+                  </p>
+                )}
+              </div>
+
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">Sentence adjustments</h2>
+                {sentenceAdjustments.length === 0 ? (
+                  <p className="text-gray-700">No sentence adjustments.</p>
+                ) : (
+                  <div className="border rounded divide-y">
+                    {sentenceAdjustments.map((adjustment) => (
+                      <div key={adjustment.id} className="px-4 py-3">
+                        <div className="font-semibold text-gray-800">{formatLabel(adjustment.adjustment_type)}</div>
+                        <div className="text-sm text-gray-600">
+                          Days: <span className="font-semibold">{adjustment.adjustment_days ?? '—'}</span> ·
+                          Effective: <span className="font-semibold">{adjustment.effective_date ? formatDate(adjustment.effective_date) : '—'}</span>
+                        </div>
+                        {adjustment.reason && <div className="text-sm text-gray-600">Reason: {adjustment.reason}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {activeSentenceAdjustments.length > 0 && (
+                  <p className="mt-3 text-sm text-gray-600">
+                    Current admission adjustment total:{' '}
+                    <span className="font-semibold">
+                      {activeSentenceAdjustments.reduce((sum, item) => sum + Number(item.adjustment_days || 0), 0)} day(s)
+                    </span>
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

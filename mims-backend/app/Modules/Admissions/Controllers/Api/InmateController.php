@@ -45,7 +45,7 @@ class InmateController extends Controller
 
         $query = Inmate::query()
             ->withCount('admissions')
-            ->with(['currentAdmission:id,inmate_id,is_current,admission_date,inmate_type,case_number,sentence_years,sentence_months,sentence_start_date,projected_release_date,original_release_date,released_at']);
+            ->with(['currentAdmission:id,inmate_id,is_current,admission_date,inmate_type,case_number,sentence_years,sentence_months,sentence_start_date,projected_release_date,original_release_date,remand_next_court_date,released_at']);
 
         if (! $includeReleased) {
             $query->where('status', '<>', 'released');
@@ -71,7 +71,7 @@ class InmateController extends Controller
         $query = Inmate::query()
             ->where('status', '<>', 'released')
             ->withCount('admissions')
-            ->with(['currentAdmission:id,inmate_id,is_current,admission_date,inmate_type,case_number,sentence_years,sentence_months,sentence_start_date,projected_release_date,original_release_date,released_at'])
+            ->with(['currentAdmission:id,inmate_id,is_current,admission_date,inmate_type,case_number,sentence_years,sentence_months,sentence_start_date,projected_release_date,original_release_date,remand_next_court_date,released_at'])
             ->where(function ($builder) use ($q, $terms, $like) {
                 $builder
                     ->whereRaw('LOWER(prison_number) LIKE ?', [$like($q)])
@@ -136,13 +136,32 @@ class InmateController extends Controller
         return response()->json($inmate->loadCount('admissions')->load([
             'currentAdmission.cellAllocations.cell',
             'currentAdmission.inmateActivities.activity',
+            'currentAdmission.releaseWorkflows.clearanceChecklist.items',
+            'currentAdmission.sentenceAdjustments.approver',
             'admissions' => fn ($query) => $query
-                ->with(['cellAllocations.cell', 'inmateActivities.activity'])
+                ->with([
+                    'cellAllocations.cell',
+                    'inmateActivities.activity',
+                    'releaseWorkflows.clearanceChecklist.items',
+                    'sentenceAdjustments.approver',
+                ])
                 ->latest('admission_date')
                 ->latest('id'),
             'cellAllocations.cell',
             'inmateActivities.activity',
             'documents' => fn ($query) => $query->latest('id'),
+            'visitSessions' => fn ($query) => $query
+                ->with(['visitor', 'items'])
+                ->latest('checked_in_at')
+                ->latest('created_at'),
+            'visitorRelationships' => fn ($query) => $query
+                ->with('visitor')
+                ->latest('approved_at')
+                ->latest('created_at'),
+            'sessionAttendances' => fn ($query) => $query
+                ->with(['session.activity', 'recorder'])
+                ->latest('recorded_at')
+                ->latest('id'),
         ]));
     }
 

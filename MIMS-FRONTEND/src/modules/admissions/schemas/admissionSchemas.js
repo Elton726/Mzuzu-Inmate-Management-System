@@ -27,12 +27,13 @@ export const admissionSchema = z
     admissionDate: isoDate,
     admissionType: z.enum(['first_time', 'repeat']),
     inmateType: z.enum(['convict', 'remandee', 'murder_remandee']),
-    caseNumber: z.string().min(1, 'Case number is required').max(50, 'Case number must be at most 50 characters'),
+    caseNumber: z.string().min(1, 'Case number is required').max(5, 'Case number must be at most 5 characters'),
     courtName: z.string().max(100, 'Court name must be at most 100 characters').optional().or(z.literal('')),
     offenceDescription: z.string().optional().or(z.literal('')),
 
     sentenceYears: z.any().optional(),
     sentenceMonths: z.any().optional(),
+    sentenceDays: z.any().optional(),
     sentenceStartDate: z.string().optional().or(z.literal('')),
 
     remandNextCourtDate: z.string().optional().or(z.literal('')),

@@ -1,14 +1,18 @@
 import { useCallback, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import Toast from '../components/Toast';
 import { normalizeApiError } from '../utils/normalizeApiError';
 import { ToastContext } from './ToastContextCreate';
 import { useNotification } from './useNotification';
+import { getModuleFromPathname } from '../utils/helpers';
 
 const newId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
   const { addNotification } = useNotification();
+  const location = useLocation();
+  const currentModule = getModuleFromPathname(location.pathname);
 
   const remove = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -17,12 +21,14 @@ export const ToastProvider = ({ children }) => {
   const push = useCallback((toast) => {
     const id = toast?.id || newId();
     const timeoutMs = typeof toast?.timeoutMs === 'number' ? toast.timeoutMs : 7000;
-    const next = { id, variant: 'error', ...toast };
+    const activeModule = getModuleFromPathname();
+    const next = { id, variant: 'error', module: activeModule, ...toast };
     setToasts((prev) => [next, ...prev].slice(0, 4));
     addNotification({
       title: next.title || notificationTitle(next.variant),
       message: next.message || next.details || 'System activity recorded.',
       type: next.variant,
+      module: activeModule,
     });
     if (timeoutMs > 0) {
       window.setTimeout(() => remove(id), timeoutMs);
@@ -79,11 +85,13 @@ export const ToastProvider = ({ children }) => {
     info,
   }), [push, remove, fromError, success, error, warning, info]);
 
+  const visibleToasts = toasts.filter(t => !t.module || t.module === currentModule || t.module === 'global');
+
   return (
     <ToastContext.Provider value={value}>
       {children}
       <div className="fixed top-6 right-6 z-50 flex flex-col gap-3">
-        {toasts.map((t) => (
+        {visibleToasts.map((t) => (
           <Toast
             key={t.id}
             title={t.title}

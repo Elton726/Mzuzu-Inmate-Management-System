@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\StatisticsController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Modules\ActivityAllocation\Controllers\Admin\ActivityManagementController;
 use App\Modules\ActivityAllocation\Controllers\Admin\OfficerDutyRosterController;
@@ -60,6 +61,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Admin routes - stricter than regular users
     Route::middleware(['role:admin', 'throttle:100,60,user'])->prefix('admin')->group(function () {
+        Route::get('/dashboard/overview', [AdminDashboardController::class, 'overview'])->middleware('throttle:60,60,user');
+
         // Statistics must come before resource routes to avoid ID matching
         Route::get('/users/statistics', [AdminUserController::class, 'statistics'])->middleware('throttle:100,60,user');
         Route::post('/users/bulk-delete', [AdminUserController::class, 'bulkDelete'])->middleware('throttle:100,60,user');

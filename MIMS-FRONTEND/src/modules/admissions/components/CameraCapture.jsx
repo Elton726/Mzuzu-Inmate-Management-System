@@ -205,19 +205,18 @@ export default function CameraCapture({ onCapture, onCancel }) {
           <div className="absolute inset-0 bg-white z-20 transition-opacity duration-150 ease-out opacity-100 animate-flash"></div>
         )}
 
-        {previewUrl ? (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className={`w-full h-full object-cover transform -scale-x-100 ${previewUrl ? 'hidden' : ''}`}
+        />
+        {previewUrl && (
           <img
             src={previewUrl}
             alt="Captured Inmate"
             className="w-full h-full object-cover"
-          />
-        ) : (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover transform -scale-x-100"
           />
         )}
       </div>

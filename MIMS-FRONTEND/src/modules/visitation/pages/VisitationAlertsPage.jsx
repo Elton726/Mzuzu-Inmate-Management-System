@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { FiAlertTriangle, FiBell, FiRefreshCw } from 'react-icons/fi';
 import Button from '../../../components/common/Button';
+import { useNotification } from '../../../contexts/useNotification';
 import {
   getVisitationAlerts,
   getVisitationNotifications,
@@ -16,6 +17,7 @@ const nameOf = (inmate) => [inmate?.first_name, inmate?.last_name].filter(Boolea
 export default function VisitationAlertsPage() {
   const [alerts, setAlerts] = useState({ overdue: [], flagged: [] });
   const [notifications, setNotifications] = useState([]);
+  const { addNotification, markAsRead: globalMarkAsRead } = useNotification();
   const [loading, setLoading] = useState(false);
 
   const load = async () => {
@@ -27,6 +29,22 @@ export default function VisitationAlertsPage() {
       ]);
       setAlerts(alertData || { overdue: [], flagged: [] });
       setNotifications(notificationData || []);
+      
+      // Sync unread notifications with global handler
+      if (notificationData) {
+        notificationData.forEach(n => {
+          if (!n.is_read) {
+            addNotification({
+              id: n.id,
+              title: n.title,
+              message: n.message,
+              type: 'info',
+              module: 'visitation',
+              timestamp: n.created_at,
+            });
+          }
+        });
+      }
     } catch (err) {
       toast.error(getErrorMessage(err, 'Failed to load visitation alerts'));
     } finally {
@@ -44,6 +62,7 @@ export default function VisitationAlertsPage() {
       setNotifications((current) => current.map((row) => (
         row.id === notification.id ? { ...row, is_read: true } : row
       )));
+      globalMarkAsRead(notification.id);
     } catch (err) {
       toast.error(getErrorMessage(err, 'Failed to update notification'));
     }
