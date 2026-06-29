@@ -15,7 +15,6 @@ import { baseActivitySchema, externalDetailsSchema } from '../schemas/activitySc
 import Card from '../../../../components/common/Card';
 import Input from '../../../../components/common/Input';
 import Select from '../../../../components/common/Select';
-import Checkbox from '../../../../components/common/Checkbox';
 import Button from '../../../../components/common/Button';
 import Spinner from '../../../../components/common/Spinner';
 import EligibilityCriteriaForm from '../components/ActivityManagement/EligibilityCriteriaForm';
@@ -42,7 +41,6 @@ export default function ActivityFormPage() {
       category_id: undefined,
       eligibility_criteria: {},
       max_participants: null,
-      is_active: true,
       security_level: 'medium',
     },
   });
@@ -77,6 +75,7 @@ export default function ActivityFormPage() {
     () => String(selectedCategory?.name || '').toLowerCase() === 'external',
     [selectedCategory]
   );
+  const hideMaxParticipants = selectedCategory?.name === 'Internal Predefined';
 
   useEffect(() => {
     dispatch(fetchCategories());
@@ -96,7 +95,6 @@ export default function ActivityFormPage() {
       category_id: currentActivity.category_id ?? undefined,
       eligibility_criteria: currentActivity.eligibility_criteria || {},
       max_participants: currentActivity.max_participants ?? null,
-      is_active: !!currentActivity.is_active,
       security_level: currentActivity.security_level || 'medium',
     });
 
@@ -117,6 +115,8 @@ export default function ActivityFormPage() {
     try {
       const payload = {
         ...data,
+        max_participants: hideMaxParticipants ? null : data.max_participants,
+        is_active: isEdit ? currentActivity?.is_active ?? true : true,
         // Store as structured data (no JSON typing required).
         eligibility_criteria: { ...(data.eligibility_criteria || {}), allowed_inmate_types: ['convict'] },
       };
@@ -162,14 +162,16 @@ export default function ActivityFormPage() {
                   error={form.formState.errors.category_id}
                   hint="This determines internal/external and predefined/custom."
                 />
-                <Input
-                  type="number"
-                  label="Max Participants"
-                  {...form.register('max_participants', {
-                    setValueAs: (v) => (v === '' || v == null ? null : Number(v)),
-                  })}
-                  error={form.formState.errors.max_participants}
-                />
+                {!hideMaxParticipants && (
+                  <Input
+                    type="number"
+                    label="Max Participants"
+                    {...form.register('max_participants', {
+                      setValueAs: (v) => (v === '' || v == null ? null : Number(v)),
+                    })}
+                    error={form.formState.errors.max_participants}
+                  />
+                )}
                 <Select
                   label="Security Level"
                   {...form.register('security_level')}
@@ -180,9 +182,6 @@ export default function ActivityFormPage() {
                   ]}
                   error={form.formState.errors.security_level}
                 />
-                <div className="col-span-2">
-                  <Checkbox label="Active" {...form.register('is_active')} />
-                </div>
               </div>
             </Card>
 

@@ -146,6 +146,12 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
           icon: MdLocalActivity,
           title: 'Activity Sessions',
           show: role === ROLES.OFFICER_ON_DUTY
+        },
+        {
+          to: '/officer/activity-reports',
+          icon: MdLocalActivity,
+          title: 'Activity Reports',
+          show: role === ROLES.OFFICER_ON_DUTY
         }
       ]
     },

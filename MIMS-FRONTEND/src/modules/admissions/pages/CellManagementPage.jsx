@@ -12,6 +12,7 @@ import {
 import Button from '../../../components/common/Button';
 import Card from '../../../components/common/Card';
 import Spinner from '../../../components/common/Spinner';
+import Modal from '../../../components/common/Modal';
 import { useToast } from '../../../contexts/useToast';
 import { createCell, deleteCell, listCells, updateCell } from '../services/cellService';
 
@@ -407,59 +408,119 @@ export default function CellManagementPage({ adminMode = false }) {
         </section>
 
         {adminMode && (
-          <Card className="border border-gray-200 shadow-sm">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">{editingCell ? 'Edit Cell' : 'Add Cell'}</h2>
-                  <p className="text-sm text-gray-500">Create or update cell number, block, capacity, security level, and availability status.</p>
-                </div>
-                {editingCell && (
-                  <Button type="button" variant="outline" onClick={resetForm}>Cancel Edit</Button>
-                )}
-              </div>
+          <>
+            {/* Add Cell form stays inline */}
+            {!editingCell && (
+              <Card className="border border-gray-200 shadow-sm">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">Add Cell</h2>
+                      <p className="text-sm text-gray-500">Create cell number, block, capacity, security level, and availability status.</p>
+                    </div>
+                  </div>
 
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
-                <label className="text-sm font-semibold text-gray-700">
-                  Cell Number
-                  <input className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.cell_number} onChange={(event) => setForm({ ...form, cell_number: event.target.value })} required />
-                </label>
-                <label className="text-sm font-semibold text-gray-700">
-                  Block
-                  <input className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.block} onChange={(event) => setForm({ ...form, block: event.target.value })} required />
-                </label>
-                <label className="text-sm font-semibold text-gray-700">
-                  Gender
-                  <select className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.gender} onChange={(event) => setForm({ ...form, gender: event.target.value })}>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                  </select>
-                </label>
-                <label className="text-sm font-semibold text-gray-700">
-                  Security
-                  <select className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.security_classification} onChange={(event) => setForm({ ...form, security_classification: event.target.value })}>
-                    {FORM_SECURITY_LEVELS.map((level) => <option key={level.value} value={level.value}>{level.label}</option>)}
-                  </select>
-                </label>
-                <label className="text-sm font-semibold text-gray-700">
-                  Capacity
-                  <input type="number" min="1" className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.capacity} onChange={(event) => setForm({ ...form, capacity: event.target.value })} required />
-                </label>
-                <label className="text-sm font-semibold text-gray-700">
-                  Status
-                  <select className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
-                    <option value="available">Available</option>
-                    <option value="full">Full</option>
-                    <option value="maintenance">Maintenance</option>
-                  </select>
-                </label>
-              </div>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+                    <label className="text-sm font-semibold text-gray-700">
+                      Cell Number
+                      <input className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.cell_number} onChange={(event) => setForm({ ...form, cell_number: event.target.value })} required />
+                    </label>
+                    <label className="text-sm font-semibold text-gray-700">
+                      Block
+                      <input className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.block} onChange={(event) => setForm({ ...form, block: event.target.value })} required />
+                    </label>
+                    <label className="text-sm font-semibold text-gray-700">
+                      Gender
+                      <select className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.gender} onChange={(event) => setForm({ ...form, gender: event.target.value })}>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                      </select>
+                    </label>
+                    <label className="text-sm font-semibold text-gray-700">
+                      Security
+                      <select className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.security_classification} onChange={(event) => setForm({ ...form, security_classification: event.target.value })}>
+                        {FORM_SECURITY_LEVELS.map((level) => <option key={level.value} value={level.value}>{level.label}</option>)}
+                      </select>
+                    </label>
+                    <label className="text-sm font-semibold text-gray-700">
+                      Capacity
+                      <input type="number" min="1" className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.capacity} onChange={(event) => setForm({ ...form, capacity: event.target.value })} required />
+                    </label>
+                    <label className="text-sm font-semibold text-gray-700">
+                      Status
+                      <select className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
+                        <option value="available">Available</option>
+                        <option value="full">Full</option>
+                        <option value="maintenance">Maintenance</option>
+                      </select>
+                    </label>
+                  </div>
 
-              <Button type="submit" loading={saving}>
-                {editingCell ? <MdSave /> : <MdAdd />} {editingCell ? 'Save Changes' : 'Add Cell'}
-              </Button>
-            </form>
-          </Card>
+                  <Button type="submit" loading={saving}>
+                    <MdAdd /> Add Cell
+                  </Button>
+                </form>
+              </Card>
+            )}
+
+            {/* Edit Cell modal */}
+            {editingCell && (
+              <Modal
+                title="Edit Cell"
+                onClose={resetForm}
+                widthClass="max-w-3xl"
+              >
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <p className="text-sm text-gray-500">Update cell number, block, capacity, security level, and availability status.</p>
+
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+                    <label className="text-sm font-semibold text-gray-700">
+                      Cell Number
+                      <input className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.cell_number} onChange={(event) => setForm({ ...form, cell_number: event.target.value })} required />
+                    </label>
+                    <label className="text-sm font-semibold text-gray-700">
+                      Block
+                      <input className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.block} onChange={(event) => setForm({ ...form, block: event.target.value })} required />
+                    </label>
+                    <label className="text-sm font-semibold text-gray-700">
+                      Gender
+                      <select className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.gender} onChange={(event) => setForm({ ...form, gender: event.target.value })}>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                      </select>
+                    </label>
+                    <label className="text-sm font-semibold text-gray-700">
+                      Security
+                      <select className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.security_classification} onChange={(event) => setForm({ ...form, security_classification: event.target.value })}>
+                        {FORM_SECURITY_LEVELS.map((level) => <option key={level.value} value={level.value}>{level.label}</option>)}
+                      </select>
+                    </label>
+                    <label className="text-sm font-semibold text-gray-700">
+                      Capacity
+                      <input type="number" min="1" className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.capacity} onChange={(event) => setForm({ ...form, capacity: event.target.value })} required />
+                    </label>
+                    <label className="text-sm font-semibold text-gray-700">
+                      Status
+                      <select className="mt-1 w-full rounded border border-gray-300 px-3 py-2" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
+                        <option value="available">Available</option>
+                        <option value="full">Full</option>
+                        <option value="maintenance">Maintenance</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={resetForm}>
+                      Cancel Edit
+                    </Button>
+                    <Button type="submit" loading={saving}>
+                      <MdSave /> Save Changes
+                    </Button>
+                  </div>
+                </form>
+              </Modal>
+            )}
+          </>
         )}
 
         <Card className="border border-gray-200 shadow-sm">

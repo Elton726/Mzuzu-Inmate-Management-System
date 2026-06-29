@@ -18,6 +18,19 @@ class InmateVisitEligibilityChecker
             ];
         }
 
+        $hasActiveSession = \App\Modules\ActivityAllocation\Models\SessionAttendance::where('inmate_id', $inmate->id)
+            ->whereHas('session', function ($query) {
+                $query->where('status', 'in_progress');
+            })
+            ->exists();
+
+        if ($hasActiveSession) {
+            return [
+                'eligible' => false,
+                'reason' => 'Inmate is currently participating in an active activity session.',
+            ];
+        }
+
         if (! VisitationRule::boolValue('regular_visits_enabled')) {
             return [
                 'eligible' => false,

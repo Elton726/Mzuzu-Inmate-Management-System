@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 class OfficerDutyRosterRepository
 {
     public const SHIFT_TYPE_FULL_DAY = 'full_day';
-    private const EXCLUDED_ROLE_NAMES = ['admin', 'reception_officer', 'station_officer', 'gatekeeper'];
+    private const EXCLUDED_ROLE_NAMES = ['admin', 'reception_officer', 'station_officer', 'gatekeeper', 'officer_on_duty'];
 
     public function all(int $perPage = 15, array $filters = []): LengthAwarePaginator
     {

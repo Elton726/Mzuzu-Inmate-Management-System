@@ -154,50 +154,12 @@ export default function OfficerAvailableActivitiesPage() {
     navigate(`/officer/activity-sessions/new?activity_id=${activity.id}`);
   };
 
-  const openTodaySession = async (activity) => {
-    const actionKey = `internal-${activity.id}`;
-    try {
-      setWorkingAction(actionKey);
-      const res = await officerSessionService.getOrCreateDailySession({ activity_id: activity.id });
-      const session = res?.data;
-      if (!session?.id) {
-        toast.push({ title: 'Daily session', message: 'Session created, but no id returned.', variant: 'error' });
-        return;
-      }
-      toast.push({
-        title: 'Daily session',
-        message: res?.status === 200 ? 'Today’s session already exists.' : 'Today’s session created.',
-        variant: 'success',
-      });
-      navigate(`/officer/activity-sessions/${session.id}`);
-    } catch (err) {
-      toast.fromError(err, { title: 'Daily session' });
-    } finally {
-      setWorkingAction('');
-    }
+  const openTodaySession = (activity) => {
+    navigate(`/officer/activity-sessions/new?activity_id=${activity.id}`);
   };
 
-  const openExternalOnceSession = async (activity) => {
-    const actionKey = `external-${activity.id}`;
-    try {
-      setWorkingAction(actionKey);
-      const res = await officerSessionService.getOrCreateExternalOnceSession({ activity_id: activity.id });
-      const session = res?.data;
-      if (!session?.id) {
-        toast.push({ title: 'External session', message: 'Session created, but no id returned.', variant: 'error' });
-        return;
-      }
-      toast.push({
-        title: 'External session',
-        message: res?.status === 200 ? 'Session already exists.' : 'Session created.',
-        variant: 'success',
-      });
-      navigate(`/officer/activity-sessions/${session.id}`);
-    } catch (err) {
-      toast.fromError(err, { title: 'External session' });
-    } finally {
-      setWorkingAction('');
-    }
+  const openExternalOnceSession = (activity) => {
+    navigate(`/officer/activity-sessions/new?activity_id=${activity.id}`);
   };
 
   const openAllocation = (activity) => {
@@ -246,29 +208,55 @@ export default function OfficerAvailableActivitiesPage() {
       onOpenAutoAssign: openAutoAssign,
     };
 
-    const showInternal = !activityTypeFilter || activityTypeFilter === 'internal';
-    const showExternal = !activityTypeFilter || activityTypeFilter === 'external';
+    const activeTab = activityTypeFilter || 'all';
+
+    const tabClass = (tab) =>
+      `px-5 py-2.5 text-sm font-semibold rounded-t-2xl border-b-2 transition-all duration-200 ${
+        activeTab === tab
+          ? 'text-malawiBlack border-malawiBlack bg-white/70 dark:text-white dark:border-white dark:bg-slate-800'
+          : 'text-gray-600 border-transparent hover:text-gray-800 hover:border-gray-400'
+      }`;
 
     return (
       <div className="min-h-screen bg-malawiGold px-4 py-8 md:px-8">
         <div className="mx-auto max-w-7xl space-y-6">
-          {showInternal ? (
+          <div className="flex border-b border-gray-300 dark:border-slate-700 space-x-2">
+            <button className={tabClass('all')} onClick={() => navigate('/officer/activities')}>
+              All Activities
+            </button>
+            <button className={tabClass('internal')} onClick={() => navigate('/officer/activities?type=internal')}>
+              Internal Activities
+            </button>
+            <button className={tabClass('external')} onClick={() => navigate('/officer/activities?type=external')}>
+              External Activities
+            </button>
+          </div>
+
+          {activeTab === 'all' ? (
+            <ActivityQueueWidget
+              title="All Activities"
+              subtitle="All available internal and external activities are listed together for quick action."
+              emptyText="No activities match the current filters."
+              activities={activities}
+              {...queueHandlers}
+            />
+          ) : null}
+
+          {activeTab === 'internal' ? (
             <ActivityQueueWidget
               title="Internal Activity Queue"
               subtitle="Internal activities are tracked daily. Open today’s session or go to the full form when you need manual control."
               emptyText="No internal activities match the current filters."
               activities={internalActivities}
-              activityType="internal"
               {...queueHandlers}
             />
           ) : null}
-          {showExternal ? (
+          {activeTab === 'external' ? (
             <ActivityQueueWidget
               title="External Allocation Queue"
               subtitle="External activities usually need inmate allocation plus a one-time session before attendance can be tracked."
               emptyText="No external activities match the current filters."
               activities={externalActivities}
-              activityType="external"
               {...queueHandlers}
             />
           ) : null}

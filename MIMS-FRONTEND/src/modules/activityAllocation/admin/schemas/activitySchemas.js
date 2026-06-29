@@ -4,8 +4,6 @@ const eligibilityCriteriaSchema = z.object({
   allowed_inmate_types: z.array(z.literal('convict')).optional(),
   min_sentence_years: z.number().min(0).optional(),
   skills_required: z.array(z.string().min(1)).optional(),
-  good_behavior: z.boolean().optional(),
-  education_level: z.enum(['none', 'primary', 'secondary', 'tertiary']).optional(),
 }).partial();
 
 export const baseActivitySchema = z.object({
@@ -13,7 +11,6 @@ export const baseActivitySchema = z.object({
   category_id: z.number({ required_error: 'Select a category' }).int().positive('Select a category'),
   eligibility_criteria: eligibilityCriteriaSchema.optional(),
   max_participants: z.number().int().positive().nullable().optional(),
-  is_active: z.boolean().default(true),
   security_level: z.enum(['low', 'medium', 'high']).default('medium').optional(),
 });
 

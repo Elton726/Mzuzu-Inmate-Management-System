@@ -302,11 +302,11 @@ export const UserManagementPage = () => {
             className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
           >
             <option value="">All Roles</option>
-            {ROLE_OPTIONS.map(role => (
-              <option key={role.value} value={role.value}>
-                {role.label}
-              </option>
-            ))}
+                {ROLE_OPTIONS.filter(r => r.value !== 'officer_on_duty').map(role => (
+                    <option key={role.value} value={role.value}>
+                      {role.label}
+                    </option>
+                  ))}
           </select>
 
           <select
@@ -513,7 +513,7 @@ export const UserManagementPage = () => {
                   onChange={handleFormChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
                 >
-                  {ROLE_OPTIONS.map(role => (
+                  {ROLE_OPTIONS.filter(r => r.value !== 'officer_on_duty').map(role => (
                     <option key={role.value} value={role.value}>
                       {role.label}
                     </option>
@@ -581,11 +581,11 @@ export const UserManagementPage = () => {
                   onChange={handleFormChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
                 >
-                  {ROLE_OPTIONS.map(role => (
-                    <option key={role.value} value={role.value}>
-                      {role.label}
-                    </option>
-                  ))}
+                {ROLE_OPTIONS.filter(r => r.value !== 'officer_on_duty').map(role => (
+                  <option key={role.value} value={role.value}>
+                    {role.label}
+                  </option>
+                ))}
                 </select>
               </div>
 
@@ -653,11 +653,11 @@ export const UserManagementPage = () => {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
               >
                 <option value="">-- Select Role --</option>
-                {ROLE_OPTIONS.map(role => (
-                  <option key={role.value} value={role.value}>
-                    {role.label}
-                  </option>
-                ))}
+                  {ROLE_OPTIONS.filter(r => r.value !== 'officer_on_duty').map(role => (
+                    <option key={role.value} value={role.value}>
+                      {role.label}
+                    </option>
+                  ))}
               </select>
             </div>
 

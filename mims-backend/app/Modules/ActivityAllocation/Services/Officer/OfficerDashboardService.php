@@ -19,7 +19,11 @@ class OfficerDashboardService
             ->where('status', '!=', 'cancelled')
             ->get();
 
-        $totalSessions = $todaySessions->count();
+        $expectedActivities = Activity::query()
+            ->where('is_active', true)
+            ->count();
+
+        $totalSessions = max($expectedActivities, $todaySessions->count());
         $completedSessions = $todaySessions->where('status', 'completed')->count();
         $completionPercent = $totalSessions > 0
             ? (int) round(($completedSessions / $totalSessions) * 100)

@@ -202,6 +202,7 @@ export const getRoleDisplayName = (userOrRole) => {
     admin: 'Administrator',
     reception_officer: 'Reception Officer',
     station_officer: 'Station Officer',
+    staff_officer: 'Staff Officer',
     officer_on_duty: 'Officer on Duty',
     gatekeeper: 'Gatekeeper'
   };
@@ -217,6 +218,7 @@ export const ROLES = {
   ADMIN: 'admin',
   RECEPTION_OFFICER: 'reception_officer',
   STATION_OFFICER: 'station_officer',
+  STAFF_OFFICER: 'staff_officer',
   OFFICER_ON_DUTY: 'officer_on_duty',
   GATEKEEPER: 'gatekeeper'
 };
@@ -230,6 +232,7 @@ export const ROLE_OPTIONS = [
   { value: 'admin', label: 'Administrator' },
   { value: 'reception_officer', label: 'Reception Officer' },
   { value: 'station_officer', label: 'Station Officer' },
+  { value: 'staff_officer', label: 'Staff Officer' },
   { value: 'officer_on_duty', label: 'Officer on Duty' },
   { value: 'gatekeeper', label: 'Gatekeeper' }
 ];

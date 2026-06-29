@@ -20,6 +20,7 @@ use App\Modules\ActivityAllocation\Controllers\Officer\OfficerDashboardControlle
 use App\Modules\ActivityAllocation\Controllers\Officer\ExternalActivityAllocationController;
 use App\Modules\ActivityAllocation\Controllers\Officer\SessionAttendanceController;
 use App\Modules\ActivityAllocation\Controllers\Officer\InternalActivityAutoAssignController;
+use App\Modules\ActivityAllocation\Controllers\Officer\ActivityReportController;
 use App\Modules\Release\Controllers\Api\ReleaseApprovalController;
 use App\Modules\Release\Controllers\Api\ReleaseConfirmationController;
 use App\Modules\Release\Controllers\Api\ReleaseDateLookupController;
@@ -266,6 +267,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         });
 
         Route::get('/activities/available', [AvailableActivitiesController::class, 'index'])->middleware('throttle:60,60,user');
+        Route::get('/activities/{activityId}/assigned-inmates', [AvailableActivitiesController::class, 'assignedInmates'])->middleware('throttle:60,60,user');
+        Route::get('/activity-reports', [ActivityReportController::class, 'index'])->middleware('throttle:30,60,user');
         Route::get('/dashboard/metrics', [OfficerDashboardController::class, 'metrics'])->middleware('throttle:60,60,user');
         Route::get('/activities/{activityId}/eligible-inmates', [ExternalActivityAllocationController::class, 'eligible'])->middleware('throttle:60,60,user');
         Route::post('/activities/{activityId}/allocations/manual', [ExternalActivityAllocationController::class, 'manual'])->middleware('throttle:30,60,user');

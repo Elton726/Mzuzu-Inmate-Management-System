@@ -156,13 +156,15 @@ export default function OfficerSessionsPage() {
                             <Link to={`/officer/activity-sessions/${s.id}`}>
                               <Button variant="outline" className="px-3 py-1 text-xs">View</Button>
                             </Link>
-                            <Button
-                              variant="danger"
-                              className="px-3 py-1 text-xs"
-                              onClick={() => setDeleteId(s.id)}
-                            >
-                              Delete
-                            </Button>
+                            {s.status !== 'completed' && s.status !== 'in_progress' && (
+                              <Button
+                                variant="danger"
+                                className="px-3 py-1 text-xs"
+                                onClick={() => setDeleteId(s.id)}
+                              >
+                                Delete
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>

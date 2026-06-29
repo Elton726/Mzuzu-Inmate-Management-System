@@ -68,15 +68,18 @@ export default function OfficerSessionFormPage() {
   const defaults = useMemo(
     () => ({
       activity_id: '',
-      session_date: '',
+      session_date: todayLocal,
       session_time: '',
       start_time: '',
       end_time: '',
-      status: 'scheduled',
+      status: 'in_progress',
       notes: '',
     }),
-    []
+    [todayLocal]
   );
+
+  const [assignedInmates, setAssignedInmates] = useState([]);
+  const [inmatesLoading, setInmatesLoading] = useState(false);
 
   const form = useForm({ defaultValues: defaults });
 
@@ -132,6 +135,27 @@ export default function OfficerSessionFormPage() {
   }, [form, isEdit, prefillActivityId]);
 
   const activityId = form.watch('activity_id');
+
+  useEffect(() => {
+    if (isEdit || !activityId) {
+      setAssignedInmates([]);
+      return;
+    }
+
+    const loadAssignedInmates = async () => {
+      try {
+        setInmatesLoading(true);
+        const res = await officerSessionService.getAssignedInmates(activityId);
+        setAssignedInmates(res?.data || []);
+      } catch (err) {
+        toast.fromError(err, { title: 'Assigned Inmates' });
+      } finally {
+        setInmatesLoading(false);
+      }
+    };
+
+    loadAssignedInmates();
+  }, [activityId, isEdit, toast]);
   const selectedActivity = useMemo(
     () => activities.find((a) => String(a.id) === String(activityId)),
     [activities, activityId]
@@ -177,13 +201,15 @@ export default function OfficerSessionFormPage() {
     if (!preset) return;
 
     form.setValue('session_time', preset.value, { shouldValidate: true, shouldDirty: true });
+    form.setValue('start_time', preset.start, { shouldValidate: true, shouldDirty: true });
+    form.setValue('end_time', preset.end, { shouldValidate: true, shouldDirty: true });
   };
 
   const onSubmit = async (data) => {
     try {
       const payload = {
         activity_id: Number(data.activity_id),
-        session_date: data.session_date,
+        session_date: data.session_date || todayLocal,
         session_time: data.session_time,
         start_time: data.start_time || null,
         end_time: data.end_time || null,
@@ -282,7 +308,8 @@ export default function OfficerSessionFormPage() {
                   label="Session date"
                   type="date"
                   {...form.register('session_date', { required: 'Session date is required' })}
-                  disabled={isEdit}
+                  disabled
+                  hint="Sessions are created for today."
                   error={form.formState.errors.session_date?.message}
                 />
                 {isInternal ? (
@@ -306,25 +333,23 @@ export default function OfficerSessionFormPage() {
                     }}
                     options={sessionPeriodOptions}
                     disabled={isEdit}
-                    hint="Choosing a period can auto-fill start/end times (editable)."
+                    hint="Choose Custom to enter exact start and end times."
                   />
                 )}
                 <Input
                   label="Start time"
-                  type="text"
-                  disabled
-                  value={form.getValues('start_time') || 'Auto-set on creation'}
-                  hint="Automatically set when session is created"
+                  type="time"
+                  {...form.register('start_time')}
+                  disabled={isEdit || (!isInternal && derivedSessionPeriod !== 'Custom')}
+                  hint={derivedSessionPeriod === 'Custom' ? 'Set the custom session start time.' : 'Filled from the selected period.'}
                 />
                 <Input
                   label="End time"
-                  type="text"
-                  disabled
-                  value={form.getValues('end_time') || 'Auto-calculated based on activity type'}
-                  hint={isInternal ? 'Internal activities: 2 hours duration' : 'External activities: 3 hours duration'}
+                  type="time"
+                  {...form.register('end_time')}
+                  disabled={isEdit || (!isInternal && derivedSessionPeriod !== 'Custom')}
+                  hint={derivedSessionPeriod === 'Custom' ? 'Set the custom session end time.' : 'Filled from the selected period.'}
                 />
-                <input type="hidden" {...form.register('start_time')} />
-                <input type="hidden" {...form.register('end_time')} />
                 {!isInternal && derivedSessionPeriod === 'Custom' && (
                   <Input
                     label="Session label"
@@ -335,17 +360,46 @@ export default function OfficerSessionFormPage() {
                     hint="Shown on lists and reports."
                   />
                 )}
-                <Select
+                <Input
                   label="Status"
-                  {...form.register('status')}
-                  options={statusOptions}
-                  disabled={isEdit}
+                  disabled
+                  value="In Progress"
+                  hint="New sessions always start in progress."
                 />
                 <div className="md:col-span-2">
                   <Textarea label="Notes" rows={4} {...form.register('notes')} disabled={isEdit} />
                 </div>
               </div>
             </Card>
+
+            {!isEdit && activityId && (
+              <Card title="Assigned Inmates Preview" subtitle="These inmates will be automatically added to the session attendance.">
+                {inmatesLoading ? (
+                  <Spinner label="Loading assigned inmates..." />
+                ) : assignedInmates.length === 0 ? (
+                  <p className="text-sm text-gray-500 italic">No inmates are currently assigned to this activity.</p>
+                ) : (
+                  <div className="max-h-60 overflow-y-auto">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="text-left border-b text-gray-700">
+                          <th className="py-2">Inmate Name</th>
+                          <th className="py-2">Prison #</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {assignedInmates.map((inmate) => (
+                          <tr key={inmate.inmate_id} className="border-b last:border-b-0">
+                            <td className="py-2 font-medium">{inmate.inmate_name}</td>
+                            <td className="py-2">{inmate.prison_number}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card>
+            )}
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => navigate('/officer/activity-sessions')}>

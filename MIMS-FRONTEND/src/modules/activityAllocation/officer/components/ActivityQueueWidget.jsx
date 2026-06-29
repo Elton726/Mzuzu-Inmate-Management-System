@@ -6,7 +6,6 @@ export default function ActivityQueueWidget({
   subtitle,
   emptyText,
   activities,
-  activityType,
   workingAction,
   onOpenTodaySession,
   onOpenExternalOnceSession,
@@ -29,7 +28,6 @@ export default function ActivityQueueWidget({
         ) : (
           <ActivityTable
             activities={activities}
-            activityType={activityType}
             workingAction={workingAction}
             onOpenTodaySession={onOpenTodaySession}
             onOpenExternalOnceSession={onOpenExternalOnceSession}

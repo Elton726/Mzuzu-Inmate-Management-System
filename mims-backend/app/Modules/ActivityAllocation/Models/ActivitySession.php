@@ -16,7 +16,7 @@ class ActivitySession extends Model
     ];
 
     protected $casts = [
-        'session_date' => 'date',
+        'session_date' => 'date:Y-m-d',
         'start_time' => 'datetime:H:i:s',
         'end_time' => 'datetime:H:i:s',
     ];

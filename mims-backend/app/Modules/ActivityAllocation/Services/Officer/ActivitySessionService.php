@@ -34,8 +34,10 @@ class ActivitySessionService
         $currentOfficerId = $this->currentOfficerId();
         $data['created_by'] = $currentOfficerId;
         $data['supervising_officer_id'] = $currentOfficerId;
+        $data['status'] = 'in_progress';
 
         $session = $this->repository->create($data);
+        $this->autoSaveAttendance($session);
         event(new ActivitySessionCreated($session));
 
         return $session;
@@ -68,7 +70,10 @@ class ActivitySessionService
 
         $data['created_by'] = $currentOfficerId;
         $data['supervising_officer_id'] = $currentOfficerId;
+        $data['status'] = 'in_progress';
+        
         $session = $this->repository->create($data);
+        $this->autoSaveAttendance($session);
         event(new ActivitySessionCreated($session));
 
         return ['session' => $session, 'created' => true];
@@ -100,7 +105,10 @@ class ActivitySessionService
 
         $data['created_by'] = $currentOfficerId;
         $data['supervising_officer_id'] = $currentOfficerId;
+        $data['status'] = 'in_progress';
+
         $session = $this->repository->create($data);
+        $this->autoSaveAttendance($session);
         event(new ActivitySessionCreated($session));
 
         return ['session' => $session, 'created' => true];
@@ -130,7 +138,30 @@ class ActivitySessionService
 
     public function deleteSession($id)
     {
+        $session = $this->repository->findById($id, $this->currentOfficerId());
+        if ($session->status === 'completed') {
+            throw new RuntimeException('Completed sessions cannot be deleted.');
+        }
         return $this->repository->delete($id, $this->currentOfficerId());
+    }
+
+    private function autoSaveAttendance($session): void
+    {
+        $assignedInmates = \App\Modules\Admissions\Models\InmateActivity::where('activity_id', $session->activity_id)
+            ->whereNull('end_date')
+            ->get();
+
+        foreach ($assignedInmates as $assignment) {
+            \App\Modules\ActivityAllocation\Models\SessionAttendance::firstOrCreate([
+                'session_id' => $session->id,
+                'inmate_id' => $assignment->inmate_id,
+            ], [
+                'admission_id' => $assignment->admission_id,
+                'attendance_status' => 'present',
+                'recorded_by' => $session->created_by,
+                'recorded_at' => now(),
+            ]);
+        }
     }
 
     private function currentOfficerId(): int
