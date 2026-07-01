@@ -80,6 +80,11 @@ const formatLabel = (value) => {
 
 const getFullName = (inmate) => [inmate.first_name, inmate.other_names, inmate.last_name].filter(Boolean).join(' ');
 
+const countBelongings = (value) => {
+  if (!value) return 0;
+  return String(value).split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean).length;
+};
+
 const getAdmissionAllocations = (admission) => {
   const allocations = admission?.cell_allocations || admission?.cellAllocations;
   return Array.isArray(allocations) ? allocations : [];
@@ -190,6 +195,7 @@ export default function InmateDetailPage() {
   const hasActiveAdmission = Boolean(admission?.id);
   const fullName = getFullName(inmate);
   const admissionsCount = inmate.admissions_count ?? inmate.admissionsCount ?? admissions.length;
+  const belongingsCount = countBelongings(inmate.personal_belongings);
   const activeAllocations = getAdmissionAllocations(admission);
   const activeActivities = getAdmissionActivities(admission);
   const allActivityAssignments = getRelationArray(inmate, 'inmate_activities', 'inmateActivities');
@@ -394,7 +400,6 @@ export default function InmateDetailPage() {
             <DetailItem label="Gender" value={formatLabel(inmate.gender)} />
             <DetailItem label="Date of birth" value={inmate.date_of_birth ? formatDate(inmate.date_of_birth) : '—'} />
             <DetailItem label="Young offender" value={inmate.is_young_offender ? 'Yes' : 'No'} highlight={inmate.is_young_offender} />
-            <DetailItem label="Place of birth" value={inmate.place_of_birth} />
             <DetailItem label="Nationality" value={inmate.nationality} />
             <DetailItem label="National ID" value={inmate.national_id} />
             <DetailItem label="Marital status" value={formatLabel(inmate.marital_status)} />
@@ -419,6 +424,9 @@ export default function InmateDetailPage() {
             <DetailItem label="Next of kin contact" value={inmate.next_of_kin_contact} />
             <div className="md:col-span-2">
               <p className="text-sm font-semibold text-gray-600 uppercase">Personal belongings</p>
+              <p className="mt-1 text-xs font-semibold text-gray-500">
+                {belongingsCount} belonging{belongingsCount === 1 ? '' : 's'} counted
+              </p>
               <p className="mt-1 whitespace-pre-wrap rounded border border-gray-200 bg-gray-50 p-3 text-gray-800">
                 {inmate.personal_belongings || '—'}
               </p>

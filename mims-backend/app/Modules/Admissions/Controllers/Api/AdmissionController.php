@@ -76,8 +76,8 @@ class AdmissionController extends Controller
                 $admissionDate = CarbonImmutable::parse($validated['admission_date'])->startOfDay();
                 $nextCourtDate = CarbonImmutable::parse($validated['remand_next_court_date'])->startOfDay();
 
-                if ($nextCourtDate->lessThanOrEqualTo($admissionDate)) {
-                    abort(422, 'Next court date must be after the admission date for remandees.');
+                if ($nextCourtDate->lessThan($admissionDate)) {
+                    abort(422, 'Next court date cannot be before the admission date for remandees.');
                 }
 
                 $remandDurationDays = (int) $admissionDate->diffInDays($nextCourtDate);
@@ -98,6 +98,7 @@ class AdmissionController extends Controller
                 'projected_release_date' => $projectedReleaseDate,
                 'original_release_date' => $projectedReleaseDate,
                 'remand_next_court_date' => $validated['remand_next_court_date'] ?? null,
+                'remand_next_court_time' => $validated['remand_next_court_time'] ?? null,
                 'remand_duration_days' => $remandDurationDays,
                 'admitted_by' => $user->id,
                 'is_current' => true,

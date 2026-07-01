@@ -5,6 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useDropzone } from 'react-dropzone';
 import FormField from '../../../../components/common/FormField';
 import { documentsSchema } from '../../schemas/admissionSchemas';
+import CameraCapture from '../CameraCapture';
+import { MdCameraAlt, MdCloudUpload } from 'react-icons/md';
 
 function DropzoneField({ label, accept, onFile, value, hint }) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -58,6 +60,8 @@ export default function StepDocuments({ defaultValues, onBack, onNext }) {
   });
 
   const [warrant, setWarrant] = useState(initialWarrant);
+  const [warrantMode, setWarrantMode] = useState('upload');
+  const [cameraActive, setCameraActive] = useState(false);
 
   const accept = useMemo(
     () => ({ 'application/pdf': ['.pdf'], 'image/*': ['.png', '.jpg', '.jpeg'] }),
@@ -69,16 +73,85 @@ export default function StepDocuments({ defaultValues, onBack, onNext }) {
       <h2 className="text-xl font-semibold text-gray-800 mb-4">Documents</h2>
 
       <form onSubmit={handleSubmit(onNext)} className="space-y-4">
-        <DropzoneField
-          label="Warrant document (optional)"
-          accept={accept}
-          value={warrant}
-          onFile={(f) => {
-            setWarrant(f);
-            setValue('warrant', f, { shouldDirty: true });
-          }}
-          hint="PDF/JPG/PNG"
-        />
+        <div className="space-y-3">
+          <p className="block text-sm font-semibold text-gray-700">Warrant document (optional)</p>
+          <div className="flex gap-1.5 p-1 bg-gray-100 rounded-xl max-w-xs">
+            <button
+              type="button"
+              onClick={() => {
+                setWarrantMode('upload');
+                setCameraActive(false);
+              }}
+              className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                warrantMode === 'upload'
+                  ? 'bg-white text-gray-800 shadow-sm font-semibold'
+                  : 'text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              <MdCloudUpload className="text-base" />
+              Upload File
+            </button>
+            <button
+              type="button"
+              onClick={() => setWarrantMode('camera')}
+              className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                warrantMode === 'camera'
+                  ? 'bg-white text-gray-800 shadow-sm font-semibold'
+                  : 'text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              <MdCameraAlt className="text-base" />
+              Take Photo
+            </button>
+          </div>
+
+          {warrantMode === 'upload' ? (
+            <DropzoneField
+              label=""
+              accept={accept}
+              value={warrant}
+              onFile={(f) => {
+                setWarrant(f);
+                setValue('warrant', f, { shouldDirty: true });
+              }}
+              hint="PDF/JPG/PNG"
+            />
+          ) : (
+            <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 bg-gray-50 flex flex-col items-center justify-center min-h-[160px]">
+              {cameraActive ? (
+                <div className="w-full max-w-md">
+                  <CameraCapture
+                    onCapture={(file) => {
+                      setWarrant(file);
+                      setValue('warrant', file, { shouldDirty: true });
+                      setCameraActive(false);
+                    }}
+                    onCancel={() => setCameraActive(false)}
+                  />
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <MdCameraAlt className="text-4xl text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600 mb-3">Capture the warrant with your system camera</p>
+                  <button
+                    type="button"
+                    onClick={() => setCameraActive(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-malawiGold hover:bg-yellow-400 text-gray-900 font-semibold rounded-xl text-sm shadow transition"
+                  >
+                    <MdCameraAlt />
+                    Open Camera
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {warrant && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700">
+              Selected: {warrant.name || 'Captured warrant image'}
+            </div>
+          )}
+        </div>
 
         <FormField label="Warrant description" error={errors.warrantDescription?.message}>
           <input className="w-full border rounded px-3 py-2" {...register('warrantDescription')} />

@@ -45,7 +45,7 @@ class InmateController extends Controller
 
         $query = Inmate::query()
             ->withCount('admissions')
-            ->with(['currentAdmission:id,inmate_id,is_current,admission_date,inmate_type,case_number,sentence_years,sentence_months,sentence_start_date,projected_release_date,original_release_date,remand_next_court_date,released_at']);
+            ->with(['currentAdmission:id,inmate_id,is_current,admission_date,inmate_type,case_number,sentence_years,sentence_months,sentence_start_date,projected_release_date,original_release_date,remand_next_court_date,remand_next_court_time,released_at']);
 
         if (! $includeReleased) {
             $query->where('status', '<>', 'released');
@@ -71,7 +71,7 @@ class InmateController extends Controller
         $query = Inmate::query()
             ->where('status', '<>', 'released')
             ->withCount('admissions')
-            ->with(['currentAdmission:id,inmate_id,is_current,admission_date,inmate_type,case_number,sentence_years,sentence_months,sentence_start_date,projected_release_date,original_release_date,remand_next_court_date,released_at'])
+            ->with(['currentAdmission:id,inmate_id,is_current,admission_date,inmate_type,case_number,sentence_years,sentence_months,sentence_start_date,projected_release_date,original_release_date,remand_next_court_date,remand_next_court_time,released_at'])
             ->where(function ($builder) use ($q, $terms, $like) {
                 $builder
                     ->whereRaw('LOWER(prison_number) LIKE ?', [$like($q)])

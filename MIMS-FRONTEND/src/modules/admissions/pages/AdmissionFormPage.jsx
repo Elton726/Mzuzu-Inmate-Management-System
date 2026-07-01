@@ -58,6 +58,7 @@ const buildAdmissionPayload = ({ inmateId, admission, warrantDocId }) => {
     payload.remand_next_court_date = null;
   } else {
     payload.remand_next_court_date = toIso(admission.remandNextCourtDate);
+    payload.remand_next_court_time = admission.remandNextCourtTime || null;
     payload.remand_duration_days = admission.remandDurationDays ? Number(admission.remandDurationDays) : null;
     payload.remand_warrant_id = warrantDocId || null;
     payload.committal_warrant_id = null;

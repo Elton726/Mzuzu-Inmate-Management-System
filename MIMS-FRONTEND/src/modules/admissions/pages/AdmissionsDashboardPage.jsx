@@ -88,9 +88,9 @@ const fetchAllInmates = async () => {
   }, firstRows);
 };
 
-function MetricCard({ label, value, helper, icon: Icon, accent }) {
-  return (
-    <div className={`rounded-2xl border p-5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between min-h-[140px] ${accent.card}`}>
+function MetricCard({ label, value, helper, icon: Icon, accent, to }) {
+  const content = (
+    <>
       <div className="flex justify-between items-start">
         <div className={`text-[10px] font-bold uppercase tracking-widest ${accent.label}`}>{label}</div>
         {Icon && <Icon className={`text-xl ${accent.icon}`} />}
@@ -99,7 +99,17 @@ function MetricCard({ label, value, helper, icon: Icon, accent }) {
         <div className={`text-3xl font-black tracking-tight ${accent.value}`}>{value}</div>
         <div className={`mt-1 text-xs font-medium ${accent.helper}`}>{helper}</div>
       </div>
-    </div>
+    </>
+  );
+
+  const className = `rounded-2xl border p-5 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-malawiGreen focus:ring-offset-2 transition-all duration-200 flex flex-col justify-between min-h-[140px] ${accent.card}`;
+
+  return to ? (
+    <Link to={to} className={className} aria-label={`${label}: ${helper}`}>
+      {content}
+    </Link>
+  ) : (
+    <div className={className}>{content}</div>
   );
 }
 
@@ -398,6 +408,7 @@ export default function AdmissionsDashboardPage() {
               helper: 'text-green-700/80',
               icon: 'text-malawiGreen'
             }}
+            to="/admissions"
           />
           <MetricCard
             label="Active Admissions"
@@ -411,6 +422,7 @@ export default function AdmissionsDashboardPage() {
               helper: 'text-gray-500',
               icon: 'text-malawiGreen'
             }}
+            to="/admissions"
           />
           <MetricCard
             label="Total Cells"
@@ -424,6 +436,7 @@ export default function AdmissionsDashboardPage() {
               helper: 'text-yellow-700/80',
               icon: 'text-yellow-600'
             }}
+            to="/admissions/cells"
           />
           <MetricCard
             label="No Prior System Release"
@@ -437,6 +450,7 @@ export default function AdmissionsDashboardPage() {
               helper: 'text-red-700/80',
               icon: 'text-malawiRed'
             }}
+            to="/admissions"
           />
         </section>
 

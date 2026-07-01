@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admissions\Requests\Admissions;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -35,6 +36,7 @@ class StoreAdmissionRequest extends FormRequest
             'sentence_start_date' => ['nullable', 'date', 'required_if:inmate_type,convict'],
 
             'remand_next_court_date' => ['nullable', 'date', 'required_if:inmate_type,remandee,murder_remandee'],
+            'remand_next_court_time' => ['nullable', 'date_format:H:i'],
             'remand_duration_days' => ['nullable', 'integer', 'min:1'],
 
             'activity_id' => [
@@ -50,5 +52,26 @@ class StoreAdmissionRequest extends FormRequest
             'committal_warrant_id' => ['nullable', 'exists:documents,id'],
             'remand_warrant_id' => ['nullable', 'exists:documents,id'],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            if (!in_array($this->input('inmate_type'), ['remandee', 'murder_remandee'], true)) {
+                return;
+            }
+
+            try {
+                $nextCourtDate = $this->filled('remand_next_court_date')
+                    ? CarbonImmutable::parse($this->input('remand_next_court_date'))->toDateString()
+                    : null;
+            } catch (\Throwable) {
+                return;
+            }
+
+            if ($nextCourtDate && $nextCourtDate === now()->toDateString() && !$this->filled('remand_next_court_time')) {
+                $validator->errors()->add('remand_next_court_time', 'Court time is required when the next court date is today.');
+            }
+        });
     }
 }

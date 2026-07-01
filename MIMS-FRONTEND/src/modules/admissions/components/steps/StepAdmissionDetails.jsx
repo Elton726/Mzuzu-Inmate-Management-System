@@ -3,7 +3,6 @@ import PropTypes from 'prop-types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { admissionSchema } from '../../schemas/admissionSchemas';
-import FormField from '../../../../components/common/FormField';
 import { listActivities } from '../../services/activityService';
 import { toast } from 'react-toastify';
 import { calculateProjectedReleaseDate } from '../../../../utils/helpers';
@@ -114,6 +113,7 @@ const labelFor = (key) => {
     sentenceDays: 'Sentence days',
     sentenceStartDate: 'Sentence start date',
     remandNextCourtDate: 'Next court date',
+    remandNextCourtTime: 'Next court time',
     activityId: 'Activity'
   };
   return map[key] || key;
@@ -536,6 +536,7 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
       sentenceDays: '',
       sentenceStartDate: '',
       remandNextCourtDate: '',
+      remandNextCourtTime: '',
       remandDurationDays: '',
       activityId: '',
       ...(defaultValues || {})
@@ -545,6 +546,7 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
   const inmateType = watch('inmateType');
   const admissionDate = watch('admissionDate');
   const remandNextCourtDate = watch('remandNextCourtDate');
+  const remandNextCourtTime = watch('remandNextCourtTime');
   const courtName = watch('courtName');
   const security = useMemo(() => mapInmateTypeToSecurityClassification(inmateType), [inmateType]);
 
@@ -574,9 +576,17 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
     [admissionDate, remandNextCourtDate]
   );
 
+  const courtDateIsToday = useMemo(() => remandNextCourtDate === todayIso(), [remandNextCourtDate]);
+
   useEffect(() => {
     setValue('remandDurationDays', remandDurationDays || '', { shouldValidate: true });
   }, [remandDurationDays, setValue]);
+
+  useEffect(() => {
+    if (!courtDateIsToday && remandNextCourtTime) {
+      setValue('remandNextCourtTime', '', { shouldDirty: true, shouldValidate: true });
+    }
+  }, [courtDateIsToday, remandNextCourtTime, setValue]);
 
   const projectedReleaseDate = useMemo(() => {
     if (inmateType === 'convict' && sentenceStartDate && sentenceYears !== undefined && sentenceYears !== '') {
@@ -818,6 +828,19 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
                   <p className="mt-1 text-xs text-red-500">{errors.remandNextCourtDate.message}</p>
                 )}
               </div>
+              {courtDateIsToday && (
+                <div>
+                  <label className={labelCls}>Next Court Time *</label>
+                  <input
+                    type="time"
+                    className={inputCls(!!errors.remandNextCourtTime)}
+                    {...register('remandNextCourtTime')}
+                  />
+                  {errors.remandNextCourtTime && (
+                    <p className="mt-1 text-xs text-red-500">{errors.remandNextCourtTime.message}</p>
+                  )}
+                </div>
+              )}
               <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-600 space-y-1 mt-0 md:mt-5">
                 <input type="hidden" {...register('remandDurationDays')} />
                 <p>
@@ -838,13 +861,6 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
 
           {/* Cell allocation info + Activity (convict) */}
           <div className={inmateType === 'convict' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : ''}>
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
-              <p className="text-sm font-semibold text-emerald-900">Cell allocation is automatic</p>
-              <p className="mt-1 text-sm text-emerald-800">
-                The system will assign the inmate to the least occupied available{' '}
-                <span className="font-semibold capitalize">{security}</span> security cell when the admission is submitted.
-              </p>
-            </div>
             {inmateType === 'convict' && (
               <div>
                 <label className={labelCls}>Activity (optional)</label>
