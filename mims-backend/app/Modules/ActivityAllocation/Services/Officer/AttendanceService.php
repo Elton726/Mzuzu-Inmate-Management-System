@@ -80,6 +80,7 @@ class AttendanceService
         foreach ($assignedInmates as $assignment) {
             $att = $attendanceRecords->get($assignment->inmate_id);
             $report[] = [
+                'id' => $att ? $att->id : null,
                 'inmate_id' => $assignment->inmate->id,
                 'inmate_name' => $assignment->inmate->first_name . ' ' . $assignment->inmate->last_name,
                 'prison_number' => $assignment->inmate->prison_number,

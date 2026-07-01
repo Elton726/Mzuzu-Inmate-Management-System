@@ -3,8 +3,7 @@ import PropTypes from 'prop-types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useDropzone } from 'react-dropzone';
-import { MdCameraAlt, MdCloudUpload, MdDelete } from 'react-icons/md';
-import FormField from '../../../../components/common/FormField';
+import { MdAdd, MdCameraAlt, MdCloudUpload, MdDelete, MdSearch } from 'react-icons/md';
 import { inmateSchema } from '../../schemas/admissionSchemas';
 import { checkDuplicate, createInmate } from '../../services/inmateService';
 import { uploadDocument } from '../../services/documentService';
@@ -38,6 +37,44 @@ const inputCls = (hasError) =>
   `w-full px-3 py-2.5 border ${hasError ? 'border-red-400' : 'border-gray-300'} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-malawiGreen focus:border-malawiGreen transition`;
 
 const labelCls = 'block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5';
+
+const NATIONALITIES = [
+  'Afghan', 'Albanian', 'Algerian', 'American', 'Angolan', 'Argentine', 'Australian', 'Austrian',
+  'Bangladeshi', 'Belgian', 'Brazilian', 'British', 'Burundian', 'Cameroonian', 'Canadian', 'Chinese',
+  'Congolese', 'Danish', 'Egyptian', 'Ethiopian', 'French', 'German', 'Ghanaian', 'Indian',
+  'Irish', 'Italian', 'Japanese', 'Kenyan', 'Malawian', 'Mozambican', 'Namibian', 'Nigerian',
+  'Norwegian', 'Pakistani', 'Portuguese', 'Rwandan', 'South African', 'Spanish', 'Swazi', 'Swedish',
+  'Tanzanian', 'Ugandan', 'Zambian', 'Zimbabwean'
+].sort((a, b) => a.localeCompare(b));
+
+const PHONE_PREFIXES = [
+  { code: '+265', country: 'Malawi' },
+  { code: '+260', country: 'Zambia' },
+  { code: '+258', country: 'Mozambique' },
+  { code: '+255', country: 'Tanzania' },
+  { code: '+27', country: 'South Africa' },
+  { code: '+263', country: 'Zimbabwe' },
+  { code: '+254', country: 'Kenya' },
+  { code: '+256', country: 'Uganda' },
+  { code: '+250', country: 'Rwanda' },
+  { code: '+234', country: 'Nigeria' },
+  { code: '+233', country: 'Ghana' },
+  { code: '+251', country: 'Ethiopia' },
+  { code: '+44', country: 'United Kingdom' },
+  { code: '+1', country: 'United States / Canada' },
+  { code: '+91', country: 'India' },
+  { code: '+86', country: 'China' },
+  { code: '+61', country: 'Australia' },
+  { code: '+49', country: 'Germany' },
+  { code: '+33', country: 'France' },
+  { code: '+39', country: 'Italy' }
+];
+
+const normalizePhoneLocal = (value) => value.replace(/[^\d]/g, '').replace(/^0+/, '');
+const composeE164 = (prefix, local) => {
+  const normalizedLocal = normalizePhoneLocal(local);
+  return normalizedLocal ? `${prefix}${normalizedLocal}` : '';
+};
 
 function DropzoneField({ label, accept, onFile, value, hint }) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -81,6 +118,83 @@ DropzoneField.propTypes = {
   value: PropTypes.any
 };
 
+function SearchableNationalitySelect({ value, onChange, hasError }) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const filtered = useMemo(
+    () => NATIONALITIES.filter((nationality) => nationality.toLowerCase().includes(query.trim().toLowerCase())),
+    [query]
+  );
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className={`${inputCls(hasError)} flex items-center justify-between text-left`}
+      >
+        <span className={value ? 'text-gray-900' : 'text-gray-400'}>{value || 'Select nationality'}</span>
+        <MdSearch className="text-gray-400" />
+      </button>
+      {open && (
+        <div className="absolute z-40 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+          <div className="border-b border-gray-100 p-2">
+            <div className="relative">
+              <MdSearch className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search nationalities..."
+                className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-3 text-sm outline-none focus:border-malawiGreen focus:ring-2 focus:ring-malawiGreen/20"
+                autoFocus
+              />
+            </div>
+          </div>
+          <ul className="max-h-56 overflow-y-auto py-1 text-sm">
+            <li>
+              <button
+                type="button"
+                onClick={() => {
+                  onChange('');
+                  setQuery('');
+                  setOpen(false);
+                }}
+                className="w-full px-3 py-2 text-left text-gray-400 hover:bg-gray-50"
+              >
+                None
+              </button>
+            </li>
+            {filtered.map((nationality) => (
+              <li key={nationality}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(nationality);
+                    setQuery('');
+                    setOpen(false);
+                  }}
+                  className={`w-full px-3 py-2 text-left hover:bg-emerald-50 hover:text-malawiGreen ${
+                    nationality === value ? 'bg-emerald-50 font-semibold text-malawiGreen' : 'text-gray-800'
+                  }`}
+                >
+                  {nationality}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+SearchableNationalitySelect.propTypes = {
+  value: PropTypes.string,
+  onChange: PropTypes.func.isRequired,
+  hasError: PropTypes.bool
+};
+
 export default function StepInmateSelect({ defaultValues, onSelected }) {
   const [checking, setChecking] = useState(false);
   const [dupes, setDupes] = useState(null);
@@ -89,6 +203,12 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
   const [photoMode, setPhotoMode] = useState('upload'); // 'upload' | 'camera'
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [phonePrefix, setPhonePrefix] = useState('+265');
+  const [phoneLocal, setPhoneLocal] = useState('');
+
+  // New override states
+  const [overrideChecked, setOverrideChecked] = useState(false);
+  const [overrideJustification, setOverrideJustification] = useState('');
 
   useEffect(() => {
     if (!photo) {
@@ -116,38 +236,92 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
   const watchYoungOffender = watch('isYoungOffender');
   const watchAge = useMemo(() => computeAgeYears(watchDob), [watchDob]);
 
+  const watchFirstName = watch('firstName');
+  const watchLastName = watch('lastName');
+  const watchNationalId = watch('nationalId');
+  const watchNationality = watch('nationality');
+  const watchGender = watch('gender');
+  const watchNextOfKinName = watch('nextOfKinName');
+  const watchNextOfKinContact = watch('nextOfKinContact');
+  const watchPersonalBelongings = watch('personalBelongings') || '';
+  const belongingsItems = useMemo(
+    () => watchPersonalBelongings.split(/\r?\n/).map((item) => item.trim()).filter(Boolean),
+    [watchPersonalBelongings]
+  );
+
+  useEffect(() => {
+    // Reset duplicates and overrides if key identifying fields change
+    setDupes(null);
+    setOverrideChecked(false);
+    setOverrideJustification('');
+  }, [
+    watchFirstName,
+    watchLastName,
+    watchDob,
+    watchNationalId,
+    watchNationality,
+    watchGender,
+    watchNextOfKinName,
+    watchNextOfKinContact
+  ]);
+
   useEffect(() => {
     const age = computeAgeYears(watchDob);
     const isYoung = typeof age === 'number' ? age < YOUNG_OFFENDER_AGE_YEARS : false;
     setValue('isYoungOffender', isYoung, { shouldDirty: true, shouldValidate: true });
   }, [watchDob, setValue]);
 
+  useEffect(() => {
+    const contact = defaultValues?.nextOfKinContact;
+    if (!contact || !String(contact).startsWith('+')) return;
+
+    const prefix = PHONE_PREFIXES.find((item) => String(contact).startsWith(item.code));
+    if (!prefix) return;
+
+    setPhonePrefix(prefix.code);
+    setPhoneLocal(String(contact).slice(prefix.code.length));
+    setValue('nextOfKinContact', contact, { shouldValidate: true });
+  }, [defaultValues?.nextOfKinContact, setValue]);
+
   const onCreate = async (form) => {
     try {
       setCreating(true);
 
-      // Check for duplicates once before creating
-      try {
-        setChecking(true);
-        const res = await checkDuplicate({
-          first_name: form.firstName,
-          last_name: form.lastName,
-          date_of_birth: toIsoDate(form.dateOfBirth),
-          national_id: form.nationalId || null
-        });
-        setDupes(res);
+      // Check for duplicates once before creating, unless already overridden
+      if (!overrideChecked) {
+        try {
+          setChecking(true);
+          const res = await checkDuplicate({
+            first_name: form.firstName,
+            last_name: form.lastName,
+            date_of_birth: toIsoDate(form.dateOfBirth),
+            national_id: form.nationalId || null,
+            nationality: form.nationality || null,
+            gender: form.gender || null,
+            next_of_kin_name: form.nextOfKinName || null,
+            next_of_kin_contact: form.nextOfKinContact || null
+          });
+          setDupes(res);
 
-        // If duplicates found, don't create - let user review
-        if (res?.has_duplicates) {
-          setCreating(false);
-          toast.warning('Please review the potential matches above before creating a new record.');
-          return;
+          // If duplicates found, don't create - let user review
+          if (res?.has_duplicates) {
+            setCreating(false);
+            toast.warning('Please review the potential matches above before creating a new record.');
+            return;
+          }
+        } catch (err) {
+          console.error('Duplicate check failed:', err);
+          // Continue with creation if check fails
+        } finally {
+          setChecking(false);
         }
-      } catch (err) {
-        console.error('Duplicate check failed:', err);
-        // Continue with creation if check fails
-      } finally {
-        setChecking(false);
+      }
+
+      // If override is checked, ensure justification note is filled
+      if (overrideChecked && !overrideJustification.trim()) {
+        toast.error('Please provide a justification note to override the duplicate warning.');
+        setCreating(false);
+        return;
       }
 
       const payload = {
@@ -155,7 +329,6 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
         last_name: form.lastName,
         other_names: form.otherNames || null,
         date_of_birth: toIsoDate(form.dateOfBirth),
-        place_of_birth: form.placeOfBirth || null,
         nationality: form.nationality || null,
         national_id: form.nationalId || null,
         marital_status: form.maritalStatus || null,
@@ -163,7 +336,8 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
         next_of_kin_contact: form.nextOfKinContact || null,
         is_young_offender: Boolean(form.isYoungOffender),
         personal_belongings: form.personalBelongings || null,
-        gender: form.gender || null
+        gender: form.gender || null,
+        override_justification: overrideChecked ? overrideJustification.trim() : null
       };
 
       const created = await createInmate(payload);
@@ -247,7 +421,12 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
               </div>
               <div>
                 <label className={labelCls}>Nationality</label>
-                <input className={inputCls(!!errors.nationality)} {...register('nationality')} />
+                <input type="hidden" {...register('nationality')} />
+                <SearchableNationalitySelect
+                  value={watchNationality || ''}
+                  onChange={(value) => setValue('nationality', value, { shouldDirty: true, shouldValidate: true })}
+                  hasError={!!errors.nationality}
+                />
                 {errors.nationality && <p className="mt-1 text-xs text-red-500">{errors.nationality.message}</p>}
               </div>
               <div>
@@ -289,16 +468,62 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
               </div>
               <div>
                 <label className={labelCls}>Next of Kin Contact</label>
-                <input className={inputCls(!!errors.nextOfKinContact)} {...register('nextOfKinContact')} />
+                <input type="hidden" {...register('nextOfKinContact')} />
+                <div className="grid grid-cols-[minmax(9rem,0.45fr)_1fr] gap-2">
+                  <select
+                    className={inputCls(!!errors.nextOfKinContact)}
+                    value={phonePrefix}
+                    onChange={(e) => {
+                      const prefix = e.target.value;
+                      setPhonePrefix(prefix);
+                      setValue('nextOfKinContact', composeE164(prefix, phoneLocal), { shouldDirty: true, shouldValidate: true });
+                    }}
+                  >
+                    {PHONE_PREFIXES.map((prefix) => (
+                      <option key={`${prefix.code}-${prefix.country}`} value={prefix.code}>
+                        {prefix.country} {prefix.code}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className={inputCls(!!errors.nextOfKinContact)}
+                    inputMode="tel"
+                    value={phoneLocal}
+                    onChange={(e) => {
+                      setPhoneLocal(e.target.value);
+                      setValue('nextOfKinContact', composeE164(phonePrefix, e.target.value), { shouldDirty: true, shouldValidate: true });
+                    }}
+                    placeholder="Phone number"
+                  />
+                </div>
                 {errors.nextOfKinContact && <p className="mt-1 text-xs text-red-500">{errors.nextOfKinContact.message}</p>}
               </div>
               <div className="md:col-span-2">
                 <label className={labelCls}>Personal Belongings</label>
-                <textarea
-                  className={inputCls(!!errors.personalBelongings)}
-                  {...register('personalBelongings')}
-                  rows={3}
-                />
+                <div className="space-y-2">
+                  <textarea
+                    className={inputCls(!!errors.personalBelongings)}
+                    {...register('personalBelongings')}
+                    rows={4}
+                    placeholder="Enter one belonging per line"
+                  />
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                    <span className="font-semibold">{belongingsItems.length} belonging{belongingsItems.length === 1 ? '' : 's'} counted</span>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 font-semibold text-malawiGreen border border-gray-200 hover:bg-emerald-50"
+                      onClick={() => {
+                        const next = watchPersonalBelongings.trim()
+                          ? `${watchPersonalBelongings.replace(/\s+$/, '')}\n`
+                          : '';
+                        setValue('personalBelongings', next, { shouldDirty: true, shouldValidate: true });
+                      }}
+                    >
+                      <MdAdd />
+                      Add line
+                    </button>
+                  </div>
+                </div>
                 {errors.personalBelongings && (
                   <p className="mt-1 text-xs text-red-500">{errors.personalBelongings.message}</p>
                 )}
@@ -411,24 +636,118 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
           </div>
 
           {/* ── Duplicate warning ── */}
-          {dupes?.has_duplicates && Array.isArray(dupes?.matches) && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3">
-              <p className="font-semibold text-yellow-900 mb-2 flex items-center gap-2">
-                <span>⚠️ Possible matches found</span>
-                {checking && <span className="text-xs font-normal">(checking…)</span>}
-              </p>
-              <p className="text-sm text-yellow-900 mb-2">
-                An inmate with similar details may already exist. Please review the matches below before creating a new record:
-              </p>
-              <ul className="list-disc ml-5 text-sm text-yellow-900 space-y-0.5">
-                {dupes.matches.slice(0, 5).map((m) => (
-                  <li key={m.id}>
-                    {m.prison_number ? `${m.prison_number} — ` : ''}{m.first_name} {m.last_name} (DOB: {m.date_of_birth || '--'})
-                  </li>
-                ))}
-              </ul>
+          {(() => {
+            const getMatchDetails = (m) => {
+              const details = [];
+              if (m.similarity_score === 100 && watchNationalId && m.national_id && watchNationalId === m.national_id) {
+                 details.push({ label: 'National ID', value: m.national_id });
+              }
+              if (watchFirstName && m.first_name && watchFirstName.trim().toLowerCase() === m.first_name.trim().toLowerCase()) {
+                details.push({ label: 'First Name', value: m.first_name });
+              }
+              if (watchLastName && m.last_name && watchLastName.trim().toLowerCase() === m.last_name.trim().toLowerCase()) {
+                details.push({ label: 'Last Name', value: m.last_name });
+              }
+              if (watchDob && m.date_of_birth) {
+                if (watchDob === m.date_of_birth) {
+                  details.push({ label: 'DOB', value: m.date_of_birth });
+                } else if (watchDob.substring(0, 7) === m.date_of_birth.substring(0, 7)) {
+                  details.push({ label: 'Month/Year of Birth', value: m.date_of_birth.substring(0, 7) });
+                } else if (watchDob.substring(0, 4) === m.date_of_birth.substring(0, 4)) {
+                  details.push({ label: 'Year of Birth', value: m.date_of_birth.substring(0, 4) });
+                }
+              }
+              if (watchGender && m.gender && watchGender === m.gender) {
+                details.push({ label: 'Gender', value: m.gender });
+              }
+              if (watchNationality && m.nationality && watchNationality.trim().toLowerCase() === m.nationality.trim().toLowerCase()) {
+                details.push({ label: 'Nationality', value: m.nationality });
+              }
+              if (watchNextOfKinName && m.next_of_kin_name && watchNextOfKinName.trim().toLowerCase() === m.next_of_kin_name.trim().toLowerCase()) {
+                details.push({ label: 'Next of Kin Name', value: m.next_of_kin_name });
+              }
+              if (watchNextOfKinContact && m.next_of_kin_contact && watchNextOfKinContact.trim() === m.next_of_kin_contact.trim()) {
+                details.push({ label: 'Next of Kin Contact', value: m.next_of_kin_contact });
+              }
+              if (details.length === 0) {
+                details.push({ label: 'Name', value: `${m.first_name} ${m.last_name}` });
+              }
+              return details;
+            };
+
+            return dupes?.has_duplicates && Array.isArray(dupes?.matches) && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-4 space-y-4 shadow-sm">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xl">⚠️</span>
+                  <h3 className="font-bold text-red-900 text-lg">Potential Duplicate Records Found</h3>
+                  {checking && <span className="text-xs font-normal text-red-700 animate-pulse">(checking…)</span>}
+                </div>
+                <p className="text-sm text-red-800 mb-4">
+                  Inmates with similar details already exist in the system. Please carefully review the matches below. Creating duplicate records can cause data inconsistency.
+                </p>
+                <div className="space-y-3">
+                  {dupes.matches.slice(0, 5).map((m) => {
+                    const matchDetails = getMatchDetails(m);
+                    const isPerfectMatch = m.similarity_score === 100;
+                    return (
+                      <div key={m.id} className={`p-3 rounded-lg border ${isPerfectMatch ? 'bg-red-100 border-red-300' : 'bg-white border-red-200'} shadow-sm`}>
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="font-semibold text-gray-900 text-base">
+                              {m.first_name} {m.last_name}
+                            </p>
+                            {m.prison_number && (
+                              <p className="text-xs font-medium text-gray-500">Prison No: {m.prison_number}</p>
+                            )}
+                          </div>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${isPerfectMatch ? 'bg-red-200 text-red-900' : 'bg-yellow-100 text-yellow-800'}`}>
+                            {m.similarity_score}% Match
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <span className="text-xs font-semibold text-gray-600 mt-0.5">Matching Details:</span>
+                          {matchDetails.map((detail, idx) => (
+                            <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-700 border border-red-100">
+                              {detail.label}: {detail.value}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-red-200 space-y-3">
+                <label className="flex items-center gap-2 text-sm text-red-900 font-bold cursor-pointer hover:bg-red-50 p-2 rounded-lg transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={overrideChecked}
+                    onChange={(e) => setOverrideChecked(e.target.checked)}
+                    className="rounded border-red-400 text-red-600 focus:ring-red-600 h-5 w-5"
+                  />
+                  <span>I confirm this is a DIFFERENT inmate (Force Admission)</span>
+                </label>
+                {overrideChecked && (
+                  <div className="space-y-1 bg-red-50 p-3 rounded-lg border border-red-200">
+                    <label className="block text-xs font-semibold text-red-800 uppercase tracking-wide">
+                      Justification Note *
+                    </label>
+                    <textarea
+                      value={overrideJustification}
+                      onChange={(e) => setOverrideJustification(e.target.value)}
+                      placeholder="Explain why this is not a duplicate (e.g., different parents, physical features, etc.)..."
+                      className="w-full px-3 py-2 border border-red-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white text-gray-800 transition"
+                      rows={2}
+                      required
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-          )}
+          );
+          })()}
 
           {/* ── Submit ── */}
           <div className="flex justify-end pt-2">

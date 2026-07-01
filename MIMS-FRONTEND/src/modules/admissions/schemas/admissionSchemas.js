@@ -5,18 +5,30 @@ const isoDate = z
   .min(1, 'Date is required')
   .refine((val) => !Number.isNaN(Date.parse(val)), 'Invalid date');
 
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
 export const inmateSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   otherNames: z.string().optional().or(z.literal('')),
   gender: z.string().optional().or(z.literal('')),
   dateOfBirth: isoDate.refine((val) => new Date(val) < new Date(), 'Date of birth must be in the past'),
-  placeOfBirth: z.string().optional().or(z.literal('')),
   nationality: z.string().optional().or(z.literal('')),
-  nationalId: z.string().max(20, 'National ID must be at most 20 characters').optional().or(z.literal('')),
+  nationalId: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .refine(
+      (val) => !val || /^(?=.*[A-Z])(?=.*\d)[A-Z\d]{8}$/.test(val),
+      'National ID must be exactly 8 uppercase letters and digits, with at least one of each'
+    ),
   maritalStatus: z.string().optional().or(z.literal('')),
   nextOfKinName: z.string().optional().or(z.literal('')),
-  nextOfKinContact: z.string().optional().or(z.literal('')),
+  nextOfKinContact: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .refine((val) => !val || /^\+[1-9]\d{7,14}$/.test(val), 'Enter a valid international phone number'),
   personalBelongings: z.string().max(500, 'Personal belongings must be at most 500 characters').optional().or(z.literal('')),
   photo: z.any().refine((file) => file, 'Photo is required'),
   isYoungOffender: z.boolean().optional()
@@ -27,15 +39,17 @@ export const admissionSchema = z
     admissionDate: isoDate,
     admissionType: z.enum(['first_time', 'repeat']),
     inmateType: z.enum(['convict', 'remandee', 'murder_remandee']),
-    caseNumber: z.string().min(1, 'Case number is required').max(50, 'Case number must be at most 50 characters'),
+    caseNumber: z.string().min(1, 'Case number is required').max(5, 'Case number must be at most 5 characters'),
     courtName: z.string().max(100, 'Court name must be at most 100 characters').optional().or(z.literal('')),
     offenceDescription: z.string().optional().or(z.literal('')),
 
     sentenceYears: z.any().optional(),
     sentenceMonths: z.any().optional(),
+    sentenceDays: z.any().optional(),
     sentenceStartDate: z.string().optional().or(z.literal('')),
 
     remandNextCourtDate: z.string().optional().or(z.literal('')),
+    remandNextCourtTime: z.string().optional().or(z.literal('')),
     remandDurationDays: z.any().optional(),
 
     activityId: z.string().optional().or(z.literal(''))
@@ -62,8 +76,19 @@ export const admissionSchema = z
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Next court date is required for remandees', path: ['remandNextCourtDate'] });
       } else if (Number.isNaN(Date.parse(data.remandNextCourtDate))) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid date', path: ['remandNextCourtDate'] });
-      } else if (!Number.isNaN(Date.parse(data.admissionDate)) && new Date(data.remandNextCourtDate) <= new Date(data.admissionDate)) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Next court date must be after admission date', path: ['remandNextCourtDate'] });
+      } else if (!Number.isNaN(Date.parse(data.admissionDate))) {
+        const admissionDate = new Date(data.admissionDate);
+        const courtDate = new Date(data.remandNextCourtDate);
+        admissionDate.setHours(0, 0, 0, 0);
+        courtDate.setHours(0, 0, 0, 0);
+
+        if (courtDate < admissionDate) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Next court date cannot be before admission date', path: ['remandNextCourtDate'] });
+        }
+
+        if (data.remandNextCourtDate === todayIso() && !data.remandNextCourtTime) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Court time is required when the next court date is today', path: ['remandNextCourtTime'] });
+        }
       }
     }
   });

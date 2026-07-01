@@ -334,20 +334,23 @@ class AdmissionModuleApiTest extends TestCase
             'date_of_birth' => '1999-01-01',
         ])->assertStatus(201)->json();
 
-        $this->actingAs($station, 'sanctum')->getJson("/api/inmates/{$inmate['id']}")->assertStatus(403);
-        $this->actingAs($station, 'sanctum')->getJson('/api/inmates/search?q=View')->assertStatus(403);
+        // station_officer has read access to inmates and check-duplicate
+        $this->actingAs($station, 'sanctum')->getJson("/api/inmates/{$inmate['id']}")->assertStatus(200);
+        $this->actingAs($station, 'sanctum')->getJson('/api/inmates/search?q=View')->assertStatus(200);
         $this->actingAs($station, 'sanctum')->postJson('/api/inmates/check-duplicate', [
             'first_name' => 'View',
             'last_name' => 'Only',
             'date_of_birth' => '1999-01-01',
-        ])->assertStatus(403);
+        ])->assertStatus(200);
 
+        // station_officer cannot write/create inmates
         $this->actingAs($station, 'sanctum')->postJson('/api/inmates', [
             'first_name' => 'No',
             'last_name' => 'Create',
             'date_of_birth' => '2000-01-01',
         ])->assertStatus(403);
 
+        // station_officer cannot write/create admissions
         $this->actingAs($station, 'sanctum')->postJson('/api/admissions', [
             'inmate_id' => $inmate['id'],
             'admission_date' => now()->toDateString(),
@@ -368,7 +371,62 @@ class AdmissionModuleApiTest extends TestCase
             'is_current' => true,
         ]);
 
-        $this->actingAs($station, 'sanctum')->getJson("/api/admissions/{$admission->id}")->assertStatus(403);
+        // station_officer has read access to admissions
+        $this->actingAs($station, 'sanctum')->getJson("/api/admissions/{$admission->id}")->assertStatus(200);
+    }
+
+    public function test_weighted_scoring_and_override_justification(): void
+    {
+        $user = $this->userWithRole('reception_officer');
+
+        // Create an initial inmate
+        $original = $this->actingAs($user, 'sanctum')->postJson('/api/inmates', [
+            'first_name' => 'Michael',
+            'last_name' => 'Phiri',
+            'date_of_birth' => '1992-05-15',
+            'nationality' => 'Malawian',
+            'gender' => 'male',
+            'next_of_kin_name' => 'Grace Phiri',
+        ]);
+        $original->assertStatus(201);
+
+        // 1. Check duplicate with similar details (Michael Phiri born 1992-05-15, same NOK and gender)
+        $dupCheck = $this->actingAs($user, 'sanctum')->postJson('/api/inmates/check-duplicate', [
+            'first_name' => 'Michael',
+            'last_name' => 'Phiri',
+            'date_of_birth' => '1992-05-15',
+            'nationality' => 'Malawian',
+            'gender' => 'male',
+            'next_of_kin_name' => 'Grace Phiri',
+        ]);
+        $dupCheck->assertStatus(200);
+        $this->assertTrue($dupCheck->json('has_duplicates'));
+        $this->assertGreaterThanOrEqual(80, $dupCheck->json('matches.0.similarity_score'));
+
+        // 2. Try creating a duplicate inmate without override_justification (should fail with 422 validation error)
+        $failCreate = $this->actingAs($user, 'sanctum')->postJson('/api/inmates', [
+            'first_name' => 'Michael',
+            'last_name' => 'Phiri',
+            'date_of_birth' => '1992-05-15',
+            'nationality' => 'Malawian',
+            'gender' => 'male',
+            'next_of_kin_name' => 'Grace Phiri',
+        ]);
+        $failCreate->assertStatus(422);
+        $failCreate->assertJsonValidationErrors(['duplicate']);
+
+        // 3. Create the duplicate inmate WITH override_justification (should succeed)
+        $successCreate = $this->actingAs($user, 'sanctum')->postJson('/api/inmates', [
+            'first_name' => 'Michael',
+            'last_name' => 'Phiri',
+            'date_of_birth' => '1992-05-15',
+            'nationality' => 'Malawian',
+            'gender' => 'male',
+            'next_of_kin_name' => 'Grace Phiri',
+            'override_justification' => 'Verified different parents and physical scars.',
+        ]);
+        $successCreate->assertStatus(201);
+        $this->assertEquals('Verified different parents and physical scars.', $successCreate->json('override_justification'));
     }
 
     public function test_admin_can_view_audit_logs_but_non_admin_cannot(): void

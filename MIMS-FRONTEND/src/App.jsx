@@ -44,6 +44,8 @@ import OfficerExternalActivityAllocationPage from './modules/activityAllocation/
 import OfficerSessionsPage from './modules/activityAllocation/officer/pages/OfficerSessionsPage';
 import OfficerSessionFormPage from './modules/activityAllocation/officer/pages/OfficerSessionFormPage';
 import OfficerSessionDetailPage from './modules/activityAllocation/officer/pages/OfficerSessionDetailPage';
+import InternalActivityAutoAssignPage from './modules/activityAllocation/officer/pages/InternalActivityAutoAssignPage';
+import ActivityReportsPage from './modules/activityAllocation/officer/pages/ActivityReportsPage';
 import AdmissionFormPage from './modules/admissions/pages/AdmissionFormPage';
 import AdmissionShowPage from './modules/admissions/pages/AdmissionShowPage';
 import AdmissionsIndexPage from './modules/admissions/pages/AdmissionsIndexPage';
@@ -54,14 +56,17 @@ import ReleaseApprovalPage from './modules/releases/pages/ReleaseApprovalPage';
 import ReleaseConfirmationPage from './modules/releases/pages/ReleaseConfirmationPage';
 import ConfirmedReleasesPage from './modules/releases/pages/ConfirmedReleasesPage';
 import SentenceAdjustmentPage from './modules/releases/pages/SentenceAdjustmentPage';
+import SentenceAdjustmentTypesPage from './modules/releases/pages/SentenceAdjustmentTypesPage';
 import SentenceLengthPage from './modules/releases/pages/SentenceLengthPage';
 import ReleaseHistoryPage from './modules/releases/pages/ReleaseHistoryPage';
-import VisitorsPage from './modules/visitation/pages/VisitorsPage';
-import RegistrationsPage from './modules/visitation/pages/RegistrationsPage';
-import SessionsPage from './modules/visitation/pages/SessionsPage';
-import CharityPage from './modules/visitation/pages/CharityPage';
-import RulesPage from './modules/visitation/pages/RulesPage';
-import ReportsPage from './modules/visitation/pages/ReportsPage';
+import ReleaseDateLookupPage from './modules/releases/pages/ReleaseDateLookupPage';
+import VisitationHomePage from './modules/visitation/pages/VisitationHomePage';
+import PendingCharityPage from './modules/visitation/pages/PendingCharityPage';
+import VisitationStatisticsPage from './modules/visitation/pages/VisitationStatisticsPage';
+import VisitationHistoryPage from './modules/visitation/pages/VisitationHistoryPage';
+import VisitationRulesPage from './modules/visitation/pages/VisitationRulesPage';
+import VisitFlagReviewsPage from './modules/visitation/pages/VisitFlagReviewsPage';
+import VisitationAlertsPage from './modules/visitation/pages/VisitationAlertsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import { Navigation } from './components/Navigation';
@@ -228,6 +233,14 @@ const AppContent = () => {
             }
           />
           <Route
+            path="/releases/date-lookup"
+            element={
+              <ProtectedRoute allowedRoles={['station_officer']}>
+                <ReleaseDateLookupPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/releases"
             element={
               <ProtectedRoute allowedRoles={['station_officer', 'gatekeeper']}>
@@ -302,6 +315,14 @@ const AppContent = () => {
             }
           />
           <Route
+            path="/admin/sentence-adjustment-types"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <SentenceAdjustmentTypesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/activities/new"
             element={
               <ProtectedRoute requireAdmin={true}>
@@ -320,50 +341,58 @@ const AppContent = () => {
 
           {/* Visitation module routes - gatekeeper only */}
           <Route
-            path="/visitation/visitors"
+            path="/visitation"
             element={
               <ProtectedRoute allowedRoles={['gatekeeper']}>
-                <VisitorsPage />
+                <VisitationHomePage />
               </ProtectedRoute>
             }
           />
           <Route
-            path="/visitation/registrations"
+            path="/visitation/charity-pending"
             element={
-              <ProtectedRoute allowedRoles={['gatekeeper']}>
-                <RegistrationsPage />
+              <ProtectedRoute allowedRoles={['gatekeeper', 'station_officer']}>
+                <PendingCharityPage />
               </ProtectedRoute>
             }
           />
           <Route
-            path="/visitation/sessions"
+            path="/visitation/statistics"
             element={
-              <ProtectedRoute allowedRoles={['gatekeeper']}>
-                <SessionsPage />
+              <ProtectedRoute allowedRoles={['gatekeeper', 'station_officer']}>
+                <VisitationStatisticsPage />
               </ProtectedRoute>
             }
           />
           <Route
-            path="/visitation/charity"
+            path="/visitation/history"
             element={
-              <ProtectedRoute allowedRoles={['gatekeeper']}>
-                <CharityPage />
+              <ProtectedRoute allowedRoles={['gatekeeper', 'station_officer']}>
+                <VisitationHistoryPage />
               </ProtectedRoute>
             }
           />
           <Route
             path="/visitation/rules"
             element={
-              <ProtectedRoute allowedRoles={['gatekeeper']}>
-                <RulesPage />
+              <ProtectedRoute allowedRoles={['station_officer']}>
+                <VisitationRulesPage />
               </ProtectedRoute>
             }
           />
           <Route
-            path="/visitation/reports"
+            path="/visitation/flag-reviews"
             element={
-              <ProtectedRoute allowedRoles={['gatekeeper']}>
-                <ReportsPage />
+              <ProtectedRoute allowedRoles={['station_officer']}>
+                <VisitFlagReviewsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/visitation/alerts"
+            element={
+              <ProtectedRoute allowedRoles={['gatekeeper', 'station_officer']}>
+                <VisitationAlertsPage />
               </ProtectedRoute>
             }
           />
@@ -382,6 +411,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute allowedRoles={['officer_on_duty']}>
                 <OfficerExternalActivityAllocationPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/officer/internal-activities/:activityId/auto-assign"
+            element={
+              <ProtectedRoute allowedRoles={['officer_on_duty']}>
+                <InternalActivityAutoAssignPage />
               </ProtectedRoute>
             }
           />
@@ -414,6 +451,15 @@ const AppContent = () => {
             element={
               <ProtectedRoute allowedRoles={['officer_on_duty']}>
                 <OfficerSessionDetailPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/officer/activity-reports"
+            element={
+              <ProtectedRoute allowedRoles={['officer_on_duty']}>
+                <ActivityReportsPage />
               </ProtectedRoute>
             }
           />

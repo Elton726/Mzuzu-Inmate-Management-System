@@ -14,7 +14,7 @@ use RuntimeException;
 
 class OfficerDutyService
 {
-    private const EXCLUDED_ROLE_NAMES = ['admin', 'reception_officer', 'station_officer', 'gatekeeper'];
+    private const EXCLUDED_ROLE_NAMES = ['admin', 'reception_officer', 'station_officer', 'gatekeeper', 'officer_on_duty'];
 
     public function __construct(
         protected OfficerDutyRosterRepository $repository
@@ -22,6 +22,8 @@ class OfficerDutyService
 
     public function listRosters(array $filters = []): LengthAwarePaginator
     {
+        $this->ensureCurrentWeekAssignment();
+
         return $this->repository->all((int) ($filters['per_page'] ?? 15), $filters);
     }
 
@@ -75,6 +77,7 @@ class OfficerDutyService
         $officer = $availableOfficers->first();
 
         $roster = $this->repository->create([
+            // $officer is a User instance from repository->getAvailableOfficersForWeek().
             'officer_id' => $officer->id,
             'duty_week_start' => $nextWeekStart->format('Y-m-d'),
             'duty_week_end' => $nextWeekEnd->format('Y-m-d'),
@@ -90,6 +93,62 @@ class OfficerDutyService
             'officer' => $officer,
             'roster' => $roster,
         ];
+    }
+
+    public function ensureCurrentWeekAssignment(?int $createdBy = null): array
+    {
+        $today = Carbon::now();
+        $weekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
+        $weekEnd = $weekStart->copy()->addDays(6);
+
+        $currentRoster = OfficerDutyRoster::query()
+            ->whereDate('duty_week_start', $weekStart->format('Y-m-d'))
+            ->where('is_active', true)
+            ->first();
+
+        if ($currentRoster) {
+            $this->deactivateExpiredDutyAccounts([$currentRoster->officer_id]);
+
+            return [
+                'success' => false,
+                'message' => 'An officer is already assigned for this week',
+                'roster' => $currentRoster,
+            ];
+        }
+
+        $this->deactivateExpiredDutyAccounts();
+        $availableOfficers = $this->repository->getAvailableOfficersForWeek($weekStart->format('Y-m-d'));
+        if ($availableOfficers->isEmpty()) {
+            return [
+                'success' => false,
+                'message' => 'No available eligible officers for this week',
+            ];
+        }
+
+        $officer = $availableOfficers->first();
+
+        $roster = DB::transaction(function () use ($officer, $weekStart, $weekEnd, $createdBy) {
+            $roster = $this->repository->create([
+                'officer_id' => $officer->id,
+                'duty_week_start' => $weekStart->format('Y-m-d'),
+                'duty_week_end' => $weekEnd->format('Y-m-d'),
+                'shift_type' => OfficerDutyRosterRepository::SHIFT_TYPE_FULL_DAY,
+                'is_active' => true,
+                'created_by' => $createdBy ?? auth()->id(),
+            ]);
+
+            $this->deactivateExpiredDutyAccounts([$officer->id]);
+            event(new OfficerDutyAssigned($roster));
+
+            return $roster;
+        });
+
+        return [
+            'success' => true,
+            'officer' => $officer,
+            'roster' => $roster,
+        ];
+
     }
 
     public function updateRoster(int $id, array $data): OfficerDutyRoster
@@ -167,5 +226,33 @@ class OfficerDutyService
     {
         // Always store duty_week_start as the start of week (Monday) for consistent summaries/uniqueness.
         return Carbon::parse($date)->startOfWeek(Carbon::MONDAY)->format('Y-m-d');
+    }
+
+    private function deactivateExpiredDutyAccounts(array $exceptOfficerIds = []): void
+    {
+        $expiredRosters = OfficerDutyRoster::query()
+            ->where('is_active', true)
+            ->whereDate('duty_week_end', '<', Carbon::now()->toDateString())
+            ->get();
+
+        if ($expiredRosters->isEmpty()) {
+            return;
+        }
+
+        $expiredOfficerIds = $expiredRosters
+            ->pluck('officer_id')
+            ->unique()
+            ->diff($exceptOfficerIds)
+            ->values();
+
+        OfficerDutyRoster::query()
+            ->whereIn('id', $expiredRosters->pluck('id'))
+            ->update(['is_active' => false]);
+
+        if ($expiredOfficerIds->isNotEmpty()) {
+            User::query()
+                ->whereIn('id', $expiredOfficerIds)
+                ->update(['is_active' => false]);
+        }
     }
 }

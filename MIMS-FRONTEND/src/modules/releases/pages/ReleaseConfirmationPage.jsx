@@ -48,8 +48,8 @@ const getReleaseTiming = (projectedReleaseDate) => {
 
   if (releaseDate < today) {
     return {
-      canConfirm: false,
-      message: 'Inmate can only be confirmed on the exact release date.',
+      canConfirm: true,
+      message: 'Release date is overdue. Confirm only after verifying the physical exit.',
     };
   }
 

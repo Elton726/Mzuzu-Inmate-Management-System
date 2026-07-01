@@ -3,58 +3,48 @@
 namespace App\Modules\Visitation\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Visitation\Requests\StoreVisitorRequest;
-use App\Modules\Visitation\Requests\UpdateVisitorRequest;
-use App\Modules\Visitation\Services\VisitorService;
+use App\Modules\Visitation\Models\Visitor;
 use Illuminate\Http\Request;
-use RuntimeException;
 
 class VisitorController extends Controller
 {
-    public function __construct(private VisitorService $service)
+    public function search(Request $request)
     {
-        $this->middleware('auth:sanctum');
+        $data = $request->validate([
+            'q' => ['required', 'string', 'min:2', 'max:255'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:25'],
+        ]);
+
+        $query = trim($data['q']);
+
+        $visitors = Visitor::query()
+            ->withCount('sessions')
+            ->withMax('sessions', 'created_at')
+            ->where(function ($builder) use ($query) {
+                $builder->where('full_name', 'like', "%{$query}%")
+                    ->orWhere('phone', 'like', "%{$query}%");
+            })
+            ->latest('updated_at')
+            ->limit($data['per_page'] ?? 8)
+            ->get();
+
+        return response()->json(['data' => $visitors]);
     }
 
-    public function index(Request $request)
+    public function updateWatchlist(Visitor $visitor, Request $request)
     {
-        $filters = [
-            'search' => $request->query('search'),
-            'national_id' => $request->query('national_id'),
-            'is_approved' => $request->has('is_approved') ? $request->boolean('is_approved') : null,
-        ];
+        $data = $request->validate([
+            'is_watchlisted' => ['required', 'boolean'],
+            'watchlist_reason' => ['nullable', 'string', 'max:2000', 'required_if:is_watchlisted,true'],
+        ]);
 
-        return response()->json($this->service->list(array_filter($filters, fn ($value) => $value !== null), $request->integer('per_page', 15)));
-    }
+        $visitor->update([
+            'is_watchlisted' => $data['is_watchlisted'],
+            'watchlist_reason' => $data['is_watchlisted'] ? ($data['watchlist_reason'] ?? null) : null,
+            'watchlisted_by' => $data['is_watchlisted'] ? $request->user()->id : null,
+            'watchlisted_at' => $data['is_watchlisted'] ? now() : null,
+        ]);
 
-    public function store(StoreVisitorRequest $request)
-    {
-        return response()->json($this->service->create($request->validated()), 201);
-    }
-
-    public function approve(int $id)
-    {
-        try {
-            return response()->json($this->service->approve($id));
-        } catch (RuntimeException $exception) {
-            return response()->json(['error' => $exception->getMessage()], 422);
-        }
-    }
-
-    public function show(int $id)
-    {
-        return response()->json($this->service->show($id));
-    }
-
-    public function update(UpdateVisitorRequest $request, int $id)
-    {
-        return response()->json($this->service->update($id, $request->validated()));
-    }
-
-    public function destroy(int $id)
-    {
-        $this->service->delete($id);
-
-        return response()->noContent();
+        return response()->json(['data' => $visitor->fresh(['watchlistedBy'])]);
     }
 }

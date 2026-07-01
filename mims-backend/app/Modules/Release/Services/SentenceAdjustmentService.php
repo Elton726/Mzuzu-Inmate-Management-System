@@ -5,6 +5,7 @@ namespace App\Modules\Release\Services;
 use App\Modules\Admissions\Models\Admission;
 use App\Modules\Release\Events\SentenceAdjusted;
 use App\Modules\Release\Models\SentenceAdjustment;
+use App\Modules\Release\Models\SentenceAdjustmentType;
 use App\Modules\Release\Repositories\SentenceAdjustmentRepository;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -42,6 +43,15 @@ class SentenceAdjustmentService
 
         if ($admission->original_release_date === null && $admission->projected_release_date === null) {
             throw new RuntimeException('This admission does not have a release date to adjust.');
+        }
+
+        $adjustmentType = SentenceAdjustmentType::query()
+            ->where('name', $type)
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        if ((int) $adjustmentType->years_to_reduce > 0) {
+            $days = (int) $adjustmentType->years_to_reduce * 365;
         }
 
         $adjustment = DB::transaction(function () use ($admissionId, $type, $days, $effectiveDate, $reason, $approvedBy) {

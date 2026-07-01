@@ -16,3 +16,12 @@ export const getAttendanceSummary = (sessionId) =>
 
 export const recordBulkAttendance = (sessionId, attendances) =>
   apiClient.post(`/officer/activity-sessions/${sessionId}/attendance`, { attendances });
+
+export const getAssignedInmates = (activityId) =>
+  apiClient.get(`/officer/activities/${activityId}/assigned-inmates`);
+
+export const updateAttendance = (attendanceId, data) =>
+  apiClient.put(`/attendance/${attendanceId}`, data);
+
+export const getActivityReports = (params) =>
+  apiClient.get('/officer/activity-reports', { params });

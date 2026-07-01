@@ -19,7 +19,9 @@ import {
   MdChevronLeft,
   MdChevronRight,
   MdLogout,
-  MdBarChart
+  MdBarChart,
+  MdGavel,
+  MdSettings
 } from 'react-icons/md';
 import { ROLES, getRoleDisplayName, getRoleName } from '../utils/helpers';
 import logo from '/cuffs.png';
@@ -144,6 +146,12 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
           icon: MdLocalActivity,
           title: 'Activity Sessions',
           show: role === ROLES.OFFICER_ON_DUTY
+        },
+        {
+          to: '/officer/activity-reports',
+          icon: MdLocalActivity,
+          title: 'Activity Reports',
+          show: role === ROLES.OFFICER_ON_DUTY
         }
       ]
     },
@@ -161,6 +169,12 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
           to: '/releases/sentences',
           icon: MdEditCalendar,
           title: 'Sentence Lengths',
+          show: role === ROLES.STATION_OFFICER
+        },
+        {
+          to: '/releases/date-lookup',
+          icon: MdSchedule,
+          title: 'Release Dates',
           show: role === ROLES.STATION_OFFICER
         },
         {
@@ -183,18 +197,55 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
         }
       ]
     },
-    {
-      id: 'visitation',
-      title: 'Visitation',
-      items: [
         {
-          to: '/visitation/visitors',
-          icon: MdPerson,
+          id: 'visitation',
           title: 'Visitation',
-          show: role === ROLES.GATEKEEPER
-        }
-      ]
-    },
+          items: [
+            {
+              to: '/visitation',
+              end: true,
+              icon: MdPerson,
+              title: 'Visitation',
+              show: role === ROLES.GATEKEEPER
+            },
+            {
+              to: '/visitation/charity-pending',
+              icon: MdAssignment,
+              title: 'Charity Approvals',
+              show: role === ROLES.GATEKEEPER || role === ROLES.STATION_OFFICER
+            },
+            {
+              to: '/visitation/statistics',
+              icon: MdBarChart,
+              title: 'Visit Statistics',
+              show: role === ROLES.GATEKEEPER || role === ROLES.STATION_OFFICER
+            },
+            {
+              to: '/visitation/history',
+              icon: MdHistory,
+              title: 'Visit History',
+              show: role === ROLES.GATEKEEPER || role === ROLES.STATION_OFFICER
+            },
+            {
+              to: '/visitation/alerts',
+              icon: MdAssignment,
+              title: 'Visit Alerts',
+              show: role === ROLES.GATEKEEPER || role === ROLES.STATION_OFFICER
+            },
+            {
+              to: '/visitation/rules',
+              icon: MdSettings,
+              title: 'Visit Rules',
+              show: role === ROLES.STATION_OFFICER
+            },
+            {
+              to: '/visitation/flag-reviews',
+              icon: MdGavel,
+              title: 'Flag Reviews',
+              show: role === ROLES.STATION_OFFICER
+            }
+          ]
+        },
     {
       id: 'system',
       title: 'Administration',
@@ -221,6 +272,12 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
           to: '/admin/cells',
           icon: MdHomeWork,
           title: 'Cell Management',
+          show: isAdmin
+        },
+        {
+          to: '/admin/sentence-adjustment-types',
+          icon: MdGavel,
+          title: 'Adjustment Types',
           show: isAdmin
         },
         {

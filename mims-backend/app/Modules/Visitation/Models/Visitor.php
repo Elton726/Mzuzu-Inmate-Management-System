@@ -3,53 +3,41 @@
 namespace App\Modules\Visitation\Models;
 
 use App\Models\User;
-use App\Modules\Admissions\Models\Inmate;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Modules\Visitation\Models\Concerns\UsesUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Visitor extends Model
 {
-    use HasFactory;
+    use UsesUuidPrimaryKey;
 
     protected $fillable = [
-        'first_name',
-        'last_name',
-        'relationship',
-        'contact_number',
-        'national_id',
-        'email',
-        'is_approved',
-        'approved_by',
-        'approved_at',
+        'full_name',
+        'phone',
+        'is_watchlisted',
+        'watchlist_reason',
+        'watchlisted_by',
+        'watchlisted_at',
     ];
 
     protected $casts = [
-        'is_approved' => 'boolean',
-        'approved_at' => 'datetime',
+        'is_watchlisted' => 'boolean',
+        'watchlisted_at' => 'datetime',
     ];
 
-    public function approvedBy(): BelongsTo
+    public function sessions(): HasMany
     {
-        return $this->belongsTo(User::class, 'approved_by');
+        return $this->hasMany(VisitSession::class);
     }
 
-    public function registrations(): HasMany
+    public function inmateRelationships(): HasMany
     {
-        return $this->hasMany(InmateVisitorRegistration::class);
+        return $this->hasMany(VisitorInmateRelationship::class);
     }
 
-    public function inmates(): BelongsToMany
+    public function watchlistedBy(): BelongsTo
     {
-        return $this->belongsToMany(Inmate::class, 'inmate_visitor_registrations', 'visitor_id', 'inmate_id')
-            ->withPivot(['registered_date', 'is_active', 'notes'])
-            ->withTimestamps();
-    }
-
-    public function visitationSessions(): HasMany
-    {
-        return $this->hasMany(VisitationSession::class);
+        return $this->belongsTo(User::class, 'watchlisted_by');
     }
 }

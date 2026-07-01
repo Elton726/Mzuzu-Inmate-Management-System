@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { useDebouncedValue } from '../../../utils/useDebouncedValue';
 import { searchInmates, listInmates } from '../services/inmateService';
 import { formatDate } from '../../../utils/helpers';
+import CommonInmateAvatar from '../../../components/common/InmateAvatar';
 import {
   MdSearch,
   MdSort,
@@ -32,8 +33,33 @@ const getAdmissionsCount = (inmate) => {
 const getCurrentAdmission = (inmate) =>
   inmate?.current_admission || inmate?.currentAdmission || null;
 
-const getInitials = (first, last) =>
-  `${first?.[0] ?? ''}${last?.[0] ?? ''}`.toUpperCase() || '?';
+const parseLocalDate = (dateStr) => {
+  if (!dateStr) return null;
+  const datePart = String(dateStr).split(/[T ]/)[0];
+  const parts = datePart.split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    return new Date(year, month, day);
+  }
+  return new Date(dateStr);
+};
+
+const calculateDaysTillCourtDate = (dateStr) => {
+  if (!dateStr) return null;
+  const courtDate = parseLocalDate(dateStr);
+  if (!courtDate) return null;
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  courtDate.setHours(0, 0, 0, 0);
+  
+  const timeDiff = courtDate - today;
+  const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+  
+  return daysDiff;
+};
 
 /* ─── sub-components ────────────────────────────────────────────────── */
 
@@ -64,15 +90,6 @@ const StatusBadge = ({ admitted }) =>
     </span>
   );
 
-const InmateAvatar = ({ first, last }) => {
-  const initials = getInitials(first, last);
-  return (
-    <div className="w-10 h-10 rounded-xl bg-malawiBlack flex items-center justify-center shrink-0 shadow-sm">
-      <span className="text-sm font-extrabold text-malawiGold">{initials}</span>
-    </div>
-  );
-};
-
 /* ─── main component ────────────────────────────────────────────────── */
 
 const InmateTypeBadge = ({ type }) => {
@@ -91,10 +108,45 @@ const InmateTypeBadge = ({ type }) => {
   );
 };
 
+const CourtDateMetaItem = ({ daysTillCourt }) => {
+  let textColor = 'text-gray-500';
+  let statusText = '';
+
+  if (daysTillCourt < 0) {
+    textColor = 'text-red-600';
+    statusText = `${Math.abs(daysTillCourt)} day${Math.abs(daysTillCourt) !== 1 ? 's' : ''} overdue`;
+  } else if (daysTillCourt === 0) {
+    textColor = 'text-red-600';
+    statusText = 'Court date today';
+  } else if (daysTillCourt <= 7) {
+    textColor = 'text-orange-600';
+    statusText = `${daysTillCourt} day${daysTillCourt !== 1 ? 's' : ''} till court`;
+  } else if (daysTillCourt <= 30) {
+    textColor = 'text-amber-600';
+    statusText = `${daysTillCourt} day${daysTillCourt !== 1 ? 's' : ''} till court`;
+  } else {
+    textColor = 'text-gray-500';
+    statusText = `${daysTillCourt} day${daysTillCourt !== 1 ? 's' : ''} till court`;
+  }
+
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs font-semibold ${textColor}`}>
+      <MdSchedule className="text-xs" />
+      {statusText}
+    </span>
+  );
+};
+
 const InmateRow = ({ inmate }) => {
   const admission = getCurrentAdmission(inmate);
   const isAdmitted = !!admission?.id;
   const count = getAdmissionsCount(inmate) ?? 0;
+  const inmateType = admission?.inmate_type || admission?.inmateType;
+  const isRemandee = inmateType === 'remandee' || inmateType === 'murder_remandee';
+  
+  // Calculate days till next court date for remandees
+  const nextCourtDate = admission?.remand_next_court_date || admission?.remandNextCourtDate;
+  const daysTillCourt = isRemandee && isAdmitted ? calculateDaysTillCourtDate(nextCourtDate) : null;
 
   return (
     <div
@@ -102,7 +154,7 @@ const InmateRow = ({ inmate }) => {
         ${inmate.neverAdmitted ? 'bg-yellow-50/60' : 'hover:bg-gray-50/70'}`}
     >
       <div className="flex items-start sm:items-center gap-4 flex-1 min-w-0">
-        <InmateAvatar first={inmate.first_name} last={inmate.last_name} />
+        <CommonInmateAvatar inmate={inmate} size="md" className="rounded-xl shadow-sm border border-gray-200 shrink-0" />
 
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -127,6 +179,15 @@ const InmateRow = ({ inmate }) => {
               icon={<MdBadge />}
               text={`${count} admission${count !== 1 ? 's' : ''}`}
             />
+            
+            {/* Days till court date for remandees */}
+            {isRemandee && (
+              daysTillCourt !== null ? (
+                <CourtDateMetaItem daysTillCourt={daysTillCourt} />
+              ) : (
+                <MetaItem icon={<MdSchedule />} text="Days till next court date: -" />
+              )
+            )}
           </div>
 
           {admission?.id && (
@@ -155,12 +216,19 @@ const InmateRow = ({ inmate }) => {
             <MdPlayArrow className="text-base" />
             Admit
           </Link>
-        ) : (admission?.inmate_type === 'remandee' || admission?.inmate_type === 'murder_remandee') ? (
+        ) : (
+          admission?.inmate_type === 'remandee' ||
+          admission?.inmate_type === 'murder_remandee' ||
+          admission?.inmateType === 'remandee' ||
+          admission?.inmateType === 'murder_remandee'
+        ) ? (
           (() => {
             const nextCourtDate = admission.remand_next_court_date || admission.remandNextCourtDate;
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            const courtDate = nextCourtDate ? new Date(nextCourtDate) : null;
+            
+            // Parse court date as local date to prevent timezone shift
+            const courtDate = parseLocalDate(nextCourtDate);
             if (courtDate) {
               courtDate.setHours(0, 0, 0, 0);
             }
@@ -271,7 +339,11 @@ export default function AdmissionsIndexPage() {
         description: 'Sentenced inmates currently admitted.',
         icon: MdGavel,
         tone: 'text-malawiGreen',
-        inmates: filteredInmates.filter((inmate) => getCurrentAdmission(inmate)?.inmate_type === 'convict'),
+        inmates: filteredInmates.filter((inmate) => {
+          const adm = getCurrentAdmission(inmate);
+          const type = adm?.inmate_type || adm?.inmateType;
+          return type === 'convict';
+        }),
       },
       {
         key: 'general_remandees',
@@ -279,7 +351,11 @@ export default function AdmissionsIndexPage() {
         description: 'Remand inmates awaiting court outcomes.',
         icon: MdSchedule,
         tone: 'text-amber-600',
-        inmates: filteredInmates.filter((inmate) => getCurrentAdmission(inmate)?.inmate_type === 'remandee'),
+        inmates: filteredInmates.filter((inmate) => {
+          const adm = getCurrentAdmission(inmate);
+          const type = adm?.inmate_type || adm?.inmateType;
+          return type === 'remandee';
+        }),
       },
       {
         key: 'murder_remandees',
@@ -287,7 +363,19 @@ export default function AdmissionsIndexPage() {
         description: 'Remand inmates registered under murder cases.',
         icon: MdPerson,
         tone: 'text-malawiRed',
-        inmates: filteredInmates.filter((inmate) => getCurrentAdmission(inmate)?.inmate_type === 'murder_remandee'),
+        inmates: filteredInmates.filter((inmate) => {
+          const adm = getCurrentAdmission(inmate);
+          const type = adm?.inmate_type || adm?.inmateType;
+          return type === 'murder_remandee';
+        }),
+      },
+      {
+        key: 'not_admitted_yet',
+        title: 'Not admitted yet',
+        description: 'Inmates registered but not yet admitted.',
+        icon: MdWarning,
+        tone: 'text-yellow-700',
+        inmates: filteredInmates.filter((inmate) => inmate.neverAdmitted),
       },
     ],
     [filteredInmates]

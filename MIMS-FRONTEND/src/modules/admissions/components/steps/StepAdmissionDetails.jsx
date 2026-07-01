@@ -1,13 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { admissionSchema } from '../../schemas/admissionSchemas';
-import FormField from '../../../../components/common/FormField';
 import { listActivities } from '../../services/activityService';
 import { toast } from 'react-toastify';
 import { calculateProjectedReleaseDate } from '../../../../utils/helpers';
-import { MdError } from 'react-icons/md';
+import { MdError, MdSearch, MdClose } from 'react-icons/md';
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -111,8 +110,10 @@ const labelFor = (key) => {
     offenceDescription: 'Offence description',
     sentenceYears: 'Sentence years',
     sentenceMonths: 'Sentence months',
+    sentenceDays: 'Sentence days',
     sentenceStartDate: 'Sentence start date',
     remandNextCourtDate: 'Next court date',
+    remandNextCourtTime: 'Next court time',
     activityId: 'Activity'
   };
   return map[key] || key;
@@ -122,6 +123,395 @@ const inputCls = (hasError) =>
   `w-full px-3 py-2.5 border ${hasError ? 'border-red-400' : 'border-gray-300'} rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-malawiGreen focus:border-malawiGreen transition`;
 
 const labelCls = 'block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5';
+
+// ── Searchable Court Dropdown ─────────────────────────────────────────────────
+function CourtSearchableSelect({ value, onChange, hasError }) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+  const inputRef = useRef(null);
+
+  // Derive display label from the current value
+  const displayLabel = value || '';
+
+  const filtered = useMemo(
+    () =>
+      query.trim() === ''
+        ? COURTS
+        : COURTS.filter((c) => c.toLowerCase().includes(query.toLowerCase())),
+    [query]
+  );
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSelect = (court) => {
+    onChange(court);
+    setQuery('');
+    setOpen(false);
+  };
+
+  const handleClear = (e) => {
+    e.stopPropagation();
+    onChange('');
+    setQuery('');
+  };
+
+  const handleOpen = () => {
+    setOpen(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={handleOpen}
+        className={`${inputCls(hasError)} flex items-center justify-between text-left`}
+      >
+        <span className={displayLabel ? 'text-gray-900' : 'text-gray-400'}>
+          {displayLabel || 'Select a court'}
+        </span>
+        <div className="flex items-center gap-1 shrink-0">
+          {displayLabel && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={handleClear}
+              onKeyDown={(e) => e.key === 'Enter' && handleClear(e)}
+              className="p-0.5 text-gray-400 hover:text-red-500 transition rounded"
+              aria-label="Clear court selection"
+            >
+              <MdClose className="text-base" />
+            </span>
+          )}
+          <MdSearch className="text-gray-400 text-base" />
+        </div>
+      </button>
+
+      {/* Dropdown panel */}
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+          {/* Search input */}
+          <div className="border-b border-gray-100 p-2">
+            <div className="relative">
+              <MdSearch className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search courts…"
+                className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-3 text-sm text-gray-900 outline-none focus:border-malawiGreen focus:ring-2 focus:ring-malawiGreen/20"
+              />
+            </div>
+          </div>
+
+          {/* Options list */}
+          <ul className="max-h-56 overflow-y-auto py-1 text-sm">
+            {/* Blank / clear option */}
+            <li>
+              <button
+                type="button"
+                className="w-full px-3 py-2 text-left text-gray-400 hover:bg-gray-50 transition"
+                onClick={() => handleSelect('')}
+              >
+                — None —
+              </button>
+            </li>
+
+            {filtered.length === 0 ? (
+              <li className="px-3 py-2 text-gray-400">No courts match "{query}"</li>
+            ) : (
+              filtered.map((court) => (
+                <li key={court}>
+                  <button
+                    type="button"
+                    className={`w-full px-3 py-2 text-left transition hover:bg-emerald-50 hover:text-malawiGreen ${
+                      court === value ? 'bg-emerald-50 font-semibold text-malawiGreen' : 'text-gray-800'
+                    }`}
+                    onClick={() => handleSelect(court)}
+                  >
+                    {court}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+CourtSearchableSelect.propTypes = {
+  value: PropTypes.string,
+  onChange: PropTypes.func.isRequired,
+  hasError: PropTypes.bool,
+};
+
+// ── Common Offences list ─────────────────────────────────────────────────────
+const COMMON_OFFENCES = [
+  // Violent offences
+  'Murder',
+  'Manslaughter',
+  'Attempted Murder',
+  'Grievous Bodily Harm (GBH)',
+  'Common Assault',
+  'Assault Occasioning Actual Bodily Harm (ABH)',
+  'Wounding with Intent',
+  'Kidnapping',
+  'Unlawful Detention / False Imprisonment',
+  'Domestic Violence',
+  // Sexual offences
+  'Rape',
+  'Attempted Rape',
+  'Defilement (under 16)',
+  'Defilement (under 13)',
+  'Indecent Assault',
+  'Sexual Harassment',
+  'Trafficking for Sexual Exploitation',
+  // Property offences
+  'Theft',
+  'Burglary',
+  'Robbery',
+  'Armed Robbery',
+  'Arson',
+  'Malicious Damage to Property',
+  'Housebreaking',
+  'Motor Vehicle Theft',
+  'Receiving Stolen Property',
+  'Fraud',
+  'Forgery',
+  'Obtaining by False Pretences',
+  'Embezzlement',
+  'Breach of Trust',
+  // Drug offences
+  'Possession of Controlled Substances',
+  'Trafficking in Controlled Substances',
+  'Cultivating Cannabis',
+  // Public-order offences
+  'Unlawful Wounding',
+  'Affray',
+  'Rioting',
+  'Incitement to Violence',
+  'Breach of Peace',
+  'Trespass',
+  // Road-traffic offences
+  'Dangerous Driving Causing Death',
+  'Dangerous Driving',
+  'Driving Under the Influence (DUI)',
+  'Driving Without a Licence',
+  'Hit-and-Run',
+  // Weapons offences
+  'Possession of Offensive Weapon',
+  'Possession of Firearm Without Licence',
+  'Illegal Possession of Ammunition',
+  // Financial / corruption
+  'Bribery',
+  'Corruption',
+  'Money Laundering',
+  // Against the state
+  'Treason',
+  'Sedition',
+  'Espionage',
+  // Other
+  'Poaching / Wildlife Trafficking',
+  'Human Trafficking',
+  'Child Abduction',
+  'Neglect / Cruelty to Children',
+  'Contempt of Court',
+];
+
+// ── Searchable Offence Dropdown ───────────────────────────────────────────────
+function OffenceSearchableSelect({ value, onChange, hasError }) {
+  // Determine whether the stored value is a preset or custom text
+  const isOther = value !== '' && !COMMON_OFFENCES.includes(value);
+  const [mode, setMode] = useState(isOther ? 'other' : 'preset');
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const [customText, setCustomText] = useState(isOther ? value : '');
+  const containerRef = useRef(null);
+  const inputRef = useRef(null);
+  const customRef = useRef(null);
+
+  const displayLabel = mode === 'other' ? 'Other — type manually' : (value || '');
+
+  const filtered = useMemo(() => {
+    const items = [...COMMON_OFFENCES, '— Other — type manually'];
+    if (query.trim() === '') return items;
+    return items.filter((c) => c.toLowerCase().includes(query.toLowerCase()));
+  }, [query]);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // When switching into Other mode, focus the textarea
+  useEffect(() => {
+    if (mode === 'other') {
+      setTimeout(() => customRef.current?.focus(), 50);
+    }
+  }, [mode]);
+
+  const handleSelect = (item) => {
+    setQuery('');
+    setOpen(false);
+    if (item === '— Other — type manually') {
+      setMode('other');
+      setCustomText('');
+      onChange('');
+    } else {
+      setMode('preset');
+      setCustomText('');
+      onChange(item);
+    }
+  };
+
+  const handleClear = (e) => {
+    e.stopPropagation();
+    setMode('preset');
+    setCustomText('');
+    setQuery('');
+    onChange('');
+  };
+
+  const handleOpen = () => {
+    setOpen(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const handleCustomChange = (e) => {
+    setCustomText(e.target.value);
+    onChange(e.target.value);
+  };
+
+  return (
+    <div ref={containerRef} className="space-y-2">
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={handleOpen}
+        className={`${inputCls(hasError)} flex items-center justify-between text-left`}
+      >
+        <span className={displayLabel ? 'text-gray-900' : 'text-gray-400'}>
+          {displayLabel || 'Select or search an offence…'}
+        </span>
+        <div className="flex items-center gap-1 shrink-0">
+          {(value || mode === 'other') && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={handleClear}
+              onKeyDown={(e) => e.key === 'Enter' && handleClear(e)}
+              className="p-0.5 text-gray-400 hover:text-red-500 transition rounded"
+              aria-label="Clear offence selection"
+            >
+              <MdClose className="text-base" />
+            </span>
+          )}
+          <MdSearch className="text-gray-400 text-base" />
+        </div>
+      </button>
+
+      {/* Dropdown panel */}
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+          {/* Search input */}
+          <div className="border-b border-gray-100 p-2">
+            <div className="relative">
+              <MdSearch className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search offences…"
+                className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-3 text-sm text-gray-900 outline-none focus:border-malawiGreen focus:ring-2 focus:ring-malawiGreen/20"
+              />
+            </div>
+          </div>
+
+          {/* Options list */}
+          <ul className="max-h-60 overflow-y-auto py-1 text-sm">
+            {/* Blank / clear option */}
+            <li>
+              <button
+                type="button"
+                className="w-full px-3 py-2 text-left text-gray-400 hover:bg-gray-50 transition"
+                onClick={() => handleSelect('')}
+              >
+                — None —
+              </button>
+            </li>
+
+            {filtered.length === 0 ? (
+              <li className="px-3 py-2 text-gray-400">No offences match "{query}"</li>
+            ) : (
+              filtered.map((item) => {
+                const isOtherItem = item === '— Other — type manually';
+                const isSelected = isOtherItem ? mode === 'other' : item === value;
+                return (
+                  <li key={item}>
+                    <button
+                      type="button"
+                      className={`w-full px-3 py-2 text-left transition ${
+                        isOtherItem
+                          ? 'border-t border-gray-100 mt-1 pt-2 text-malawiGold font-semibold hover:bg-yellow-50'
+                          : `hover:bg-emerald-50 hover:text-malawiGreen ${
+                              isSelected ? 'bg-emerald-50 font-semibold text-malawiGreen' : 'text-gray-800'
+                            }`
+                      }`}
+                      onClick={() => handleSelect(item)}
+                    >
+                      {isOtherItem ? '✏️  Other — type manually' : item}
+                    </button>
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>
+      )}
+
+      {/* Free-text area shown when Other is selected */}
+      {mode === 'other' && (
+        <textarea
+          ref={customRef}
+          rows={3}
+          value={customText}
+          onChange={handleCustomChange}
+          placeholder="Describe the offence in detail…"
+          className={`${inputCls(hasError)} resize-none`}
+        />
+      )}
+    </div>
+  );
+}
+
+OffenceSearchableSelect.propTypes = {
+  value: PropTypes.string,
+  onChange: PropTypes.func.isRequired,
+  hasError: PropTypes.bool,
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function StepAdmissionDetails({ defaultValues, selectedInmate, onBack, onNext }) {
   const automaticAdmissionType = useMemo(() => getAutomaticAdmissionType(selectedInmate), [selectedInmate]);
@@ -143,8 +533,10 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
       offenceDescription: '',
       sentenceYears: '',
       sentenceMonths: '',
+      sentenceDays: '',
       sentenceStartDate: '',
       remandNextCourtDate: '',
+      remandNextCourtTime: '',
       remandDurationDays: '',
       activityId: '',
       ...(defaultValues || {})
@@ -154,24 +546,28 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
   const inmateType = watch('inmateType');
   const admissionDate = watch('admissionDate');
   const remandNextCourtDate = watch('remandNextCourtDate');
+  const remandNextCourtTime = watch('remandNextCourtTime');
+  const courtName = watch('courtName');
   const security = useMemo(() => mapInmateTypeToSecurityClassification(inmateType), [inmateType]);
 
   const sentenceYears = watch('sentenceYears');
   const sentenceMonths = watch('sentenceMonths');
+  const sentenceDays = watch('sentenceDays');
   const sentenceStartDate = watch('sentenceStartDate');
 
-  // Clear sentence fields when inmate type changes from convict to remandee
+  // Sync admission type automatically
   useEffect(() => {
     setValue('admissionType', automaticAdmissionType, { shouldDirty: true, shouldValidate: true });
   }, [automaticAdmissionType, setValue]);
 
+  // Clear sentence fields when switching away from convict
   useEffect(() => {
     if (inmateType !== 'convict') {
       setValue('sentenceYears', '', { shouldValidate: false });
       setValue('sentenceMonths', '', { shouldValidate: false });
+      setValue('sentenceDays', '', { shouldValidate: false });
       setValue('sentenceStartDate', '', { shouldValidate: false });
-      // Trigger validation to clear errors
-      setTimeout(() => trigger(['sentenceYears', 'sentenceMonths', 'sentenceStartDate']), 0);
+      setTimeout(() => trigger(['sentenceYears', 'sentenceMonths', 'sentenceDays', 'sentenceStartDate']), 0);
     }
   }, [inmateType, setValue, trigger]);
 
@@ -180,21 +576,34 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
     [admissionDate, remandNextCourtDate]
   );
 
+  const courtDateIsToday = useMemo(() => remandNextCourtDate === todayIso(), [remandNextCourtDate]);
+
   useEffect(() => {
     setValue('remandDurationDays', remandDurationDays || '', { shouldValidate: true });
   }, [remandDurationDays, setValue]);
 
+  useEffect(() => {
+    if (!courtDateIsToday && remandNextCourtTime) {
+      setValue('remandNextCourtTime', '', { shouldDirty: true, shouldValidate: true });
+    }
+  }, [courtDateIsToday, remandNextCourtTime, setValue]);
+
   const projectedReleaseDate = useMemo(() => {
     if (inmateType === 'convict' && sentenceStartDate && sentenceYears !== undefined && sentenceYears !== '') {
       try {
-        return calculateProjectedReleaseDate(sentenceStartDate, Number(sentenceYears), Number(sentenceMonths || 0));
+        return calculateProjectedReleaseDate(
+          sentenceStartDate,
+          Number(sentenceYears),
+          Number(sentenceMonths || 0),
+          Number(sentenceDays || 0)
+        );
       } catch (error) {
         console.error('Error calculating projected release date:', error);
         return null;
       }
     }
     return null;
-  }, [inmateType, sentenceStartDate, sentenceYears, sentenceMonths]);
+  }, [inmateType, sentenceStartDate, sentenceYears, sentenceMonths, sentenceDays]);
 
   const [loadingLookups, setLoadingLookups] = useState(true);
   const [activities, setActivities] = useState([]);
@@ -283,27 +692,37 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
             </div>
 
             <div>
-              <label className={labelCls}>Case Number *</label>
-              <input className={inputCls(!!errors.caseNumber)} {...register('caseNumber')} />
+              <label className={labelCls}>Case Number * <span className="text-gray-400 normal-case font-normal">(max 5 chars)</span></label>
+              <input
+                className={inputCls(!!errors.caseNumber)}
+                maxLength={5}
+                {...register('caseNumber')}
+              />
               {errors.caseNumber && <p className="mt-1 text-xs text-red-500">{errors.caseNumber.message}</p>}
             </div>
 
+            {/* ── Searchable Court Dropdown ── */}
             <div>
               <label className={labelCls}>Court Name</label>
-              <select className={inputCls(!!errors.courtName)} {...register('courtName')}>
-                <option value="">Select a court</option>
-                {COURTS.map((court) => (
-                  <option key={court} value={court}>
-                    {court}
-                  </option>
-                ))}
-              </select>
+              {/* hidden field to integrate with react-hook-form */}
+              <input type="hidden" {...register('courtName')} />
+              <CourtSearchableSelect
+                value={courtName}
+                onChange={(val) => setValue('courtName', val, { shouldDirty: true, shouldValidate: true })}
+                hasError={!!errors.courtName}
+              />
               {errors.courtName && <p className="mt-1 text-xs text-red-500">{errors.courtName.message}</p>}
             </div>
 
-            <div>
+            <div className="relative">
               <label className={labelCls}>Offence Description</label>
-              <input className={inputCls(!!errors.offenceDescription)} {...register('offenceDescription')} />
+              {/* hidden field keeps react-hook-form in sync */}
+              <input type="hidden" {...register('offenceDescription')} />
+              <OffenceSearchableSelect
+                value={watch('offenceDescription')}
+                onChange={(val) => setValue('offenceDescription', val, { shouldDirty: true, shouldValidate: true })}
+                hasError={!!errors.offenceDescription}
+              />
               {errors.offenceDescription && <p className="mt-1 text-xs text-red-500">{errors.offenceDescription.message}</p>}
             </div>
           </div>
@@ -317,9 +736,10 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
 
           {inmateType === 'convict' ? (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Years · Months · Days grid */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <label className={labelCls}>Sentence Years *</label>
+                  <label className={labelCls}>Years *</label>
                   <input
                     type="number"
                     min={0}
@@ -334,8 +754,9 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
                   />
                   {errors.sentenceYears && <p className="mt-1 text-xs text-red-500">{errors.sentenceYears.message}</p>}
                 </div>
+
                 <div>
-                  <label className={labelCls}>Sentence Months</label>
+                  <label className={labelCls}>Months</label>
                   <input
                     type="number"
                     min={0}
@@ -351,6 +772,25 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
                   />
                   {errors.sentenceMonths && <p className="mt-1 text-xs text-red-500">{errors.sentenceMonths.message}</p>}
                 </div>
+
+                <div>
+                  <label className={labelCls}>Days</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={30}
+                    className={inputCls(!!errors.sentenceDays)}
+                    {...register('sentenceDays', {
+                      setValueAs: (v) => {
+                        if (v === '' || v == null) return undefined;
+                        const n = Number(v);
+                        return Number.isFinite(n) ? n : undefined;
+                      }
+                    })}
+                  />
+                  {errors.sentenceDays && <p className="mt-1 text-xs text-red-500">{errors.sentenceDays.message}</p>}
+                </div>
+
                 <div>
                   <label className={labelCls}>Sentence Start Date *</label>
                   <input
@@ -388,6 +828,19 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
                   <p className="mt-1 text-xs text-red-500">{errors.remandNextCourtDate.message}</p>
                 )}
               </div>
+              {courtDateIsToday && (
+                <div>
+                  <label className={labelCls}>Next Court Time *</label>
+                  <input
+                    type="time"
+                    className={inputCls(!!errors.remandNextCourtTime)}
+                    {...register('remandNextCourtTime')}
+                  />
+                  {errors.remandNextCourtTime && (
+                    <p className="mt-1 text-xs text-red-500">{errors.remandNextCourtTime.message}</p>
+                  )}
+                </div>
+              )}
               <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-600 space-y-1 mt-0 md:mt-5">
                 <input type="hidden" {...register('remandDurationDays')} />
                 <p>
@@ -408,13 +861,6 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
 
           {/* Cell allocation info + Activity (convict) */}
           <div className={inmateType === 'convict' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : ''}>
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
-              <p className="text-sm font-semibold text-emerald-900">Cell allocation is automatic</p>
-              <p className="mt-1 text-sm text-emerald-800">
-                The system will assign the inmate to the least occupied available{' '}
-                <span className="font-semibold capitalize">{security}</span> security cell when the admission is submitted.
-              </p>
-            </div>
             {inmateType === 'convict' && (
               <div>
                 <label className={labelCls}>Activity (optional)</label>

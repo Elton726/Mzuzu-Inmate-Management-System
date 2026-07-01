@@ -55,8 +55,16 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', Password::defaults()],
-            'role' => ['required', 'in:admin,reception_officer,station_officer,officer_on_duty,gatekeeper'],
+            // 'officer_on_duty' is not assignable manually.
+            'role' => ['required', 'in:admin,reception_officer,station_officer,staff_officer,gatekeeper'],
         ]);
+
+        // Never allow manual assignment of officer_on_duty.
+        if ($request->role === 'officer_on_duty') {
+            return response()->json([
+                'message' => "'officer_on_duty' cannot be assigned manually; it is managed by the duty roster rotation.",
+            ], 422);
+        }
 
         $role = Role::firstOrCreate(['name' => $request->role], ['description' => null]);
 
@@ -95,7 +103,8 @@ class UserController extends Controller
             'name' => ['sometimes', 'string', 'max:255'],
             'email' => ['sometimes', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
             'password' => ['sometimes', 'confirmed', Password::defaults()],
-            'role' => ['sometimes', 'in:admin,reception_officer,station_officer,officer_on_duty,gatekeeper'],
+            // 'officer_on_duty' is not assignable manually.
+            'role' => ['sometimes', 'in:admin,reception_officer,station_officer,staff_officer,gatekeeper'],
         ];
 
         $validated = $request->validate($rules);
@@ -108,6 +117,16 @@ class UserController extends Controller
             $role = Role::firstOrCreate(['name' => $validated['role']], ['description' => null]);
             unset($validated['role']);
             $validated['role_id'] = $role->id;
+        }
+
+        // Never allow manual assignment of officer_on_duty.
+        if (isset($validated['role_id'])) {
+            $roleName = Role::query()->where('id', $validated['role_id'])->value('name');
+            if ($roleName === 'officer_on_duty') {
+                return response()->json([
+                    'message' => "'officer_on_duty' cannot be assigned manually; it is managed by the duty roster rotation.",
+                ], 422);
+            }
         }
 
         $user->update($validated);
@@ -198,7 +217,8 @@ class UserController extends Controller
         $request->validate([
             'user_ids' => ['required', 'array', 'min:1'],
             'user_ids.*' => ['integer', 'exists:users,id'],
-            'role' => ['required', 'in:admin,reception_officer,station_officer,officer_on_duty,gatekeeper'],
+            // 'officer_on_duty' is not assignable manually.
+            'role' => ['required', 'in:admin,reception_officer,station_officer,staff_officer,gatekeeper'],
         ]);
 
         $authUser = Auth::user();

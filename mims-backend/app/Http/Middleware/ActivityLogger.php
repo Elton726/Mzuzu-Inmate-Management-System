@@ -133,49 +133,35 @@ class ActivityLogger
         }
 
         // 6. Visitation routes
-        if (preg_match('/^visitors$/', $cleanPath) && $method === 'POST') {
-            return 'created a visitor';
+        if (preg_match('/^visitation\/sessions$/', $cleanPath) && $method === 'POST') {
+            return 'registered a visit session';
         }
-        if (preg_match('/^visitors\/\d+\/approve$/', $cleanPath) && ($method === 'PUT' || $method === 'PATCH')) {
-            return 'approved a visitor';
+        if (preg_match('/^visitation\/sessions\/[^\/]+\/check-in$/', $cleanPath) && ($method === 'PUT' || $method === 'PATCH')) {
+            return 'checked in a visit session';
         }
-        if (preg_match('/^visitors\/\d+$/', $cleanPath)) {
-            if ($method === 'PUT' || $method === 'PATCH') return 'updated a visitor';
-            if ($method === 'DELETE') return 'deleted a visitor';
+        if (preg_match('/^visitation\/sessions\/[^\/]+\/check-out$/', $cleanPath) && ($method === 'PUT' || $method === 'PATCH')) {
+            return 'checked out a visit session';
         }
-        if (preg_match('/^inmate-visitor-registrations$/', $cleanPath) && $method === 'POST') {
-            return 'registered an inmate visitor';
+        if (preg_match('/^visitation\/sessions\/[^\/]+\/cancel$/', $cleanPath) && ($method === 'PUT' || $method === 'PATCH')) {
+            return 'cancelled a visit session';
         }
-        if (preg_match('/^inmate-visitor-registrations\/\d+$/', $cleanPath) && $method === 'DELETE') {
-            return 'removed an inmate visitor';
+        if (preg_match('/^visitation\/sessions\/[^\/]+\/deny$/', $cleanPath) && $method === 'POST') {
+            return 'denied a visit session';
         }
-        if (preg_match('/^visitation-sessions$/', $cleanPath) && $method === 'POST') {
-            return 'created a visitation session';
+        if (preg_match('/^visitation\/sessions\/[^\/]+\/items$/', $cleanPath) && $method === 'POST') {
+            return 'recorded a visit item';
         }
-        if (preg_match('/^visitation-sessions\/\d+\/check-in$/', $cleanPath) && ($method === 'PUT' || $method === 'PATCH')) {
-            return 'checked in a visitation session';
+        if (preg_match('/^visitation\/items\/[^\/]+$/', $cleanPath) && ($method === 'PUT' || $method === 'PATCH')) {
+            return 'updated a visit item inspection';
         }
-        if (preg_match('/^visitation-sessions\/\d+\/check-out$/', $cleanPath) && ($method === 'PUT' || $method === 'PATCH')) {
-            return 'checked out a visitation session';
+        if (preg_match('/^visitation\/charity-bookings$/', $cleanPath) && $method === 'POST') {
+            return 'created a charity visit booking';
         }
-        if (preg_match('/^visitation-sessions\/\d+\/cancel$/', $cleanPath) && ($method === 'PUT' || $method === 'PATCH')) {
-            return 'cancelled a visitation session';
+        if (preg_match('/^visitation\/charity-bookings\/[^\/]+\/approve$/', $cleanPath) && ($method === 'PUT' || $method === 'PATCH')) {
+            return 'approved a charity visit booking';
         }
-        if (preg_match('/^visitation-sessions\/\d+\/deny$/', $cleanPath) && $method === 'POST') {
-            return 'denied a visitation session';
-        }
-        if (preg_match('/^visitation-items$/', $cleanPath) && $method === 'POST') {
-            return 'recorded a visitation item';
-        }
-        if (preg_match('/^visitation-items\/\d+\/inspect$/', $cleanPath) && ($method === 'PUT' || $method === 'PATCH')) {
-            return 'inspected a visitation item';
-        }
-        if (preg_match('/^visitation-rules$/', $cleanPath) && $method === 'POST') {
-            return 'created a visitation rule';
-        }
-        if (preg_match('/^visitation-rules\/\d+$/', $cleanPath)) {
-            if ($method === 'PUT' || $method === 'PATCH') return 'updated a visitation rule';
-            if ($method === 'DELETE') return 'deleted a visitation rule';
+        if (preg_match('/^visitation\/charity-bookings\/[^\/]+\/reject$/', $cleanPath) && ($method === 'PUT' || $method === 'PATCH')) {
+            return 'rejected a charity visit booking';
         }
 
         // 7. Release routes

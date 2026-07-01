@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\StatisticsController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Modules\ActivityAllocation\Controllers\Admin\ActivityManagementController;
 use App\Modules\ActivityAllocation\Controllers\Admin\OfficerDutyRosterController;
@@ -18,14 +19,21 @@ use App\Modules\ActivityAllocation\Controllers\Officer\AvailableActivitiesContro
 use App\Modules\ActivityAllocation\Controllers\Officer\OfficerDashboardController;
 use App\Modules\ActivityAllocation\Controllers\Officer\ExternalActivityAllocationController;
 use App\Modules\ActivityAllocation\Controllers\Officer\SessionAttendanceController;
+use App\Modules\ActivityAllocation\Controllers\Officer\InternalActivityAutoAssignController;
+use App\Modules\ActivityAllocation\Controllers\Officer\ActivityReportController;
 use App\Modules\Release\Controllers\Api\ReleaseApprovalController;
 use App\Modules\Release\Controllers\Api\ReleaseConfirmationController;
+use App\Modules\Release\Controllers\Api\ReleaseDateLookupController;
+use App\Modules\Release\Controllers\Api\ReleaseClearanceChecklistController;
 use App\Modules\Release\Controllers\Api\SentenceAdjustmentController;
-use App\Modules\Visitation\Controllers\Api\InmateVisitorRegistrationController;
-use App\Modules\Visitation\Controllers\Api\ReportController;
-use App\Modules\Visitation\Controllers\Api\VisitationItemController;
+use App\Modules\Release\Controllers\Api\SentenceAdjustmentTypeController;
+use App\Modules\Visitation\Controllers\Api\CharityBookingController;
+use App\Modules\Visitation\Controllers\Api\VisitFlagReviewController;
+use App\Modules\Visitation\Controllers\Api\VisitItemController;
+use App\Modules\Visitation\Controllers\Api\VisitReportController;
+use App\Modules\Visitation\Controllers\Api\VisitSessionController;
+use App\Modules\Visitation\Controllers\Api\VisitationNotificationController;
 use App\Modules\Visitation\Controllers\Api\VisitationRuleController;
-use App\Modules\Visitation\Controllers\Api\VisitationSessionController;
 use App\Modules\Visitation\Controllers\Api\VisitorController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -54,6 +62,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Admin routes - stricter than regular users
     Route::middleware(['role:admin', 'throttle:100,60,user'])->prefix('admin')->group(function () {
+        Route::get('/dashboard/overview', [AdminDashboardController::class, 'overview'])->middleware('throttle:60,60,user');
+
         // Statistics must come before resource routes to avoid ID matching
         Route::get('/users/statistics', [AdminUserController::class, 'statistics'])->middleware('throttle:100,60,user');
         Route::post('/users/bulk-delete', [AdminUserController::class, 'bulkDelete'])->middleware('throttle:100,60,user');
@@ -95,6 +105,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::patch('/{id}/activate', [ActivityManagementController::class, 'activate']);
             Route::patch('/{id}/deactivate', [ActivityManagementController::class, 'deactivate']);
             Route::delete('/{id}', [ActivityManagementController::class, 'destroy']);
+        });
+
+        // Release Module - Admin sentence adjustment types
+        Route::prefix('sentence-adjustment-types')->group(function () {
+            Route::get('/', [SentenceAdjustmentTypeController::class, 'index']);
+            Route::post('/', [SentenceAdjustmentTypeController::class, 'store']);
+            Route::get('/{sentenceAdjustmentType}', [SentenceAdjustmentTypeController::class, 'show']);
+            Route::put('/{sentenceAdjustmentType}', [SentenceAdjustmentTypeController::class, 'update']);
+            Route::delete('/{sentenceAdjustmentType}', [SentenceAdjustmentTypeController::class, 'destroy']);
         });
     });
 
@@ -138,66 +157,43 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware(['role:admin', 'throttle:60,60,user']);
 
     // Visitation Module
-    Route::middleware(['role:visitation_officer,admin,gatekeeper'])->group(function () {
-        Route::post('/visitors', [VisitorController::class, 'store']);
-        Route::put('/visitors/{id}/approve', [VisitorController::class, 'approve']);
-        Route::get('/visitors', [VisitorController::class, 'index']);
-        Route::get('/visitors/{id}', [VisitorController::class, 'show']);
-    });
+    Route::prefix('visitation')->group(function () {
+        Route::middleware(['role:gatekeeper'])->group(function () {
+            Route::get('/visitors/search', [VisitorController::class, 'search']);
+            Route::post('/slot-check', [VisitSessionController::class, 'validateSlot']);
+            Route::post('/sessions', [VisitSessionController::class, 'store']);
+            Route::put('/sessions/{session}/check-in', [VisitSessionController::class, 'checkIn']);
+            Route::put('/sessions/{session}/check-out', [VisitSessionController::class, 'checkOut']);
+            Route::post('/sessions/{session}/deny', [VisitSessionController::class, 'deny']);
+            Route::put('/sessions/{session}/cancel', [VisitSessionController::class, 'cancel']);
+            Route::post('/sessions/{session}/items', [VisitItemController::class, 'store']);
+            Route::put('/items/{item}', [VisitItemController::class, 'update']);
+            Route::post('/charity-bookings', [CharityBookingController::class, 'store']);
+        });
 
-    Route::middleware(['role:admin,gatekeeper'])->group(function () {
-        Route::put('/visitors/{id}', [VisitorController::class, 'update']);
-        Route::delete('/visitors/{id}', [VisitorController::class, 'destroy']);
-    });
+        Route::middleware(['role:station_officer'])->group(function () {
+            Route::put('/charity-bookings/{booking}/approve', [CharityBookingController::class, 'approve']);
+            Route::put('/charity-bookings/{booking}/reject', [CharityBookingController::class, 'reject']);
+            Route::put('/visitors/{visitor}/watchlist', [VisitorController::class, 'updateWatchlist']);
+            Route::put('/rules', [VisitationRuleController::class, 'update']);
+            Route::get('/flag-reviews', [VisitFlagReviewController::class, 'index']);
+            Route::put('/flag-reviews/{review}/resolve', [VisitFlagReviewController::class, 'resolve']);
+        });
 
-    Route::middleware(['role:visitation_officer,gatekeeper'])->group(function () {
-        Route::post('/inmate-visitor-registrations', [InmateVisitorRegistrationController::class, 'store']);
-        Route::delete('/inmate-visitor-registrations/{id}', [InmateVisitorRegistrationController::class, 'destroy']);
-    });
-
-    Route::middleware(['role:visitation_officer,station_officer,gatekeeper'])->group(function () {
-        Route::get('/inmates/{inmateId}/visitors', [InmateVisitorRegistrationController::class, 'index']);
-        Route::get('/visitation-sessions', [VisitationSessionController::class, 'index']);
-        Route::get('/visitation-sessions/{id}', [VisitationSessionController::class, 'show']);
-        Route::post('/visitation-sessions', [VisitationSessionController::class, 'store']);
-    });
-
-    Route::middleware(['role:visitation_officer,officer_on_duty,gatekeeper'])->group(function () {
-        Route::put('/visitation-sessions/{id}/check-in', [VisitationSessionController::class, 'checkIn']);
-        Route::put('/visitation-sessions/{id}/check-out', [VisitationSessionController::class, 'checkOut']);
-    });
-
-    Route::middleware(['role:visitation_officer,station_officer,gatekeeper'])->group(function () {
-        Route::put('/visitation-sessions/{id}/cancel', [VisitationSessionController::class, 'cancel']);
-    });
-
-    Route::middleware(['role:visitation_officer,gatekeeper'])->group(function () {
-        Route::post('/visitation-sessions/{id}/deny', [VisitationSessionController::class, 'deny']);
-        Route::post('/visitation-items', [VisitationItemController::class, 'store']);
-    });
-
-    Route::middleware(['role:officer_on_duty,visitation_officer,gatekeeper'])->group(function () {
-        Route::put('/visitation-items/{id}/inspect', [VisitationItemController::class, 'inspect']);
-    });
-
-    Route::middleware(['role:visitation_officer,admin,gatekeeper'])->group(function () {
-        Route::get('/visitation-sessions/{id}/pdf', [VisitationSessionController::class, 'downloadPdf']);
-    });
-
-    Route::middleware(['role:station_officer,admin,gatekeeper'])->group(function () {
-        Route::post('/visitation-rules', [VisitationRuleController::class, 'store']);
-        Route::put('/visitation-rules/{id}', [VisitationRuleController::class, 'update']);
-        Route::delete('/visitation-rules/{id}', [VisitationRuleController::class, 'destroy']);
-        Route::get('/inmates/{inmateId}/visitation-rules', [VisitationRuleController::class, 'indexForInmate']);
-        Route::get('/reports/visitation-statistics', [ReportController::class, 'visitationStatistics']);
-    });
-
-    Route::middleware(['role:visitation_officer,gatekeeper'])->group(function () {
-        Route::get('/reports/today-schedule', [ReportController::class, 'todaySchedule']);
-    });
-
-    Route::middleware(['role:visitation_officer,admin,gatekeeper'])->group(function () {
-        Route::get('/reports/pending-charity', [ReportController::class, 'pendingCharity']);
+        Route::middleware(['role:gatekeeper,station_officer'])->group(function () {
+            Route::get('/rules', [VisitationRuleController::class, 'index']);
+            Route::get('/today-schedule', [VisitReportController::class, 'todaySchedule']);
+            Route::get('/pending-charity', [VisitReportController::class, 'pendingCharity']);
+            Route::get('/statistics', [VisitReportController::class, 'statistics']);
+            Route::get('/history', [VisitReportController::class, 'history']);
+            Route::get('/history/export', [VisitReportController::class, 'exportHistory'])->middleware('throttle:10,60,user');
+            Route::get('/alerts', [VisitReportController::class, 'alerts']);
+            Route::get('/notifications', [VisitationNotificationController::class, 'index']);
+            Route::put('/notifications/{notification}/read', [VisitationNotificationController::class, 'markRead']);
+            Route::get('/charity-bookings/{booking}/pdf', [CharityBookingController::class, 'downloadPdf'])
+                ->middleware('signed')
+                ->name('visitation.charity-pdf');
+        });
     });
 
     // Release Module - Station Officer & Gatekeeper
@@ -209,6 +205,23 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::delete('/releases/{workflowId}', [ReleaseApprovalController::class, 'destroy'])->middleware('throttle:10,60,user');
         });
 
+        // Release clearance checklist (station officer & gatekeeper)
+        Route::middleware('role:station_officer,gatekeeper')->group(function () {
+            Route::post('/releases/clearance-checklist', [ReleaseClearanceChecklistController::class, 'store'])->middleware('throttle:30,60,user');
+            Route::get('/releases/clearance-checklist/workflow/{workflowId}', [ReleaseClearanceChecklistController::class, 'byWorkflow'])->middleware('throttle:60,60,user');
+            Route::get('/releases/clearance-checklist/admission/{admissionId}', [ReleaseClearanceChecklistController::class, 'byAdmission'])->middleware('throttle:60,60,user');
+            Route::get('/releases/clearance-checklist/available-items', [ReleaseClearanceChecklistController::class, 'availableItems'])->middleware('throttle:60,60,user');
+            Route::get('/releases/clearance-checklist/{checklistId}', [ReleaseClearanceChecklistController::class, 'show'])->middleware('throttle:60,60,user');
+            Route::post('/releases/clearance-checklist/clear-item', [ReleaseClearanceChecklistController::class, 'clearItem'])->middleware('throttle:30,60,user');
+            Route::post('/releases/clearance-checklist/unclear-item', [ReleaseClearanceChecklistController::class, 'unclearItem'])->middleware('throttle:30,60,user');
+            Route::get('/releases/clearance-checklist/{checklistId}/status', [ReleaseClearanceChecklistController::class, 'status'])->middleware('throttle:60,60,user');
+        });
+
+        // Completion of clearance checklist (station officer only)
+        Route::middleware('role:station_officer')->group(function () {
+            Route::put('/releases/clearance-checklist/{checklistId}/complete', [ReleaseClearanceChecklistController::class, 'complete'])->middleware('throttle:10,60,user');
+        });
+
         // Release confirmation (gatekeeper)
         Route::middleware('role:gatekeeper')->group(function () {
             Route::get('/releases/pending-confirmations', [ReleaseConfirmationController::class, 'index'])->middleware('throttle:60,60,user');
@@ -217,6 +230,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         // Confirmed releases (station officer)
         Route::middleware('role:station_officer')->group(function () {
+            Route::get('/releases/date-lookup', [ReleaseDateLookupController::class, 'index'])->middleware('throttle:60,60,user');
             Route::get('/releases/confirmed', [ReleaseApprovalController::class, 'confirmed'])->middleware('throttle:60,60,user');
         });
 
@@ -227,6 +241,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/admissions/{admissionId}/adjustments', [SentenceAdjustmentController::class, 'store'])->middleware('throttle:30,60,user');
             Route::post('/adjustments', [SentenceAdjustmentController::class, 'storeLegacy'])->middleware('throttle:30,60,user');
             Route::delete('/adjustments/{adjustmentId}', [SentenceAdjustmentController::class, 'destroy'])->middleware('throttle:10,60,user');
+            Route::get('/sentence-adjustment-types/available', [SentenceAdjustmentTypeController::class, 'availableTypes'])->middleware('throttle:60,60,user');
         });
 
         // Release history (station officer & gatekeeper)
@@ -252,10 +267,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
         });
 
         Route::get('/activities/available', [AvailableActivitiesController::class, 'index'])->middleware('throttle:60,60,user');
+        Route::get('/activities/{activityId}/assigned-inmates', [AvailableActivitiesController::class, 'assignedInmates'])->middleware('throttle:60,60,user');
+        Route::get('/activity-reports', [ActivityReportController::class, 'index'])->middleware('throttle:30,60,user');
         Route::get('/dashboard/metrics', [OfficerDashboardController::class, 'metrics'])->middleware('throttle:60,60,user');
         Route::get('/activities/{activityId}/eligible-inmates', [ExternalActivityAllocationController::class, 'eligible'])->middleware('throttle:60,60,user');
         Route::post('/activities/{activityId}/allocations/manual', [ExternalActivityAllocationController::class, 'manual'])->middleware('throttle:30,60,user');
         Route::post('/activities/{activityId}/allocations/auto', [ExternalActivityAllocationController::class, 'auto'])->middleware('throttle:30,60,user');
+
+        // Internal Activity Rotation Auto-Assignment
+        Route::get('/internal-activities/{activityId}/rotation-status', [InternalActivityAutoAssignController::class, 'status'])->middleware('throttle:60,60,user');
+        Route::post('/internal-activities/{activityId}/auto-assign', [InternalActivityAutoAssignController::class, 'autoAssign'])->middleware('throttle:30,60,user');
     });
 
     // Sessions – accessible by officer_on_duty and admin

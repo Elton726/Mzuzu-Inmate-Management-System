@@ -41,6 +41,9 @@ class ActivityManagementService
 
         $data['category_id'] = $categoryId;
         $data['source_type'] = $this->getSourceTypeForCategoryName($categoryName) ?? 'custom';
+        if ($data['source_type'] === 'predefined') {
+            $data['max_participants'] = null;
+        }
         $data['created_by'] = auth()->id();
         $data['eligibility_criteria'] = $this->normalizeEligibilityCriteria($data['eligibility_criteria'] ?? null);
 
@@ -85,6 +88,9 @@ class ActivityManagementService
             $data['activity_type'] = 'internal';
             $data['category_id'] = $nextCategoryId;
             $data['source_type'] = $this->getSourceTypeForCategoryName($nextCategoryName) ?? ($activity->source_type ?? 'custom');
+            if ($data['source_type'] === 'predefined') {
+                $data['max_participants'] = null;
+            }
 
             if ($activity->activity_type === 'external') {
                 // If switching from external -> internal, remove external details.
@@ -153,6 +159,7 @@ class ActivityManagementService
     {
         $next = is_array($criteria) ? $criteria : [];
         $next['allowed_inmate_types'] = ['convict'];
+        unset($next['good_behavior'], $next['education_level']);
         return $next;
     }
 

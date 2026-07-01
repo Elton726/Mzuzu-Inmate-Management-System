@@ -35,6 +35,42 @@ class AuthController extends Controller
 
         $user->forceFill(['last_login' => now()])->save();
 
+        if ($user->isAdmin()) {
+            try {
+                app(\App\Modules\ActivityAllocation\Services\Admin\OfficerDutyService::class)
+                    ->ensureCurrentWeekAssignment((int) $user->id);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error("Weekly officer duty assignment failed: " . $e->getMessage());
+            }
+        }
+
+        // Perform daily auto assignment if officer_on_duty and not already run today
+        if ($user->role?->name === 'officer_on_duty') {
+            $cacheKey = 'auto_assignment_run_' . now()->toDateString();
+            if (!\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+                try {
+                    $internalService = app(\App\Modules\ActivityAllocation\Services\Officer\InternalActivityAutoAssignService::class);
+                    $externalService = app(\App\Modules\ActivityAllocation\Services\Officer\ExternalActivityAllocationService::class);
+                    $activeActivities = \App\Modules\Admissions\Models\Activity::where('is_active', true)->get();
+                    foreach ($activeActivities as $activity) {
+                        try {
+                            if ($activity->activity_type === 'internal') {
+                                $slots = $activity->max_participants ?? 5;
+                                $internalService->autoAssignRotating((int) $activity->id, (int) $slots, (int) $user->id);
+                            } elseif ($activity->activity_type === 'external') {
+                                $externalService->autoAllocate((int) $activity->id, (int) $user->id);
+                            }
+                        } catch (\Throwable $e) {
+                            \Illuminate\Support\Facades\Log::error("Daily auto-assign failed for activity {$activity->id}: " . $e->getMessage());
+                        }
+                    }
+                    \Illuminate\Support\Facades\Cache::put($cacheKey, true, now()->endOfDay());
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error("Daily auto-assign overall wrapper failed: " . $e->getMessage());
+                }
+            }
+        }
+
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([

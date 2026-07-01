@@ -45,6 +45,19 @@ const hasSystemReleaseHistory = (inmate) => Boolean(
   inmate?.lastReleaseAt
 );
 
+const parseLocalDate = (dateStr) => {
+  if (!dateStr) return null;
+  const datePart = String(dateStr).split(/[T ]/)[0];
+  const parts = datePart.split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    return new Date(year, month, day);
+  }
+  return new Date(dateStr);
+};
+
 const fetchAllInmates = async () => {
   const firstPage = await listInmates({
     page: 1,
@@ -75,9 +88,9 @@ const fetchAllInmates = async () => {
   }, firstRows);
 };
 
-function MetricCard({ label, value, helper, icon: Icon, accent }) {
-  return (
-    <div className={`rounded-2xl border p-5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between min-h-[140px] ${accent.card}`}>
+function MetricCard({ label, value, helper, icon: Icon, accent, to }) {
+  const content = (
+    <>
       <div className="flex justify-between items-start">
         <div className={`text-[10px] font-bold uppercase tracking-widest ${accent.label}`}>{label}</div>
         {Icon && <Icon className={`text-xl ${accent.icon}`} />}
@@ -86,7 +99,17 @@ function MetricCard({ label, value, helper, icon: Icon, accent }) {
         <div className={`text-3xl font-black tracking-tight ${accent.value}`}>{value}</div>
         <div className={`mt-1 text-xs font-medium ${accent.helper}`}>{helper}</div>
       </div>
-    </div>
+    </>
+  );
+
+  const className = `rounded-2xl border p-5 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-malawiGreen focus:ring-offset-2 transition-all duration-200 flex flex-col justify-between min-h-[140px] ${accent.card}`;
+
+  return to ? (
+    <Link to={to} className={className} aria-label={`${label}: ${helper}`}>
+      {content}
+    </Link>
+  ) : (
+    <div className={className}>{content}</div>
   );
 }
 
@@ -161,11 +184,13 @@ export default function AdmissionsDashboardPage() {
       const courtDate = admission.remand_next_court_date || admission.remandNextCourtDate;
       if (!courtDate) return;
 
-      const courtDay = new Date(courtDate);
-      courtDay.setHours(0, 0, 0, 0);
+      const courtDay = parseLocalDate(courtDate);
+      if (courtDay) {
+        courtDay.setHours(0, 0, 0, 0);
+      }
 
       // Fire notification if court date is today OR has already passed (overdue)
-      if (courtDay > todayStart) return;
+      if (!courtDay || courtDay > todayStart) return;
 
       const courtIso = String(courtDate).slice(0, 10);
       const key = `${admission.id}:court-due`;
@@ -183,6 +208,7 @@ export default function AdmissionsDashboardPage() {
 
     dueAdmissions.forEach(({ admissionId, inmateName, courtIso, isToday }) => {
       addNotification({
+        id: `court-due-${admissionId}-${courtIso}`,
         title: isToday ? '⚖️ Court date today' : '🚨 Court date overdue',
         message: isToday
           ? `${inmateName} must appear in court today (${courtIso}). Please arrange transport.`
@@ -382,6 +408,7 @@ export default function AdmissionsDashboardPage() {
               helper: 'text-green-700/80',
               icon: 'text-malawiGreen'
             }}
+            to="/admissions"
           />
           <MetricCard
             label="Active Admissions"
@@ -395,6 +422,7 @@ export default function AdmissionsDashboardPage() {
               helper: 'text-gray-500',
               icon: 'text-malawiGreen'
             }}
+            to="/admissions"
           />
           <MetricCard
             label="Total Cells"
@@ -408,6 +436,7 @@ export default function AdmissionsDashboardPage() {
               helper: 'text-yellow-700/80',
               icon: 'text-yellow-600'
             }}
+            to="/admissions/cells"
           />
           <MetricCard
             label="No Prior System Release"
@@ -421,6 +450,7 @@ export default function AdmissionsDashboardPage() {
               helper: 'text-red-700/80',
               icon: 'text-malawiRed'
             }}
+            to="/admissions"
           />
         </section>
 
@@ -598,12 +628,17 @@ export default function AdmissionsDashboardPage() {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        {(inmate.currentAdmission?.inmate_type === 'remandee' || inmate.currentAdmission?.inmate_type === 'murder_remandee') && (
+                        {(
+                          inmate.currentAdmission?.inmate_type === 'remandee' ||
+                          inmate.currentAdmission?.inmate_type === 'murder_remandee' ||
+                          inmate.currentAdmission?.inmateType === 'remandee' ||
+                          inmate.currentAdmission?.inmateType === 'murder_remandee'
+                        ) && (
                           (() => {
                             const nextCourtDate = inmate.currentAdmission.remand_next_court_date || inmate.currentAdmission.remandNextCourtDate;
                             const today = new Date();
                             today.setHours(0, 0, 0, 0);
-                            const courtDate = nextCourtDate ? new Date(nextCourtDate) : null;
+                            const courtDate = parseLocalDate(nextCourtDate);
                             if (courtDate) {
                               courtDate.setHours(0, 0, 0, 0);
                             }

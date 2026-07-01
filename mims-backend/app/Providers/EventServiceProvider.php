@@ -18,15 +18,6 @@ use App\Modules\Release\Events\ReleaseCancelled;
 use App\Modules\Release\Events\ReleaseConfirmed;
 use App\Modules\Release\Events\SentenceAdjusted;
 use App\Modules\Release\Listeners\LogReleaseAction;
-use App\Modules\Visitation\Events\CharityPDFGenerated;
-use App\Modules\Visitation\Events\VisitationCancelled;
-use App\Modules\Visitation\Events\VisitationCheckedIn;
-use App\Modules\Visitation\Events\VisitationCheckedOut;
-use App\Modules\Visitation\Events\VisitationDenied;
-use App\Modules\Visitation\Events\VisitationScheduled;
-use App\Modules\Visitation\Events\VisitorApproved;
-use App\Modules\Visitation\Events\VisitorRegistered;
-use App\Modules\Visitation\Listeners\LogVisitationAction;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 class EventServiceProvider extends ServiceProvider
@@ -64,30 +55,6 @@ class EventServiceProvider extends ServiceProvider
         ],
         SentenceAdjusted::class => [
             LogReleaseAction::class,
-        ],
-        VisitorRegistered::class => [
-            LogVisitationAction::class,
-        ],
-        VisitorApproved::class => [
-            LogVisitationAction::class,
-        ],
-        VisitationScheduled::class => [
-            LogVisitationAction::class,
-        ],
-        CharityPDFGenerated::class => [
-            LogVisitationAction::class,
-        ],
-        VisitationCheckedIn::class => [
-            LogVisitationAction::class,
-        ],
-        VisitationCheckedOut::class => [
-            LogVisitationAction::class,
-        ],
-        VisitationCancelled::class => [
-            LogVisitationAction::class,
-        ],
-        VisitationDenied::class => [
-            LogVisitationAction::class,
         ],
     ];
 }

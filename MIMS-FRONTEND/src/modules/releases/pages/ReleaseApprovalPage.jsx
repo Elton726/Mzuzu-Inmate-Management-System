@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import { FiRefreshCw, FiSearch } from 'react-icons/fi';
-import { FaCalendarAlt, FaCheckCircle, FaHistory, FaHourglass } from 'react-icons/fa';
+import { FaCalendarAlt, FaCheckCircle, FaClipboardCheck, FaHistory, FaHourglass } from 'react-icons/fa';
 import {
+  getClearanceChecklistByAdmission,
   listEligibleReleases,
   approveRelease
 } from '../services/releaseService';
@@ -12,6 +13,7 @@ import ApproveReleaseModal from '../components/ApproveReleaseModal';
 import ReleaseStatusBadge from '../components/ReleaseStatusBadge';
 import DateBadge from '../components/DateBadge';
 import Button from '../../../components/common/Button';
+import ClearanceChecklistModal from '../components/ClearanceChecklistModal';
 
 const normalizeRelease = (release) => {
   const admission = release?.admission || {};
@@ -61,11 +63,14 @@ already_approved: 0
   const [totalPages, setTotalPages] = useState(1);
   const [perPage, setPerPage] = useState(25);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [clearanceByAdmission, setClearanceByAdmission] = useState({});
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRelease, setSelectedRelease] = useState(null);
   const [approveLoading, setApproveLoading] = useState(false);
+  const [clearanceModalOpen, setClearanceModalOpen] = useState(false);
+  const [selectedClearanceRelease, setSelectedClearanceRelease] = useState(null);
 
   const loadReleases = useCallback(async () => {
     try {
@@ -86,6 +91,23 @@ already_approved: 0
       setTotalPages(data.last_page || 1);
       setCurrentPage(data.current_page || 1);
 
+      const normalizedRows = rows.map(normalizeRelease);
+      const clearancePairs = await Promise.all(normalizedRows
+        .filter((release) => release.admissionId)
+        .map(async (release) => {
+          try {
+            const response = await getClearanceChecklistByAdmission(release.admissionId);
+            return [release.admissionId, response.data];
+          } catch (err) {
+            if (err?.response?.status === 404) {
+              return [release.admissionId, null];
+            }
+            throw err;
+          }
+        }));
+
+      setClearanceByAdmission(Object.fromEntries(clearancePairs));
+
       // Calculate stats
       const total = data.total || rows.length;
       const thisWeek = rows.filter(r => {
@@ -103,8 +125,9 @@ already_approved: 0
         already_approved: 0
       });
     } catch (err) {
-      toast.error(err?.message || 'Failed to load releases');
+      toast.error(err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to load releases');
       setReleases([]);
+      setClearanceByAdmission({});
     } finally {
       setLoading(false);
     }
@@ -127,6 +150,31 @@ already_approved: 0
   const handleApproveClick = (release) => {
     setSelectedRelease(release);
     setModalOpen(true);
+  };
+
+  const handleClearanceClick = (release) => {
+    setSelectedClearanceRelease(release);
+    setClearanceModalOpen(true);
+  };
+
+  const refreshClearanceForAdmission = async (admissionId, knownStatus = undefined) => {
+    if (!admissionId) return;
+
+    if (knownStatus !== undefined) {
+      setClearanceByAdmission((current) => ({ ...current, [admissionId]: knownStatus }));
+      return;
+    }
+
+    try {
+      const response = await getClearanceChecklistByAdmission(admissionId);
+      setClearanceByAdmission((current) => ({ ...current, [admissionId]: response.data }));
+    } catch (err) {
+      if (err?.response?.status === 404) {
+        setClearanceByAdmission((current) => ({ ...current, [admissionId]: null }));
+        return;
+      }
+      toast.error(err?.response?.data?.error || err?.response?.data?.message || 'Failed to refresh clearance status');
+    }
   };
 
   const handleApproveConfirm = async (data) => {
@@ -311,16 +359,24 @@ const handleClearFilters = () => {
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Clearance
+                  </th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {displayReleases.map((release) => (
-                  <tr
-                    key={release.key}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                  >
+                {displayReleases.map((release) => {
+                  const clearance = clearanceByAdmission[release.admissionId];
+                  const clearanceComplete = clearance?.all_cleared === true;
+                  const clearanceStarted = clearance !== null && clearance !== undefined;
+
+                  return (
+                    <tr
+                      key={release.key}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                    >
                     <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
                       {release.inmate.prison_number || '-'}
                     </td>
@@ -343,11 +399,37 @@ const handleClearFilters = () => {
                       <ReleaseStatusBadge status={release.status} />
                     </td>
                     <td className="px-6 py-4 text-sm">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                        clearanceComplete
+                          ? 'bg-malawiGreen/10 text-malawiGreen dark:text-green-400'
+                          : clearanceStarted
+                            ? 'bg-malawiGold/10 text-yellow-700 dark:text-yellow-300'
+                            : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                      }`}>
+                        {clearanceComplete
+                          ? 'Complete'
+                          : clearanceStarted
+                            ? `${clearance.cleared_items}/${clearance.total_items} cleared`
+                            : 'Not Started'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={!release.admissionId}
+                          onClick={() => handleClearanceClick(release)}
+                        >
+                          <FaClipboardCheck />
+                          Checklist
+                        </Button>
                       {release.status === 'not_approved' ? (
                         <Button
                           variant="primary"
                           size="sm"
-                          disabled={!release.admissionId}
+                          disabled={!release.admissionId || !clearanceComplete}
+                          title={clearanceComplete ? 'Approve release' : 'Complete pre-release clearance first'}
                           onClick={() => handleApproveClick(release.raw)}
                         >
                           Approve
@@ -361,9 +443,11 @@ const handleClearFilters = () => {
                           Approved
                         </Button>
                       )}
+                      </div>
                     </td>
-                  </tr>
-                ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -405,6 +489,16 @@ const handleClearFilters = () => {
         }}
         onConfirm={handleApproveConfirm}
         loading={approveLoading}
+      />
+
+      <ClearanceChecklistModal
+        isOpen={clearanceModalOpen}
+        release={selectedClearanceRelease}
+        onClose={() => {
+          setClearanceModalOpen(false);
+          setSelectedClearanceRelease(null);
+        }}
+        onUpdated={refreshClearanceForAdmission}
       />
     </div>
   );

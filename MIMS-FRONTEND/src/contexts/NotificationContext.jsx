@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { NotificationContext } from './NotificationContextCreate';
+import { getModuleFromPathname } from '../utils/helpers';
 
 /**
  * NotificationContext
@@ -7,8 +8,12 @@ import { NotificationContext } from './NotificationContextCreate';
  * Provides global notification state management
  * Allows components to add, remove, and clear notifications
  */
+const STORAGE_KEY = 'mims_notifications';
+
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
+
+  // Persistence removed: notifications are cleared on page refresh.
 
   /**
    * Remove a single notification
@@ -26,16 +31,24 @@ export const NotificationProvider = ({ children }) => {
    * @param {number} [notification.duration] - Auto-dismiss duration in ms (0 = no auto-dismiss)
    */
   const addNotification = useCallback((notification) => {
-    const id = Date.now().toString();
-    const newNotification = {
-      id,
-      isRead: false,
-      timestamp: new Date(),
-      type: 'info',
-      ...notification,
-    };
-
-    setNotifications(prev => [newNotification, ...prev]);
+    const id = notification.id || Date.now().toString();
+    
+    setNotifications(prev => {
+      // Prevent duplicates by ID
+      if (prev.some(n => n.id === id)) {
+        return prev;
+      }
+      
+      const newNotification = {
+        id,
+        isRead: false,
+        timestamp: new Date(),
+        type: 'info',
+        module: getModuleFromPathname(),
+        ...notification,
+      };
+      return [newNotification, ...prev];
+    });
 
     // Auto-dismiss if duration is set
     if (notification.duration && notification.duration > 0) {

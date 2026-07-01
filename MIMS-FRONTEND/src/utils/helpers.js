@@ -202,6 +202,7 @@ export const getRoleDisplayName = (userOrRole) => {
     admin: 'Administrator',
     reception_officer: 'Reception Officer',
     station_officer: 'Station Officer',
+    staff_officer: 'Staff Officer',
     officer_on_duty: 'Officer on Duty',
     gatekeeper: 'Gatekeeper'
   };
@@ -217,6 +218,7 @@ export const ROLES = {
   ADMIN: 'admin',
   RECEPTION_OFFICER: 'reception_officer',
   STATION_OFFICER: 'station_officer',
+  STAFF_OFFICER: 'staff_officer',
   OFFICER_ON_DUTY: 'officer_on_duty',
   GATEKEEPER: 'gatekeeper'
 };
@@ -230,6 +232,7 @@ export const ROLE_OPTIONS = [
   { value: 'admin', label: 'Administrator' },
   { value: 'reception_officer', label: 'Reception Officer' },
   { value: 'station_officer', label: 'Station Officer' },
+  { value: 'staff_officer', label: 'Staff Officer' },
   { value: 'officer_on_duty', label: 'Officer on Duty' },
   { value: 'gatekeeper', label: 'Gatekeeper' }
 ];
@@ -245,11 +248,12 @@ export const ROLE_OPTIONS = [
  * @param {number} months - Sentence months (optional, default 0)
  * @returns {string} ISO date string for projected release date
  */
-export const calculateProjectedReleaseDate = (sentenceStartDate, years, months = 0) => {
+export const calculateProjectedReleaseDate = (sentenceStartDate, years, months = 0, days = 0) => {
   const startDate = new Date(sentenceStartDate);
   const endDate = new Date(startDate);
   endDate.setFullYear(endDate.getFullYear() + years);
   endDate.setMonth(endDate.getMonth() + months);
+  endDate.setDate(endDate.getDate() + days);
 
   // Calculate total days
   const totalDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
@@ -260,4 +264,29 @@ export const calculateProjectedReleaseDate = (sentenceStartDate, years, months =
   releaseDate.setDate(releaseDate.getDate() - remissionDays);
 
   return releaseDate.toISOString().slice(0, 10);
+};
+
+/**
+ * Get current pathname (handles both HashRouter and BrowserRouter)
+ */
+export const getCurrentPath = () => {
+  if (window.location.hash) {
+    return window.location.hash.replace(/^#/, '');
+  }
+  return window.location.pathname;
+};
+
+/**
+ * Get module name from pathname
+ */
+export const getModuleFromPathname = (pathname) => {
+  const path = pathname || getCurrentPath();
+  if (!path) return 'global';
+  if (path.startsWith('/admissions')) return 'admissions';
+  if (path.startsWith('/visitation')) return 'visitation';
+  if (path.startsWith('/admin')) return 'admin';
+  if (path.startsWith('/releases')) return 'releases';
+  if (path.startsWith('/officer')) return 'officer';
+  if (path.startsWith('/inmates')) return 'inmates';
+  return 'global';
 };
