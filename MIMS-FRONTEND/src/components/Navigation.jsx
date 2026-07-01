@@ -34,6 +34,7 @@ import {
 } from 'react-icons/md';
 
 const getPageTitle = (pathname, role) => {
+  if (pathname === '/' && role === ROLES.OFFICER_ON_DUTY) return { title: '', icon: null };
   if (pathname === '/') return { title: 'Home', icon: MdHome };
   if (pathname.startsWith('/admissions/new')) return { title: 'New Admission', icon: MdAdd };
   if (pathname.startsWith('/admissions/cells')) return { title: 'Cell Management', icon: MdHomeWork };
@@ -80,8 +81,8 @@ const getHeaderCopy = (pathname, user, role) => {
 
   if (pathname === '/' && role === ROLES.OFFICER_ON_DUTY) {
     return {
-      title: 'Home',
-      subtitle: 'Activity allocation and session management.',
+      title: `${greeting} officer`,
+      subtitle: '',
     };
   }
 
@@ -155,6 +156,8 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
   );
   const isAdmissionsModule = location.pathname.startsWith('/admissions');
   const isCellPage = location.pathname.startsWith('/admissions/cells') || location.pathname.startsWith('/admin/cells');
+  const showPageTitle = Boolean(pageTitle.title && pageTitle.icon);
+  const isOfficerHome = location.pathname === '/' && role === ROLES.OFFICER_ON_DUTY;
 
   useEffect(() => {
     const handlePointerDown = (event) => {
@@ -260,14 +263,18 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
                 </button>
               )}
               <div className="min-w-0">
-                <div className="flex items-center gap-2 text-sm font-semibold text-gray-500">
-                  <pageTitle.icon className="text-lg" />
-                  <span>{pageTitle.title}</span>
-                </div>
-                <h1 className="mt-2 truncate text-2xl font-bold text-gray-950">
+                {showPageTitle && (
+                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-500">
+                    <pageTitle.icon className="text-lg" />
+                    <span>{pageTitle.title}</span>
+                  </div>
+                )}
+                <h1 className={`mt-2 truncate font-bold text-gray-950 ${isOfficerHome ? 'text-xl' : 'text-2xl'}`}>
                   {headerCopy.title}
                 </h1>
-                <p className="mt-1 text-sm text-gray-500">{headerCopy.subtitle}</p>
+                {headerCopy.subtitle && (
+                  <p className="mt-1 text-sm text-gray-500">{headerCopy.subtitle}</p>
+                )}
               </div>
             </div>
           </div>

@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import Spinner from '../../../../components/common/Spinner';
-import Button from '../../../../components/common/Button';
-import { useAuth } from '../../../../contexts/useAuth';
 import { useToast } from '../../../../contexts/useToast';
 import * as officerActivityService from '../services/officerActivityService';
 import * as officerSessionService from '../services/officerSessionService';
@@ -12,13 +10,6 @@ import ActivityQueueWidget from '../components/ActivityQueueWidget';
 const defaultDashboardMetrics = {
   completion_rate: { percent: 0, completed_sessions: 0, total_sessions: 0 },
   participation: { allocated: 0, capacity: 0, percent: 0 },
-};
-
-const getTimeOfDayGreeting = () => {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good Morning';
-  if (hour < 18) return 'Good Afternoon';
-  return 'Good Evening';
 };
 
 function MetricCard({ label, value, description, accent, to, ariaLabel }) {
@@ -70,7 +61,6 @@ function ProgressMetricCard({ label, value, subtitle, progress, accent, barClass
 }
 
 export default function OfficerAvailableActivitiesPage() {
-  const { user } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -185,9 +175,6 @@ export default function OfficerAvailableActivitiesPage() {
     [sessions]
   );
 
-  const greeting = getTimeOfDayGreeting();
-  const displayName = user?.name || 'Officer';
-
   if (loading) {
     return (
       <div className="min-h-screen bg-malawiGold px-4 py-8 md:px-8">
@@ -268,21 +255,10 @@ export default function OfficerAvailableActivitiesPage() {
   return (
     <div className="min-h-screen bg-malawiGold px-4 py-8 md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-2xl bg-malawiBlack p-6 text-white shadow-xl dark:bg-slate-800 md:p-8">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-malawiGold dark:text-amber-300">🏠 Home</span>
-            <span className="rounded-full bg-white/10 px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/75 dark:bg-slate-700/80 dark:text-slate-300">
-              Officer On Duty
-            </span>
-          </div>
-          <h1 className="mt-4 text-3xl font-black tracking-tight text-white md:text-4xl lg:text-5xl">
-            {greeting}, {displayName}
+        <section className="rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-800 md:p-8">
+          <h1 className="text-xl font-bold text-gray-950 dark:text-white md:text-2xl">
+            Activity allocation and session management.
           </h1>
-          <div className="mt-6">
-            <Button onClick={load} className="bg-malawiGold text-malawiBlack hover:opacity-90">
-              Refresh
-            </Button>
-          </div>
         </section>
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
