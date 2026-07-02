@@ -31,8 +31,10 @@ class OfficerDashboardService
 
         $activityIds = $this->resolveParticipationActivityIds($officerId, $todaySessions);
 
+        // Count all inmates currently active in the relevant activities:
+        // assigned on or before today and not yet removed (end_date is null).
         $allocatedToday = InmateActivity::query()
-            ->whereDate('assigned_date', $today)
+            ->whereDate('assigned_date', '<=', $today)
             ->whereIn('activity_id', $activityIds)
             ->whereNull('end_date')
             ->distinct()

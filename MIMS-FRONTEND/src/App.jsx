@@ -23,7 +23,7 @@
  * - Admin: /admin/*
  */
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -84,6 +84,7 @@ import { ToastContainer } from 'react-toastify';
 const AppContent = () => {
   const { isAuthenticated, loading, logout } = useAuth();
   const navigate = useNavigate();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const inactivityTimerRef = useRef(null);
 
   const handleIdleLogout = useCallback(async () => {
@@ -129,12 +130,19 @@ const AppContent = () => {
     );
   }
 
-  const contentMarginClass = isAuthenticated ? 'ml-64' : 'ml-0';
+  const contentMarginClass = isAuthenticated
+    ? isSidebarCollapsed ? 'ml-20' : 'ml-64'
+    : 'ml-0';
 
   return (
     <div className="flex">
       {/* Sidebar - always shown for authenticated users */}
-      {isAuthenticated && <Sidebar />}
+      {isAuthenticated && (
+        <Sidebar
+          isCollapsed={isSidebarCollapsed}
+          setIsCollapsed={setIsSidebarCollapsed}
+        />
+      )}
 
       {/* Main content area - adjusts margin based on sidebar state */}
       <div className={`${contentMarginClass} flex-1 min-w-0 bg-malawiGold transition-all duration-300 dark:bg-slate-900`}>

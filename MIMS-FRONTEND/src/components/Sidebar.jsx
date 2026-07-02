@@ -16,8 +16,8 @@ import {
   MdCheckCircle,
   MdExitToApp,
   MdEditCalendar,
-  MdChevronLeft,
-  MdChevronRight,
+  MdMenu,
+  MdClose,
   MdLogout,
   MdBarChart,
   MdGavel,
@@ -307,7 +307,7 @@ export default function Sidebar({ isCollapsed = false, setIsCollapsed }) {
     <>
     <aside className={`box-border h-screen border-r-0 bg-white text-gray-700 dark:border-r-[3px] dark:border-slate-700 dark:bg-slate-900 dark:text-gray-300 fixed top-0 left-0 z-50 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'}`}>
       {/* Header with cuffs logo */}
-      <div className="flex h-16 flex-shrink-0 items-center justify-between gap-3 px-4">
+      <div className={`flex flex-shrink-0 px-4 ${isCollapsed ? 'flex-col items-center pt-4 pb-2 gap-3' : 'h-16 items-center justify-between gap-3'}`}>
         <div className="flex items-center gap-3 min-w-0">
           <img
             src={logo}
@@ -333,7 +333,7 @@ export default function Sidebar({ isCollapsed = false, setIsCollapsed }) {
           className="hidden md:flex items-center justify-center p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200 dark:text-zinc-400 dark:hover:bg-slate-800 dark:hover:text-white"
           title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
         >
-          {isCollapsed ? <MdChevronRight className="text-xl" /> : <MdChevronLeft className="text-xl" />}
+          {isCollapsed ? <MdMenu className="text-xl" /> : <MdClose className="text-xl" />}
         </button>
       </div>
 

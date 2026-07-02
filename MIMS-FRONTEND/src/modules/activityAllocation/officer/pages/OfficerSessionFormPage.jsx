@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
+import { FiAlertTriangle } from 'react-icons/fi';
 import Card from '../../../../components/common/Card';
 import Input from '../../../../components/common/Input';
 import Select from '../../../../components/common/Select';
@@ -293,6 +294,17 @@ export default function OfficerSessionFormPage() {
   };
 
   const onSubmit = async (data) => {
+    // Block session creation when no inmates are assigned to the activity
+    if (!isEdit && assignedInmates.length === 0 && activityId && !inmatesLoading) {
+      toast.push({
+        title: 'No inmates assigned',
+        message:
+          'This activity has no inmates assigned to it. Please assign inmates to the activity before creating a session.',
+        variant: 'error',
+      });
+      return;
+    }
+
     try {
       const submittedActivityId = data.activity_id || prefillActivityId || form.getValues('activity_id');
       const payload = {
@@ -340,6 +352,9 @@ export default function OfficerSessionFormPage() {
       toast.fromError(err, { title: isEdit ? 'Update failed' : 'Create failed' });
     }
   };
+
+  // A session can only be created when inmates are loaded and at least one is assigned
+  const canCreateSession = isEdit || !activityId || inmatesLoading || assignedInmates.length > 0;
 
   const activityOptions = useMemo(
     () => {
@@ -508,7 +523,16 @@ export default function OfficerSessionFormPage() {
                 {inmatesLoading ? (
                   <Spinner label="Loading assigned inmates..." />
                 ) : assignedInmates.length === 0 ? (
-                  <p className="text-sm text-gray-500 italic">No inmates are currently assigned to this activity.</p>
+                  <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-4">
+                    <FiAlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
+                    <div>
+                      <p className="text-sm font-semibold text-red-700">No inmates assigned to this activity</p>
+                      <p className="mt-1 text-sm text-red-600">
+                        A session cannot be created because there are no inmates assigned to this activity.
+                        Please go to the activity's allocation page and assign inmates before creating a session.
+                      </p>
+                    </div>
+                  </div>
                 ) : (
                   <div className="max-h-60 overflow-y-auto">
                     <table className="min-w-full text-sm">
@@ -536,7 +560,16 @@ export default function OfficerSessionFormPage() {
               <Button type="button" variant="outline" onClick={() => navigate('/officer/activity-sessions')}>
                 Cancel
               </Button>
-              <Button type="submit" loading={form.formState.isSubmitting}>
+              <Button
+                type="submit"
+                loading={form.formState.isSubmitting}
+                disabled={!canCreateSession}
+                title={
+                  !canCreateSession
+                    ? 'Cannot create a session: no inmates are assigned to this activity.'
+                    : undefined
+                }
+              >
                 {isEdit ? 'Save Changes' : 'Create Session'}
               </Button>
             </div>
