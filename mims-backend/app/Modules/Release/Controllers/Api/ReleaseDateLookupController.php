@@ -47,11 +47,32 @@ class ReleaseDateLookupController extends Controller
             ->where('a.is_current', true);
 
         if ($query) {
-            $releaseDates->where(function ($q) use ($query) {
-                $q->where('i.first_name', 'like', "%{$query}%")
-                    ->orWhere('i.last_name', 'like', "%{$query}%")
-                    ->orWhere('i.prison_number', 'like', "%{$query}%")
-                    ->orWhere('a.case_number', 'like', "%{$query}%");
+            $terms = collect(preg_split('/\s+/', $query) ?: [])
+                ->filter()
+                ->values();
+            $like = fn (string $value) => '%' . strtolower($value) . '%';
+
+            $releaseDates->where(function ($q) use ($query, $terms, $like) {
+                $q->whereRaw('LOWER(i.prison_number) LIKE ?', [$like($query)])
+                    ->orWhereRaw('LOWER(i.first_name) LIKE ?', [$like($query)])
+                    ->orWhereRaw('LOWER(i.last_name) LIKE ?', [$like($query)])
+                    ->orWhereRaw('LOWER(i.other_names) LIKE ?', [$like($query)])
+                    ->orWhereRaw('LOWER(a.case_number) LIKE ?', [$like($query)]);
+
+                if ($terms->count() > 1) {
+                    $q->orWhere(function ($termGroup) use ($terms, $like) {
+                        $terms->each(function ($term) use ($termGroup, $like) {
+                            $termGroup->where(function ($termBuilder) use ($term, $like) {
+                                $termBuilder
+                                    ->whereRaw('LOWER(i.prison_number) LIKE ?', [$like($term)])
+                                    ->orWhereRaw('LOWER(i.first_name) LIKE ?', [$like($term)])
+                                    ->orWhereRaw('LOWER(i.last_name) LIKE ?', [$like($term)])
+                                    ->orWhereRaw('LOWER(i.other_names) LIKE ?', [$like($term)])
+                                    ->orWhereRaw('LOWER(a.case_number) LIKE ?', [$like($term)]);
+                            });
+                        });
+                    });
+                }
             });
         }
 

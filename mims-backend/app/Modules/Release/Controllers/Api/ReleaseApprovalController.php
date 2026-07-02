@@ -32,9 +32,25 @@ class ReleaseApprovalController extends Controller
         $releases = $this->releaseService->getEligibleInmates();
 
         if ($query) {
-            $releases = $releases->filter(function ($inmate) use ($query) {
-                return str_contains(strtolower($inmate->first_name . ' ' . $inmate->last_name), strtolower($query))
-                    || str_contains(strtolower($inmate->prison_number), strtolower($query));
+            $terms = collect(preg_split('/\s+/', $query) ?: [])
+                ->filter()
+                ->values();
+
+            $releases = $releases->filter(function ($inmate) use ($query, $terms) {
+                $fullName = strtolower($inmate->first_name . ' ' . ($inmate->other_names ? $inmate->other_names . ' ' : '') . $inmate->last_name);
+                $prisonNo = strtolower($inmate->prison_number);
+
+                if (str_contains($fullName, strtolower($query)) || str_contains($prisonNo, strtolower($query))) {
+                    return true;
+                }
+
+                if ($terms->count() > 1) {
+                    return $terms->every(function ($term) use ($fullName, $prisonNo) {
+                        return str_contains($fullName, strtolower($term)) || str_contains($prisonNo, strtolower($term));
+                    });
+                }
+
+                return false;
             });
         }
 
@@ -101,10 +117,28 @@ class ReleaseApprovalController extends Controller
         }
 
         if ($query) {
-            $releaseHistory = $releaseHistory->where(function ($q) use ($query) {
-                $q->where('first_name', 'like', "%{$query}%")
-                    ->orWhere('last_name', 'like', "%{$query}%")
-                    ->orWhere('prison_number', 'like', "%{$query}%");
+            $terms = collect(preg_split('/\s+/', $query) ?: [])
+                ->filter()
+                ->values();
+            $like = fn (string $value) => '%' . strtolower($value) . '%';
+
+            $releaseHistory->where(function ($q) use ($query, $terms, $like) {
+                $q->whereRaw('LOWER(prison_number) LIKE ?', [$like($query)])
+                    ->orWhereRaw('LOWER(first_name) LIKE ?', [$like($query)])
+                    ->orWhereRaw('LOWER(last_name) LIKE ?', [$like($query)]);
+
+                if ($terms->count() > 1) {
+                    $q->orWhere(function ($termGroup) use ($terms, $like) {
+                        $terms->each(function ($term) use ($termGroup, $like) {
+                            $termGroup->where(function ($termBuilder) use ($term, $like) {
+                                $termBuilder
+                                    ->whereRaw('LOWER(prison_number) LIKE ?', [$like($term)])
+                                    ->orWhereRaw('LOWER(first_name) LIKE ?', [$like($term)])
+                                    ->orWhereRaw('LOWER(last_name) LIKE ?', [$like($term)]);
+                            });
+                        });
+                    });
+                }
             });
         }
 
@@ -128,10 +162,28 @@ class ReleaseApprovalController extends Controller
             ->orderByDesc('confirmed_at');
 
         if ($query) {
-            $releaseHistory = $releaseHistory->where(function ($q) use ($query) {
-                $q->where('first_name', 'like', "%{$query}%")
-                    ->orWhere('last_name', 'like', "%{$query}%")
-                    ->orWhere('prison_number', 'like', "%{$query}%");
+            $terms = collect(preg_split('/\s+/', $query) ?: [])
+                ->filter()
+                ->values();
+            $like = fn (string $value) => '%' . strtolower($value) . '%';
+
+            $releaseHistory->where(function ($q) use ($query, $terms, $like) {
+                $q->whereRaw('LOWER(prison_number) LIKE ?', [$like($query)])
+                    ->orWhereRaw('LOWER(first_name) LIKE ?', [$like($query)])
+                    ->orWhereRaw('LOWER(last_name) LIKE ?', [$like($query)]);
+
+                if ($terms->count() > 1) {
+                    $q->orWhere(function ($termGroup) use ($terms, $like) {
+                        $terms->each(function ($term) use ($termGroup, $like) {
+                            $termGroup->where(function ($termBuilder) use ($term, $like) {
+                                $termBuilder
+                                    ->whereRaw('LOWER(prison_number) LIKE ?', [$like($term)])
+                                    ->orWhereRaw('LOWER(first_name) LIKE ?', [$like($term)])
+                                    ->orWhereRaw('LOWER(last_name) LIKE ?', [$like($term)]);
+                            });
+                        });
+                    });
+                }
             });
         }
 
@@ -158,10 +210,28 @@ class ReleaseApprovalController extends Controller
         }
 
         if ($query) {
-            $releaseHistory = $releaseHistory->where(function ($q) use ($query) {
-                $q->where('first_name', 'like', "%{$query}%")
-                    ->orWhere('last_name', 'like', "%{$query}%")
-                    ->orWhere('prison_number', 'like', "%{$query}%");
+            $terms = collect(preg_split('/\s+/', $query) ?: [])
+                ->filter()
+                ->values();
+            $like = fn (string $value) => '%' . strtolower($value) . '%';
+
+            $releaseHistory->where(function ($q) use ($query, $terms, $like) {
+                $q->whereRaw('LOWER(prison_number) LIKE ?', [$like($query)])
+                    ->orWhereRaw('LOWER(first_name) LIKE ?', [$like($query)])
+                    ->orWhereRaw('LOWER(last_name) LIKE ?', [$like($query)]);
+
+                if ($terms->count() > 1) {
+                    $q->orWhere(function ($termGroup) use ($terms, $like) {
+                        $terms->each(function ($term) use ($termGroup, $like) {
+                            $termGroup->where(function ($termBuilder) use ($term, $like) {
+                                $termBuilder
+                                    ->whereRaw('LOWER(prison_number) LIKE ?', [$like($term)])
+                                    ->orWhereRaw('LOWER(first_name) LIKE ?', [$like($term)])
+                                    ->orWhereRaw('LOWER(last_name) LIKE ?', [$like($term)]);
+                            });
+                        });
+                    });
+                }
             });
         }
 

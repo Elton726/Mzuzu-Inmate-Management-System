@@ -14,7 +14,9 @@ return new class extends Migration
 
         Schema::table('admissions', function (Blueprint $table) {
             // 1. Shrink case_number column to the new max of 5 characters
-            $table->string('case_number', 5)->change();
+            if (DB::getDriverName() !== 'sqlite') {
+                $table->string('case_number', 5)->change();
+            }
 
             // 2. Add sentence_days alongside the existing sentence_months (left null per user request)
             if (!Schema::hasColumn('admissions', 'sentence_days')) {
@@ -52,7 +54,9 @@ return new class extends Migration
     {
         Schema::table('admissions', function (Blueprint $table) {
             // Restore original column length
-            $table->string('case_number', 50)->change();
+            if (DB::getDriverName() !== 'sqlite') {
+                $table->string('case_number', 50)->change();
+            }
 
             if (Schema::hasColumn('admissions', 'sentence_days')) {
                 $table->dropColumn('sentence_days');

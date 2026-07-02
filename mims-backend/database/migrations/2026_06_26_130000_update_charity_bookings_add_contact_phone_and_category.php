@@ -24,7 +24,13 @@ return new class extends Migration
         });
 
         if (Schema::hasColumn('charity_bookings', 'inmate_id')) {
-            DB::statement('ALTER TABLE charity_bookings ALTER COLUMN inmate_id DROP NOT NULL');
+            if (DB::getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE charity_bookings ALTER COLUMN inmate_id DROP NOT NULL');
+            } else {
+                Schema::table('charity_bookings', function (Blueprint $table) {
+                    $table->unsignedBigInteger('inmate_id')->nullable()->change();
+                });
+            }
         }
     }
 
