@@ -5,6 +5,7 @@ namespace App\Modules\Release\Repositories;
 use App\Modules\Release\Models\ReleaseClearanceChecklist;
 use App\Modules\Release\Models\ReleaseClearanceChecklistItem;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ReleaseClearanceRepository
 {
@@ -27,9 +28,9 @@ class ReleaseClearanceRepository
             $createdItems->push(
                 ReleaseClearanceChecklistItem::query()->create([
                     'clearance_checklist_id' => $checklistId,
-                    'item_type' => $item['type'],
-                    'item_label' => $item['label'],
-                    'is_cleared' => false,
+                    'item_type'              => $item['type'],
+                    'item_label'             => $item['label'],
+                    'is_cleared'             => false,
                 ])
             );
         }
@@ -90,16 +91,16 @@ class ReleaseClearanceRepository
         $item = ReleaseClearanceChecklistItem::query()->findOrFail($itemId);
 
         $item->update([
-            'is_cleared' => true,
-            'cleared_by' => $userId,
-            'cleared_at' => now(),
+            'is_cleared'         => true,
+            'cleared_by'         => $userId,
+            'cleared_at'         => now(),
             'verification_notes' => $notes,
         ]);
 
         $item->checklist()->update([
             'all_items_cleared' => false,
-            'completed_by' => null,
-            'completed_at' => null,
+            'completed_by'      => null,
+            'completed_at'      => null,
         ]);
 
         return $item->refresh();
@@ -113,16 +114,16 @@ class ReleaseClearanceRepository
         $item = ReleaseClearanceChecklistItem::query()->findOrFail($itemId);
 
         $item->update([
-            'is_cleared' => false,
-            'cleared_by' => null,
-            'cleared_at' => null,
+            'is_cleared'         => false,
+            'cleared_by'         => null,
+            'cleared_at'         => null,
             'verification_notes' => null,
         ]);
 
         $item->checklist()->update([
             'all_items_cleared' => false,
-            'completed_by' => null,
-            'completed_at' => null,
+            'completed_by'      => null,
+            'completed_at'      => null,
         ]);
 
         return $item->refresh();
@@ -144,8 +145,8 @@ class ReleaseClearanceRepository
 
         $checklist->update([
             'all_items_cleared' => true,
-            'completed_by' => $userId,
-            'completed_at' => now(),
+            'completed_by'      => $userId,
+            'completed_at'      => now(),
         ]);
 
         return $checklist->refresh();
@@ -167,7 +168,7 @@ class ReleaseClearanceRepository
     public function getCompletionPercentage(int $checklistId): int
     {
         $checklist = ReleaseClearanceChecklist::query()->findOrFail($checklistId);
-        $total = $checklist->getTotalCount();
+        $total     = $checklist->getTotalCount();
 
         if ($total === 0) {
             return 0;
@@ -176,5 +177,55 @@ class ReleaseClearanceRepository
         $cleared = $checklist->getClearedCount();
 
         return (int) (($cleared / $total) * 100);
+    }
+
+    /**
+     * Bulk-clear all specified items and mark the checklist as complete in one DB transaction.
+     *
+     * @param int   $checklistId
+     * @param int   $userId
+     * @param array $items  Array of ['id' => int, 'notes' => string|null]
+     */
+    public function bulkClearItemsAndComplete(int $checklistId, int $userId, array $items): ReleaseClearanceChecklist
+    {
+        return DB::transaction(function () use ($checklistId, $userId, $items) {
+            $checklist = ReleaseClearanceChecklist::query()->findOrFail($checklistId);
+
+            if ($checklist->all_items_cleared) {
+                throw new \RuntimeException('Checklist is already completed.');
+            }
+
+            $now         = now();
+            $submittedMap = collect($items)->keyBy('id');
+
+            // Load all items and mark submitted ones as cleared
+            $allItems = $checklist->items()->get();
+
+            foreach ($allItems as $item) {
+                if (isset($submittedMap[$item->id])) {
+                    $item->update([
+                        'is_cleared'         => true,
+                        'cleared_by'         => $userId,
+                        'cleared_at'         => $now,
+                        'verification_notes' => $submittedMap[$item->id]['notes'] ?? null,
+                    ]);
+                }
+            }
+
+            // Ensure every item is cleared before marking complete
+            $unclearedCount = $checklist->items()->where('is_cleared', false)->count();
+
+            if ($unclearedCount > 0) {
+                throw new \RuntimeException('All checklist items must be checked before completing.');
+            }
+
+            $checklist->update([
+                'all_items_cleared' => true,
+                'completed_by'      => $userId,
+                'completed_at'      => $now,
+            ]);
+
+            return $checklist->fresh(['items', 'initiator:id,name', 'completer:id,name']);
+        });
     }
 }

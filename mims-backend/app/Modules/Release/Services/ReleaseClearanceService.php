@@ -28,20 +28,20 @@ class ReleaseClearanceService
         // Create the checklist
         $checklist = $this->repository->createChecklist([
             'release_workflow_id' => $releaseWorkflowId,
-            'admission_id' => $admissionId,
-            'initiated_by' => $initiatedBy,
-            'all_items_cleared' => false,
+            'admission_id'        => $admissionId,
+            'initiated_by'        => $initiatedBy,
+            'all_items_cleared'   => false,
         ]);
 
         // Create default checklist items
         $items = [
-            ['type' => 'warrant_verified', 'label' => 'Warrant Verified'],
-            ['type' => 'no_pending_court_order', 'label' => 'No Pending Court Order'],
-            ['type' => 'no_disciplinary_case', 'label' => 'No Outstanding Disciplinary Case'],
-            ['type' => 'medical_clearance', 'label' => 'Medical Clearance'],
-            ['type' => 'property_returned', 'label' => 'Property Returned'],
-            ['type' => 'program_exit_completed', 'label' => 'Activity/Program Exit Completed'],
-            ['type' => 'next_of_kin_notified', 'label' => 'Next-of-Kin Notified'],
+            ['type' => 'warrant_verified',       'label' => 'Warrant Verified'],
+            ['type' => 'no_pending_court_order',  'label' => 'No Pending Court Order'],
+            ['type' => 'no_disciplinary_case',    'label' => 'No Outstanding Disciplinary Case'],
+            ['type' => 'medical_clearance',       'label' => 'Medical Clearance'],
+            ['type' => 'property_returned',       'label' => 'Property Returned'],
+            ['type' => 'program_exit_completed',  'label' => 'Activity/Program Exit Completed'],
+            ['type' => 'next_of_kin_notified',    'label' => 'Next-of-Kin Notified'],
         ];
 
         $this->repository->createChecklistItems($checklist->id, $items);
@@ -74,7 +74,23 @@ class ReleaseClearanceService
     public function completeChecklist(int $checklistId, int $completedBy): ReleaseClearanceChecklist
     {
         $checklist = $this->repository->completeChecklist($checklistId, $completedBy);
-        
+
+        event(new ClearanceChecklistCompleted($checklist, $completedBy));
+
+        return $checklist;
+    }
+
+    /**
+     * Bulk-clear all selected items and complete the checklist in a single DB transaction.
+     *
+     * @param int   $checklistId
+     * @param int   $completedBy
+     * @param array $items  Array of ['id' => int, 'notes' => string|null]
+     */
+    public function bulkCompleteChecklist(int $checklistId, int $completedBy, array $items): ReleaseClearanceChecklist
+    {
+        $checklist = $this->repository->bulkClearItemsAndComplete($checklistId, $completedBy, $items);
+
         event(new ClearanceChecklistCompleted($checklist, $completedBy));
 
         return $checklist;
@@ -114,30 +130,30 @@ class ReleaseClearanceService
      */
     public function getClearanceStatus(int $checklistId): array
     {
-        $checklist = $this->repository->getChecklistById($checklistId);
-        $total = $checklist->getTotalCount();
-        $cleared = $checklist->getClearedCount();
+        $checklist  = $this->repository->getChecklistById($checklistId);
+        $total      = $checklist->getTotalCount();
+        $cleared    = $checklist->getClearedCount();
         $percentage = $this->repository->getCompletionPercentage($checklistId);
 
         return [
-            'checklist_id' => $checklist->id,
-            'workflow_id' => $checklist->release_workflow_id,
-            'admission_id' => $checklist->admission_id,
-            'total_items' => $total,
-            'cleared_items' => $cleared,
-            'pending_items' => $total - $cleared,
+            'checklist_id'          => $checklist->id,
+            'workflow_id'           => $checklist->release_workflow_id,
+            'admission_id'          => $checklist->admission_id,
+            'total_items'           => $total,
+            'cleared_items'         => $cleared,
+            'pending_items'         => $total - $cleared,
             'completion_percentage' => $percentage,
-            'all_cleared' => $checklist->all_items_cleared,
-            'is_fully_cleared' => $this->repository->isChecklistComplete($checklistId),
-            'initiated_at' => $checklist->initiated_at,
-            'completed_at' => $checklist->completed_at,
-            'items' => $checklist->items->map(fn ($item) => [
-                'id' => $item->id,
-                'type' => $item->item_type,
-                'label' => $item->item_label,
-                'is_cleared' => $item->is_cleared,
-                'cleared_at' => $item->cleared_at,
-                'cleared_by' => $item->clearer?->name,
+            'all_cleared'           => $checklist->all_items_cleared,
+            'is_fully_cleared'      => $this->repository->isChecklistComplete($checklistId),
+            'initiated_at'          => $checklist->initiated_at,
+            'completed_at'          => $checklist->completed_at,
+            'items'                 => $checklist->items->map(fn ($item) => [
+                'id'                 => $item->id,
+                'type'               => $item->item_type,
+                'label'              => $item->item_label,
+                'is_cleared'         => $item->is_cleared,
+                'cleared_at'         => $item->cleared_at,
+                'cleared_by'         => $item->clearer?->name,
                 'verification_notes' => $item->verification_notes,
             ]),
         ];

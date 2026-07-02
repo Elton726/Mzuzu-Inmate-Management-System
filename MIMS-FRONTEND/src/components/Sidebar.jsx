@@ -86,7 +86,7 @@ export default function Sidebar() {
           end: true,
           icon: MdHome,
           title: 'Home',
-          show: !isAdmin
+          show: !isAdmin && role !== ROLES.STATION_OFFICER
         }
       ]
     },
@@ -149,6 +149,13 @@ export default function Sidebar() {
       id: 'releases',
       title: 'Releases',
       items: [
+        {
+          to: '/releases',
+          end: true,
+          icon: MdDashboard,
+          title: 'Release Dashboard',
+          show: role === ROLES.STATION_OFFICER
+        },
         {
           to: '/releases/approval',
           icon: MdCheckCircle,

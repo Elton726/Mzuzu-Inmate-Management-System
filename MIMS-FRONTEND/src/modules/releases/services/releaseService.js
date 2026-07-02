@@ -78,6 +78,15 @@ export const completeClearanceChecklist = async (checklistId) => {
   return res.data;
 };
 
+/**
+ * Bulk-complete the clearance checklist in a single request.
+ * items: Array of { id: number, notes: string|null }
+ */
+export const bulkCompleteClearanceChecklist = async (checklistId, items) => {
+  const res = await apiClient.put(`/releases/clearance-checklist/${checklistId}/bulk-complete`, { items });
+  return res.data;
+};
+
 // Sentence Adjustment endpoints
 export const listAdjustments = async (admissionId, params) => {
   const res = await apiClient.get(`/admissions/${admissionId}/adjustments`, { params });

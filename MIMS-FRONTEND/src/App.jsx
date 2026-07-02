@@ -53,6 +53,7 @@ import AdmissionsReportPage from './modules/admissions/pages/AdmissionsReportPag
 import CellManagementPage from './modules/admissions/pages/CellManagementPage';
 import InmateDetailPage from './modules/admissions/pages/InmateDetailPage';
 import ReleaseApprovalPage from './modules/releases/pages/ReleaseApprovalPage';
+import ReleaseDashboardPage from './modules/releases/pages/ReleaseDashboardPage';
 import ReleaseConfirmationPage from './modules/releases/pages/ReleaseConfirmationPage';
 import ConfirmedReleasesPage from './modules/releases/pages/ConfirmedReleasesPage';
 import SentenceAdjustmentPage from './modules/releases/pages/SentenceAdjustmentPage';
@@ -155,7 +156,7 @@ const AppContent = () => {
             path="/"
             element={
               <ProtectedRoute>
-                <HomePage />
+                <HomeRoute />
               </ProtectedRoute>
             }
           />
@@ -512,7 +513,7 @@ const ReleaseModuleHomeRedirect = () => {
   const role = getRoleName();
 
   if (role === ROLES.STATION_OFFICER) {
-    return <Navigate to="/releases/approval" replace />;
+    return <ReleaseDashboardPage />;
   }
 
   if (role === ROLES.GATEKEEPER) {
@@ -520,6 +521,17 @@ const ReleaseModuleHomeRedirect = () => {
   }
 
   return <Navigate to="/" replace />;
+};
+
+const HomeRoute = () => {
+  const { getRoleName } = useAuth();
+  const role = getRoleName();
+
+  if (role === ROLES.STATION_OFFICER) {
+    return <ReleaseDashboardPage />;
+  }
+
+  return <HomePage />;
 };
 
 function App() {

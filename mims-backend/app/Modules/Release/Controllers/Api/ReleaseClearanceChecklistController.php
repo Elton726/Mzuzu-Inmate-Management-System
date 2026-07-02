@@ -20,7 +20,7 @@ class ReleaseClearanceChecklistController extends Controller
     {
         $validated = $request->validate([
             'release_workflow_id' => ['nullable', 'integer', 'exists:release_workflow,id'],
-            'admission_id' => ['required', 'integer', 'exists:admissions,id'],
+            'admission_id'        => ['required', 'integer', 'exists:admissions,id'],
         ]);
 
         try {
@@ -32,7 +32,7 @@ class ReleaseClearanceChecklistController extends Controller
 
             return response()->json([
                 'message' => 'Clearance checklist initiated successfully.',
-                'data' => $this->clearanceService->getClearanceStatus($checklist->id),
+                'data'    => $this->clearanceService->getClearanceStatus($checklist->id),
             ], 201);
         } catch (RuntimeException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
@@ -109,7 +109,7 @@ class ReleaseClearanceChecklistController extends Controller
 
             return response()->json([
                 'message' => 'Checklist item marked as cleared.',
-                'data' => ['success' => true],
+                'data'    => ['success' => true],
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return response()->json(['error' => 'Checklist item not found.'], 404);
@@ -132,7 +132,7 @@ class ReleaseClearanceChecklistController extends Controller
 
             return response()->json([
                 'message' => 'Checklist item marked as uncleared.',
-                'data' => ['success' => true],
+                'data'    => ['success' => true],
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return response()->json(['error' => 'Checklist item not found.'], 404);
@@ -156,7 +156,40 @@ class ReleaseClearanceChecklistController extends Controller
 
             return response()->json([
                 'message' => 'Clearance checklist completed successfully.',
-                'data' => $status,
+                'data'    => $status,
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return response()->json(['error' => 'Clearance checklist not found.'], 404);
+        } catch (RuntimeException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+    }
+
+    /**
+     * Bulk-clear all selected items and complete the checklist in one request.
+     *
+     * Accepts: { items: [{ id: int, notes: string|null }] }
+     */
+    public function bulkComplete(Request $request, int $checklistId)
+    {
+        $validated = $request->validate([
+            'items'          => ['required', 'array', 'min:1'],
+            'items.*.id'     => ['required', 'integer', 'exists:release_clearance_checklist_items,id'],
+            'items.*.notes'  => ['nullable', 'string', 'max:500'],
+        ]);
+
+        try {
+            $checklist = $this->clearanceService->bulkCompleteChecklist(
+                $checklistId,
+                (int) $request->user()->id,
+                $validated['items']
+            );
+
+            $status = $this->clearanceService->getClearanceStatus($checklist->id);
+
+            return response()->json([
+                'message' => 'Clearance checklist completed successfully.',
+                'data'    => $status,
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return response()->json(['error' => 'Clearance checklist not found.'], 404);

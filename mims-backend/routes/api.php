@@ -223,6 +223,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // Completion of clearance checklist (station officer only)
         Route::middleware('role:station_officer')->group(function () {
             Route::put('/releases/clearance-checklist/{checklistId}/complete', [ReleaseClearanceChecklistController::class, 'complete'])->middleware('throttle:10,60,user');
+            Route::put('/releases/clearance-checklist/{checklistId}/bulk-complete', [ReleaseClearanceChecklistController::class, 'bulkComplete'])->middleware('throttle:10,60,user');
         });
 
         // Release confirmation (gatekeeper)
