@@ -261,7 +261,7 @@ export default function OfficerSessionDetailPage() {
               label="Search"
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}
-              placeholder="Search by name or prison number..."
+              placeholder="Search by name or inmate number..."
               className="max-w-md"
             />
           </div>
@@ -271,7 +271,7 @@ export default function OfficerSessionDetailPage() {
               <thead>
                 <tr className="text-left text-gray-700 border-b">
                   <th className="py-2 pr-4">Inmate</th>
-                  <th className="py-2 pr-4">Prison #</th>
+                  <th className="py-2 pr-4">Inmate number</th>
                   <th className="py-2 pr-4">Notes / Incidents</th>
                 </tr>
               </thead>

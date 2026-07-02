@@ -1,5 +1,3 @@
-import Button from '../../../../components/common/Button';
-
 const securityTone = {
   maximum: 'bg-red-100 text-red-700',
   medium: 'bg-amber-100 text-amber-700',
@@ -13,15 +11,7 @@ const formatStatusLabel = (value) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
 
-export default function ActivityTable({
-  activities,
-  workingAction,
-  onOpenTodaySession,
-  onOpenExternalOnceSession,
-  onOpenAllocation,
-  onOpenCreateSession,
-  onOpenAutoAssign,
-}) {
+export default function ActivityTable({ activities }) {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full text-sm">
@@ -31,7 +21,6 @@ export default function ActivityTable({
             <th className="py-3 pr-4">Type</th>
             <th className="py-3 pr-4">Security</th>
             <th className="py-3 pr-4">Max Participants</th>
-            <th className="py-3 pr-4">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -55,35 +44,7 @@ export default function ActivityTable({
                   </span>
                 </td>
                 <td className="py-3 pr-4">{maxParticipants}</td>
-                <td className="py-3 pr-4">
-                  <div className="flex flex-wrap gap-2">
-                    {isInternal ? (
-                    <Button
-                      className="px-3 py-1 text-xs"
-                      onClick={() => onOpenTodaySession(activity)}
-                    >
-                      Today’s Session
-                    </Button>
-                  ) : (
-                    <>
-                      <Button
-                        className="px-3 py-1 text-xs"
-                        onClick={() => onOpenExternalOnceSession(activity)}
-                      >
-                        Create Session
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="px-3 py-1 text-xs"
-                        onClick={() => onOpenAllocation(activity)}
-                      >
-                        Allocate Inmates
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </td>
-            </tr>
+              </tr>
             );
           })}
         </tbody>

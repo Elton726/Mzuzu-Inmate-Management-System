@@ -232,7 +232,7 @@ export default function ActivityReportsPage() {
                         <th className="py-2 pr-4">Date</th>
                         <th className="py-2 pr-4">Activity</th>
                         <th className="py-2 pr-4">Inmate</th>
-                        <th className="py-2 pr-4">Prison #</th>
+                        <th className="py-2 pr-4">Inmate number</th>
                         <th className="py-2 pr-4">Notes</th>
                       </tr>
                     </thead>

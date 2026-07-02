@@ -166,7 +166,7 @@ export default function OfficerExternalActivityAllocationPage() {
                   label="Search inmates"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Prison number or name"
+                  placeholder="Inmate number or name"
                 />
               </div>
               <div className="w-48">
@@ -200,7 +200,7 @@ export default function OfficerExternalActivityAllocationPage() {
                     <input type="checkbox" checked={allSelected} onChange={toggleAll} />
                   </th>
                   <th className="py-2 pr-4">Inmate</th>
-                  <th className="py-2 pr-4">Prison #</th>
+                  <th className="py-2 pr-4">Inmate number</th>
                   <th className="py-2 pr-4">Admission</th>
                   <th className="py-2 pr-4">Type</th>
                   <th className="py-2 pr-4">Case</th>

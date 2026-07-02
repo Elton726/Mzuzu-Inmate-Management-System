@@ -319,7 +319,7 @@ export const Navigation = () => {
                               type="search"
                               value={searchInput}
                               onChange={handleSearchChange}
-                              placeholder={isCellPage ? 'Search cells, blocks, inmates...' : 'Search inmate, prison no., National ID'}
+                              placeholder={isCellPage ? 'Search cells, blocks, inmates...' : 'Search inmate, inmate number, National ID'}
                               className="h-10 w-full rounded-md border border-gray-300 bg-white pl-10 pr-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                             />
                           </div>

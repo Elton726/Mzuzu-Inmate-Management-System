@@ -445,7 +445,7 @@ export default function AdminDashboard() {
                 <div key={admission.id} className="rounded-2xl bg-slate-50 p-4">
                   <p className="font-black text-slate-950">{getInmateName(admission.inmate)}</p>
                   <p className="text-sm text-slate-500">
-                    {admission.inmate?.prison_number || 'No prison number'} - {formatLabel(admission.inmate_type)}
+                    {admission.inmate?.prison_number || 'No inmate number'} - {formatLabel(admission.inmate_type)}
                   </p>
                   <p className="mt-1 text-sm text-slate-600">
                     {admission.court_name || 'Court not recorded'} - {admission.remand_next_court_date ? formatDate(admission.remand_next_court_date) : 'No date'}
@@ -465,7 +465,7 @@ export default function AdminDashboard() {
                 <div key={workflow.id} className="rounded-2xl bg-slate-50 p-4">
                   <p className="font-black text-slate-950">{getInmateName(workflow.admission?.inmate)}</p>
                   <p className="text-sm text-slate-500">
-                    {workflow.admission?.inmate?.prison_number || 'No prison number'} - {formatLabel(workflow.status)}
+                    {workflow.admission?.inmate?.prison_number || 'No inmate number'} - {formatLabel(workflow.status)}
                   </p>
                 </div>
               )}

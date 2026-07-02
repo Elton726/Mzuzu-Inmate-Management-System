@@ -87,7 +87,7 @@ function InmateSearch({ value, onChange, error }) {
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search inmate name or prison number"
+        placeholder="Search inmate name or inmate number"
         className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-malawiGreen"
       />
       {value && <p className="mt-1 text-xs text-gray-600">Selected inmate ID: {value}</p>}

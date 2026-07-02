@@ -135,6 +135,34 @@ export default function OfficerSessionFormPage() {
   }, [form, isEdit, prefillActivityId]);
 
   const activityId = form.watch('activity_id');
+  const sessionDate = form.watch('session_date');
+
+  const validateSessionDate = (value) => {
+    if (!value) return 'Session date is required';
+    if (value < todayLocal) return 'Session date cannot be in the past';
+    return true;
+  };
+
+  const validateStartTime = (value) => {
+    if (!value) return 'Start time is required';
+    const selectedDate = form.getValues('session_date');
+    if (selectedDate === todayLocal && value < toTimeString(new Date())) {
+      return 'Start time cannot be in the past';
+    }
+    return true;
+  };
+
+  const validateEndTime = (value) => {
+    if (!value) return 'End time is required';
+    const values = form.getValues();
+    if (values.session_date === todayLocal && value < toTimeString(new Date())) {
+      return 'End time cannot be in the past';
+    }
+    if (values.start_time && value <= values.start_time) {
+      return 'End time must be after start time';
+    }
+    return true;
+  };
 
   useEffect(() => {
     if (isEdit || !activityId) {
@@ -307,9 +335,9 @@ export default function OfficerSessionFormPage() {
                 <Input
                   label="Session date"
                   type="date"
-                  {...form.register('session_date', { required: 'Session date is required' })}
-                  disabled
-                  hint="Sessions are created for today."
+                  min={todayLocal}
+                  {...form.register('session_date', { validate: validateSessionDate })}
+                  disabled={isEdit}
                   error={form.formState.errors.session_date?.message}
                 />
                 {isInternal ? (
@@ -317,7 +345,6 @@ export default function OfficerSessionFormPage() {
                     label="Session period"
                     disabled
                     value="Daily"
-                    hint="Internal activities are tracked daily."
                   />
                 ) : (
                   <Select
@@ -333,22 +360,21 @@ export default function OfficerSessionFormPage() {
                     }}
                     options={sessionPeriodOptions}
                     disabled={isEdit}
-                    hint="Choose Custom to enter exact start and end times."
                   />
                 )}
                 <Input
                   label="Start time"
                   type="time"
-                  {...form.register('start_time')}
+                  {...form.register('start_time', { validate: validateStartTime })}
                   disabled={isEdit || (!isInternal && derivedSessionPeriod !== 'Custom')}
-                  hint={derivedSessionPeriod === 'Custom' ? 'Set the custom session start time.' : 'Filled from the selected period.'}
+                  error={form.formState.errors.start_time?.message}
                 />
                 <Input
                   label="End time"
                   type="time"
-                  {...form.register('end_time')}
+                  {...form.register('end_time', { validate: validateEndTime })}
                   disabled={isEdit || (!isInternal && derivedSessionPeriod !== 'Custom')}
-                  hint={derivedSessionPeriod === 'Custom' ? 'Set the custom session end time.' : 'Filled from the selected period.'}
+                  error={form.formState.errors.end_time?.message}
                 />
                 {!isInternal && derivedSessionPeriod === 'Custom' && (
                   <Input
@@ -357,15 +383,15 @@ export default function OfficerSessionFormPage() {
                     {...form.register('session_time', { required: 'Session time is required' })}
                     disabled={isEdit}
                     error={form.formState.errors.session_time?.message}
-                    hint="Shown on lists and reports."
                   />
                 )}
-                <Input
-                  label="Status"
-                  disabled
-                  value="In Progress"
-                  hint="New sessions always start in progress."
-                />
+                {isEdit && (
+                  <Input
+                    label="Status"
+                    disabled
+                    value="In Progress"
+                  />
+                )}
                 <div className="md:col-span-2">
                   <Textarea label="Notes" rows={4} {...form.register('notes')} disabled={isEdit} />
                 </div>
@@ -384,7 +410,7 @@ export default function OfficerSessionFormPage() {
                       <thead>
                         <tr className="text-left border-b text-gray-700">
                           <th className="py-2">Inmate Name</th>
-                          <th className="py-2">Prison #</th>
+                          <th className="py-2">Inmate number</th>
                         </tr>
                       </thead>
                       <tbody>

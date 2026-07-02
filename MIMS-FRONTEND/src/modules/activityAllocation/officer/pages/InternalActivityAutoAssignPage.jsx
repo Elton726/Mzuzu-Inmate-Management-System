@@ -193,7 +193,7 @@ export default function InternalActivityAutoAssignPage() {
                         </span>
                         <div>
                           <div className="font-semibold text-gray-900">{inmate.inmate_name}</div>
-                          <div className="text-xs text-gray-500">Prison #: {inmate.prison_number}</div>
+                          <div className="text-xs text-gray-500">Inmate number: {inmate.prison_number}</div>
                         </div>
                       </div>
                       <span className="text-xs font-bold text-gray-400">Pos. {inmate.queue_position}</span>
@@ -214,7 +214,7 @@ export default function InternalActivityAutoAssignPage() {
                 <tr className="text-left text-gray-700 border-b">
                   <th className="py-2 pr-4 font-semibold">Queue Position</th>
                   <th className="py-2 pr-4 font-semibold">Inmate Name</th>
-                  <th className="py-2 pr-4 font-semibold">Prison Number</th>
+                  <th className="py-2 pr-4 font-semibold">Inmate number</th>
                   <th className="py-2 pr-4 font-semibold">Status</th>
                   <th className="py-2 pr-4 font-semibold">Served Timestamp</th>
                 </tr>

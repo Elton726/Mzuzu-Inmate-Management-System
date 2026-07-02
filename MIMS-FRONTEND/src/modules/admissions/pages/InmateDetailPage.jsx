@@ -261,13 +261,13 @@ export default function InmateDetailPage() {
                 </div>
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{fullName || 'Name not recorded'}</h1>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-gray-600">
-                  <span className="font-semibold text-gray-800">{inmate.prison_number || 'No prison number'}</span>
+                  <span className="font-semibold text-gray-800">{inmate.prison_number || 'No inmate number'}</span>
                   {inmate.prison_number && (
                     <button
                       type="button"
                       onClick={copyPrisonNumber}
                       className="inline-flex h-8 w-8 items-center justify-center rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
-                      title="Copy prison number"
+                      title="Copy inmate number"
                     >
                       <MdContentCopy className="h-4 w-4" />
                     </button>
@@ -387,7 +387,7 @@ export default function InmateDetailPage() {
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5 lg:col-span-2">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Identity & personal details</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <DetailItem label="Prison number" value={inmate.prison_number} />
+            <DetailItem label="Inmate number" value={inmate.prison_number} />
             {admission?.offence_description ? (
               <DetailItem label="Offence description" value={admission.offence_description} />
             ) : (

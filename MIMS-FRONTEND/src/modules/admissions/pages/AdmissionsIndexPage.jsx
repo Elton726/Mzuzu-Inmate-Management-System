@@ -431,7 +431,7 @@ export default function AdmissionsIndexPage() {
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by prison number, name, or national ID…"
+            placeholder="Search by inmate number, name, or national ID…"
             className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm
               focus:outline-none focus:ring-2 focus:ring-malawiGreen focus:border-malawiGreen
               placeholder-gray-400 transition"
@@ -447,7 +447,7 @@ export default function AdmissionsIndexPage() {
             onChange={(e) => setSortBy(e.target.value)}
           >
             <option value="id">ID (newest first)</option>
-            <option value="prison_number">Prison number</option>
+            <option value="prison_number">Inmate number</option>
             <option value="first_name">First name</option>
             <option value="last_name">Last name</option>
             <option value="date_of_birth">Date of birth</option>
