@@ -164,6 +164,15 @@ class ActivityManagementService
     {
         $next = is_array($criteria) ? $criteria : [];
         $next['allowed_inmate_types'] = ['convict'];
+        if (!array_key_exists('min_remaining_years', $next) && array_key_exists('min_sentence_years', $next)) {
+            $next['min_remaining_years'] = $next['min_sentence_years'];
+        }
+        foreach (['min_remaining_years', 'max_remaining_years'] as $key) {
+            if (array_key_exists($key, $next) && $next[$key] !== null && $next[$key] !== '') {
+                $next[$key] = (float) $next[$key];
+            }
+        }
+        unset($next['min_sentence_years']);
         unset($next['good_behavior'], $next['education_level']);
         return $next;
     }

@@ -187,7 +187,8 @@ export default function ActivityFormPage() {
 
             <EligibilityCriteriaForm
               value={eligibilityCriteria}
-              onChange={(val) => form.setValue('eligibility_criteria', val, { shouldDirty: true })}
+              errors={form.formState.errors.eligibility_criteria}
+              onChange={(val) => form.setValue('eligibility_criteria', val, { shouldDirty: true, shouldValidate: true })}
             />
 
             {isExternal && (

@@ -57,10 +57,10 @@ const severityStyles = {
 
 function LoadingState() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100">
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+    <div className="flex min-h-screen items-center justify-center bg-slate-100 dark:bg-slate-900">
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-malawiRed" />
-        <p className="font-semibold text-slate-700">Loading command center...</p>
+        <p className="font-semibold text-slate-700 dark:text-gray-300">Loading command center...</p>
       </div>
     </div>
   );
@@ -217,11 +217,11 @@ function MonthlyTrend({ data }) {
 
 function AuditTimeline({ events }) {
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-black text-slate-950">Audit activity</h2>
-          <p className="text-sm text-slate-500">Recent administrative and system events.</p>
+          <h2 className="text-xl font-black text-slate-950 dark:text-white">Audit activity</h2>
+          <p className="text-sm text-slate-500 dark:text-gray-300">Recent administrative and system events.</p>
         </div>
         <Link to="/admin/audit-logs" className="text-sm font-black text-malawiRed hover:underline">
           View all
@@ -230,16 +230,16 @@ function AuditTimeline({ events }) {
 
       <div className="space-y-3">
         {(events || []).length === 0 ? (
-          <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">No recent audit events.</p>
+          <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-800 dark:text-gray-300">No recent audit events.</p>
         ) : (
           events.map((event) => (
-            <div key={event.id} className="flex gap-3 rounded-2xl bg-slate-50 p-4">
+            <div key={event.id} className="flex gap-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-800">
               <div className="mt-1 h-2.5 w-2.5 rounded-full bg-malawiRed" />
               <div className="min-w-0">
-                <p className="font-bold text-slate-950">
-                  {formatLabel(event.action)} <span className="text-slate-500">on</span> {event.table_name || 'system'}
+                <p className="font-bold text-slate-950 dark:text-white">
+                  {formatLabel(event.action)} <span className="text-slate-500 dark:text-gray-300">on</span> {event.table_name || 'system'}
                 </p>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   {event.user?.name || 'System'} - {event.created_at ? formatDate(event.created_at) : 'Date not recorded'}
                 </p>
               </div>

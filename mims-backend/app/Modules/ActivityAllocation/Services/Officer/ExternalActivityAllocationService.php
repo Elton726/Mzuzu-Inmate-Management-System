@@ -6,6 +6,7 @@ use App\Modules\Admissions\Models\Activity;
 use App\Modules\Admissions\Models\Admission;
 use App\Modules\Admissions\Models\InmateActivity;
 use App\Modules\ActivityAllocation\Models\ActivityAssignmentLog;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -351,6 +352,7 @@ class ExternalActivityAllocationService
             'case_number' => $admission->case_number,
             'projected_release_date' => $projectedRelease?->toDateString(),
             'days_until_release' => $daysUntilRelease,
+            'remaining_years' => $this->remainingYears($admission),
         ];
     }
 
@@ -362,12 +364,43 @@ class ExternalActivityAllocationService
             }
         }
 
-        if (isset($criteria['min_sentence_years'])) {
-            if ((int) ($admission->sentence_years ?? 0) < (int) $criteria['min_sentence_years']) {
+        $minRemaining = (float) ($criteria['min_remaining_years'] ?? $criteria['min_sentence_years'] ?? 0);
+        $maxRemaining = (float) ($criteria['max_remaining_years'] ?? 0);
+
+        if ($minRemaining > 0 || $maxRemaining > 0) {
+            $remainingYears = $this->remainingYears($admission);
+
+            if ($remainingYears === null) {
+                return false;
+            }
+
+            if ($remainingYears < $minRemaining) {
+                return false;
+            }
+
+            if ($maxRemaining > 0 && $remainingYears > $maxRemaining) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    private function remainingYears(Admission $admission): ?float
+    {
+        if ($admission->admission_date === null) {
+            return null;
+        }
+
+        $releaseDate = CarbonImmutable::parse($admission->admission_date)
+            ->addYears((int) ($admission->sentence_years ?? 0))
+            ->addMonths((int) ($admission->sentence_months ?? 0))
+            ->addDays((int) ($admission->sentence_days ?? 0))
+            ->startOfDay();
+
+        $today = CarbonImmutable::now()->startOfDay();
+        $remainingDays = max(0, (int) $today->diffInDays($releaseDate, false));
+
+        return round($remainingDays / 365.25, 2);
     }
 }

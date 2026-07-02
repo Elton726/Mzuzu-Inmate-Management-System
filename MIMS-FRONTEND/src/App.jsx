@@ -24,7 +24,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
@@ -71,6 +71,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import { Navigation } from './components/Navigation';
 import { Breadcrumb } from './components/Breadcrumb';
+import GlobalLoadingIndicator from './components/GlobalLoadingIndicator';
 import { ToastProvider } from './contexts/ToastContext';
 import { ToastContainer } from 'react-toastify';
 
@@ -86,7 +87,11 @@ const AppContent = () => {
   const { isAuthenticated, loading, logout } = useAuth();
   const navigate = useNavigate();
   const { isSidebarCollapsed, setIsSidebarCollapsed } = useSidebarContext();
+  const location = useLocation();
+  const [displayLocation, setDisplayLocation] = useState(location);
+  const [transitionStage, setTransitionStage] = useState('route-enter');
   const inactivityTimerRef = useRef(null);
+  const transitionTimerRef = useRef(null);
 
   const handleIdleLogout = useCallback(async () => {
     await logout();
@@ -119,6 +124,19 @@ const AppContent = () => {
     };
   }, [handleIdleLogout, isAuthenticated]);
 
+  useEffect(() => {
+    if (location.key === displayLocation.key) return undefined;
+
+    setTransitionStage('route-exit');
+    window.clearTimeout(transitionTimerRef.current);
+    transitionTimerRef.current = window.setTimeout(() => {
+      setDisplayLocation(location);
+      setTransitionStage('route-enter');
+    }, 140);
+
+    return () => window.clearTimeout(transitionTimerRef.current);
+  }, [displayLocation.key, location]);
+
   // Show loading spinner during authentication verification
   if (loading) {
     return (
@@ -141,16 +159,18 @@ const AppContent = () => {
       {isAuthenticated && <Sidebar />}
 
       {/* Main content area - adjusts margin based on sidebar state */}
-      <div className={`${contentMarginClass} flex-1 min-w-0 bg-malawiGold transition-all duration-300 dark:bg-slate-900`}>
+      <div className={`${contentMarginClass} min-h-screen flex-1 min-w-0 bg-slate-50 transition-all duration-300 dark:bg-slate-900`}>
 
         {/* Top Navigation Bar - shows for authenticated users */}
         {isAuthenticated && <Navigation />}
+        <GlobalLoadingIndicator />
 
 
 
 
         {/* Application Routes */}
-        <Routes>
+        <div className={`route-transition ${transitionStage}`}>
+        <Routes location={displayLocation} key={`${displayLocation.pathname}${displayLocation.search}`}>
           {/* Public route - accessible without authentication */}
           <Route path="/login" element={<LoginPage />} />
 
@@ -484,6 +504,7 @@ const AppContent = () => {
           {/* Catch-all route - redirects to home for authenticated users, login for others */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </div>
       </div>
     </div>
   );
