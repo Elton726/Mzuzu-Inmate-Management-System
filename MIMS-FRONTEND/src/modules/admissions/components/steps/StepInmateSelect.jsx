@@ -519,8 +519,8 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
                         setValue('personalBelongings', next, { shouldDirty: true, shouldValidate: true });
                       }}
                     >
-                      <MdAdd />
-                      Add line
+                  
+                      
                     </button>
                   </div>
                 </div>

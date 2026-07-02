@@ -122,14 +122,21 @@ export const NotificationBell = ({ notifications = [], onMarkAsRead, onClearAll,
                         <button
                           type="button"
                           onClick={(ev) => { ev.stopPropagation(); handleAction(notification); }}
-                          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                          className="text-xs font-semibold px-2.5 py-1.5 rounded-md bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900 shadow-sm transition-colors"
                           aria-label={notification.action.label || 'Open'}
                         >
                           {notification.action.label || 'Open'}
                         </button>
                       )}
                       {!notification.isRead && (
-                        <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 ml-2"></div>
+                        <button
+                          type="button"
+                          onClick={(ev) => { ev.stopPropagation(); handleMarkAsRead(notification.id); }}
+                          className="text-xs font-semibold px-2.5 py-1.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                          aria-label="Mark as read"
+                        >
+                          Mark read
+                        </button>
                       )}
                     </div>
                   </div>

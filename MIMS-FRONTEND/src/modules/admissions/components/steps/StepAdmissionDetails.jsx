@@ -26,7 +26,41 @@ const calculateRemandDurationDays = (admissionDate, nextCourtDate) => {
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
   const ms = end.setHours(0, 0, 0, 0) - start.setHours(0, 0, 0, 0);
   const days = Math.round(ms / 86400000);
-  return days > 0 ? days : null;
+  return days >= 0 ? days : null;
+};
+
+const buildLocalDateTime = (dateValue, timeValue) => {
+  if (!dateValue || !timeValue) return null;
+  const [year, month, day] = String(dateValue).split('-').map(Number);
+  const [hours, minutes] = String(timeValue).split(':').map(Number);
+  if ([year, month, day, hours, minutes].some((part) => !Number.isFinite(part))) return null;
+  const date = new Date(year, month - 1, day, hours, minutes);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const formatRemainingMinutes = (minutesTotal) => {
+  const hours = Math.floor(minutesTotal / 60);
+  const minutes = minutesTotal % 60;
+  const parts = [];
+  if (hours > 0) parts.push(`${hours} hour${hours === 1 ? '' : 's'}`);
+  parts.push(`${minutes} minute${minutes === 1 ? '' : 's'}`);
+  return `${parts.join(' ')} remaining`;
+};
+
+const formatRemandDuration = (admissionDate, nextCourtDate, nextCourtTime) => {
+  const days = calculateRemandDurationDays(admissionDate, nextCourtDate);
+  if (days == null) return 'Select a valid court date';
+  if (days > 0) return `${days} day${days === 1 ? '' : 's'}`;
+
+  if (nextCourtDate === todayIso()) {
+    if (!nextCourtTime) return 'Enter court time to calculate remaining time';
+    const courtDateTime = buildLocalDateTime(nextCourtDate, nextCourtTime);
+    if (!courtDateTime) return 'Enter a valid court time';
+    const minutesRemaining = Math.ceil((courtDateTime.getTime() - Date.now()) / 60000);
+    return minutesRemaining > 0 ? formatRemainingMinutes(minutesRemaining) : 'Court time has passed';
+  }
+
+  return '0 days (same day)';
 };
 
 const mapInmateTypeToSecurityClassification = (inmateType) => {
@@ -576,17 +610,14 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
     [admissionDate, remandNextCourtDate]
   );
 
-  const courtDateIsToday = useMemo(() => remandNextCourtDate === todayIso(), [remandNextCourtDate]);
+  const remandDurationLabel = useMemo(
+    () => formatRemandDuration(admissionDate, remandNextCourtDate, remandNextCourtTime),
+    [admissionDate, remandNextCourtDate, remandNextCourtTime]
+  );
 
   useEffect(() => {
-    setValue('remandDurationDays', remandDurationDays || '', { shouldValidate: true });
+    setValue('remandDurationDays', remandDurationDays ?? '', { shouldValidate: true });
   }, [remandDurationDays, setValue]);
-
-  useEffect(() => {
-    if (!courtDateIsToday && remandNextCourtTime) {
-      setValue('remandNextCourtTime', '', { shouldDirty: true, shouldValidate: true });
-    }
-  }, [courtDateIsToday, remandNextCourtTime, setValue]);
 
   const projectedReleaseDate = useMemo(() => {
     if (inmateType === 'convict' && sentenceStartDate && sentenceYears !== undefined && sentenceYears !== '') {
@@ -840,19 +871,17 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
                   <p className="mt-1 text-xs text-red-500">{errors.remandNextCourtDate.message}</p>
                 )}
               </div>
-              {courtDateIsToday && (
-                <div>
-                  <label className={labelCls}>Next Court Time *</label>
-                  <input
-                    type="time"
-                    className={inputCls(!!errors.remandNextCourtTime)}
-                    {...register('remandNextCourtTime')}
-                  />
-                  {errors.remandNextCourtTime && (
-                    <p className="mt-1 text-xs text-red-500">{errors.remandNextCourtTime.message}</p>
-                  )}
-                </div>
-              )}
+              <div>
+                <label className={labelCls}>Next Court Time *</label>
+                <input
+                  type="time"
+                  className={inputCls(!!errors.remandNextCourtTime)}
+                  {...register('remandNextCourtTime')}
+                />
+                {errors.remandNextCourtTime && (
+                  <p className="mt-1 text-xs text-red-500">{errors.remandNextCourtTime.message}</p>
+                )}
+              </div>
               <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-600 space-y-1 mt-0 md:mt-5">
                 <input type="hidden" {...register('remandDurationDays')} />
                 <p>
@@ -862,9 +891,7 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
                 <p>
                   Remand duration:{' '}
                   <span className="font-semibold text-gray-800">
-                    {remandDurationDays
-                      ? `${remandDurationDays} day${remandDurationDays === 1 ? '' : 's'}`
-                      : 'Select a later court date'}
+                    {remandDurationLabel}
                   </span>
                 </p>
               </div>

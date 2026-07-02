@@ -36,6 +36,65 @@ const isPastDate = (value) => {
   return !Number.isNaN(date.getTime()) && date < today;
 };
 
+const daysUntil = (dateValue) => {
+  if (!dateValue) return null;
+  const date = new Date(`${String(dateValue).split('T')[0]}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((date.getTime() - today.getTime()) / 86400000));
+};
+
+const isTodayDate = (dateValue) => daysUntil(dateValue) === 0 && !isPastDate(dateValue);
+
+const buildLocalDateTime = (dateValue, timeValue) => {
+  if (!dateValue || !timeValue) return null;
+  const datePart = String(dateValue).split(/[T ]/)[0];
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hours, minutes] = String(timeValue).split(':').map(Number);
+  if ([year, month, day, hours, minutes].some((part) => !Number.isFinite(part))) return null;
+  const date = new Date(year, month - 1, day, hours, minutes);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const formatRemainingMinutes = (minutesTotal) => {
+  const hours = Math.floor(minutesTotal / 60);
+  const minutes = minutesTotal % 60;
+  const parts = [];
+  if (hours > 0) parts.push(`${hours} hour${hours === 1 ? '' : 's'}`);
+  parts.push(`${minutes} minute${minutes === 1 ? '' : 's'}`);
+  return `${parts.join(' ')} remaining`;
+};
+
+const formatRemandDuration = (admission) => {
+  const duration = admission?.remand_duration_days ?? admission?.remandDurationDays;
+  const nextCourtDate = admission?.remand_next_court_date || admission?.remandNextCourtDate;
+  const nextCourtTime = admission?.remand_next_court_time || admission?.remandNextCourtTime;
+
+  if (Number(duration) > 0) return `${Number(duration)} day${Number(duration) === 1 ? '' : 's'}`;
+
+  if (nextCourtDate && isTodayDate(nextCourtDate) && nextCourtTime) {
+    const courtDateTime = buildLocalDateTime(nextCourtDate, nextCourtTime);
+    if (courtDateTime) {
+      const minutesRemaining = Math.ceil((courtDateTime.getTime() - Date.now()) / 60000);
+      return minutesRemaining > 0 ? formatRemainingMinutes(minutesRemaining) : 'Court time has passed';
+    }
+  }
+
+  if (duration === 0 || duration === '0') return '0 days (same day)';
+  return '-';
+};
+
+const hasCourtDateTimeReached = (admission) => {
+  const courtDate = admission?.remand_next_court_date || admission?.remandNextCourtDate;
+  const courtTime = admission?.remand_next_court_time || admission?.remandNextCourtTime;
+  const courtDateTime = buildLocalDateTime(courtDate, courtTime);
+
+  if (courtDateTime) return Date.now() >= courtDateTime.getTime();
+  return isPastDate(courtDate);
+};
+
 const cellLabel = (cell) => {
   if (!cell?.cell_number) return '-';
   return String(cell.cell_number).startsWith(`${cell.block}-`)
@@ -108,7 +167,7 @@ export default function AdmissionShowPage() {
   }, [admission]);
   const documents = Array.isArray(admission?.documents) ? admission.documents : [];
   const currentCell = allocations[0]?.cell;
-  const canAdmitAsConvict = isRemandType(admission?.inmate_type) && isPastDate(admission?.remand_next_court_date) && inmate?.id;
+  const canAdmitAsConvict = isRemandType(admission?.inmate_type) && hasCourtDateTimeReached(admission) && inmate?.id;
 
   if (loading) {
     return (
@@ -226,7 +285,7 @@ export default function AdmissionShowPage() {
               <h3 className="mb-3 text-sm font-bold uppercase text-amber-900">Remand</h3>
               <div className="grid gap-4 md:grid-cols-2">
                 <DetailRow label="Next court date" value={admission.remand_next_court_date ? formatDate(admission.remand_next_court_date) : '-'} />
-                <DetailRow label="Remand duration" value={admission.remand_duration_days ? `${admission.remand_duration_days} day(s)` : '-'} />
+                <DetailRow label="Remand duration" value={formatRemandDuration(admission)} />
               </div>
             </div>
           )}

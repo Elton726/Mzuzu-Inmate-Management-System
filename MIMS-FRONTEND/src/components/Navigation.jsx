@@ -12,7 +12,7 @@ import { searchInmates } from '../modules/admissions/services/inmateService';
 import { listCells } from '../modules/admissions/services/cellService';
 import apiService from '../services/apiService';
 import { listPendingConfirmations } from '../modules/releases/services/releaseService';
-import { searchVisitors } from '../modules/visitation/services/visitationService';
+import { searchVisitors, markVisitationNotificationRead } from '../modules/visitation/services/visitationService';
 import {
   MdAdd,
   MdDarkMode,
@@ -191,6 +191,19 @@ const getReleaseName = (release) => {
 export const Navigation = () => {
   const { user, isAdmin } = useAuth();
   const { notifications, markAsRead, clearAll } = useNotification();
+  
+  const handleGlobalMarkAsRead = async (notificationId) => {
+    const notification = notifications.find(n => n.id === notificationId);
+    if (notification && notification.module === 'visitation') {
+      try {
+        await markVisitationNotificationRead(notificationId);
+      } catch (err) {
+        console.error('Failed to mark visitation notification read:', err);
+      }
+    }
+    markAsRead(notificationId);
+  };
+
   const { theme, toggleTheme } = useContext(ThemeContext);
   const location = useLocation();
   const role = getRoleName(user);
@@ -699,7 +712,7 @@ export const Navigation = () => {
 
                 <NotificationBell
                   notifications={notifications.filter(n => n.module === getModuleFromPathname(location.pathname) || n.module === 'global')}
-                  onMarkAsRead={markAsRead}
+                  onMarkAsRead={handleGlobalMarkAsRead}
                   onClearAll={clearAll}
                   buttonClassName="!text-gray-700 hover:!bg-gray-100"
                 />

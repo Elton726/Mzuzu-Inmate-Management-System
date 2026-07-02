@@ -37,7 +37,6 @@
             </span>
         </div>
         <div class="row"><span class="label">Proposed Date:</span> {{ \Carbon\Carbon::parse($booking->proposed_date)->format('d M Y') }}</div>
-        <div class="row"><span class="label">Proposed Time:</span> {{ substr($booking->proposed_time, 0, 5) }}</div>
         <div class="row"><span class="label">Duration:</span> {{ $booking->duration_minutes }} minutes</div>
     </div>
 

@@ -135,134 +135,6 @@ function TrendChart({ dailyTrend }) {
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Digital Signature Component
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Digital Signature Pad using HTML5 Canvas */
-function SignaturePad({ label, value, onChange, onClear, placeholder = "Sign here..." }) {
-  const canvasRef = React.useRef(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [hasDrawn, setHasDrawn] = useState(false);
-
-  // Setup drawing context
-  const getContext = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-    const ctx = canvas.getContext('2d');
-    ctx.strokeStyle = '#1e293b'; // slate-800
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    return ctx;
-  };
-
-  const getCoordinates = (e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    
-    // Support touch events
-    const isTouch = e.touches && e.touches.length > 0;
-    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
-    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
-    
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
-    };
-  };
-
-  const startDrawing = (e) => {
-    // Only prevent default for touch to avoid blocking normal mouse behaviors
-    if (e.touches) e.preventDefault();
-    const ctx = getContext();
-    if (!ctx) return;
-    const { x, y } = getCoordinates(e);
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    setIsDrawing(true);
-  };
-
-  const draw = (e) => {
-    if (!isDrawing) return;
-    if (e.touches) e.preventDefault();
-    const ctx = getContext();
-    if (!ctx) return;
-    const { x, y } = getCoordinates(e);
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    setHasDrawn(true);
-  };
-
-  const stopDrawing = () => {
-    if (!isDrawing) return;
-    setIsDrawing(false);
-    const canvas = canvasRef.current;
-    if (canvas && hasDrawn) {
-      onChange(canvas.toDataURL('image/png'));
-    }
-  };
-
-  const handleClear = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setHasDrawn(false);
-    onClear();
-  };
-
-  // Sync canvas clean when value is cleared
-  useEffect(() => {
-    if (!value) {
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
-    }
-  }, [value]);
-
-  return (
-    <div className="flex flex-col items-center bg-gray-50 border border-gray-200 rounded-xl p-4 w-full max-w-[340px]">
-      <span className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">{label}</span>
-      <div className="relative border border-gray-300 rounded-lg overflow-hidden bg-white shadow-inner">
-        <canvas
-          ref={canvasRef}
-          width={300}
-          height={110}
-          className="cursor-crosshair block touch-none"
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={stopDrawing}
-        />
-        {!hasDrawn && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-gray-400 text-xs italic select-none">
-            {placeholder}
-          </div>
-        )}
-      </div>
-      <div className="flex items-center justify-between w-full mt-2 px-1">
-        <span className="text-[10px] text-gray-400">
-          {hasDrawn ? '✓ Signed' : 'Draw with mouse or touch'}
-        </span>
-        <button
-          type="button"
-          onClick={handleClear}
-          disabled={!hasDrawn && !value}
-          className="text-xs font-bold text-red-500 hover:text-red-700 disabled:opacity-40 transition-colors"
-        >
-          Clear
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Print-only document components
@@ -331,7 +203,6 @@ function PrintHeader({ meta }) {
         <div><strong>Doc. Ref:</strong> {docRef}</div>
         <div><strong>Period:</strong> {meta?.from} – {meta?.to}</div>
         <div><strong>Generated:</strong> {meta ? new Date(meta.generated_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}</div>
-        <div><strong>Prepared by:</strong> {meta?.generated_by ?? '—'}</div>
         <div style={{ marginTop: 4, paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
           <strong>Classification:</strong> <span style={{ color: '#dc2626', fontWeight: 700 }}>CONFIDENTIAL</span>
         </div>
@@ -508,17 +379,10 @@ export default function AdmissionsReportPage() {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  const [preparedSignature, setPreparedSignature] = useState('');
-  const [approvedSignature, setApprovedSignature] = useState('');
-  const [oicName, setOicName] = useState('');
 
-  const loadReport = useCallback(async ({ resetSignatures = true, throwOnError = false } = {}) => {
+
+  const loadReport = useCallback(async ({ throwOnError = false } = {}) => {
     setLoading(true);
-    if (resetSignatures) {
-      setPreparedSignature('');
-      setApprovedSignature('');
-      setOicName('');
-    }
     try {
       const data = await apiService.getAdmissionsReport({ period, date: dateInput });
       setReport(data);
@@ -532,7 +396,7 @@ export default function AdmissionsReportPage() {
     } finally {
       setLoading(false);
     }
-  }, [period, dateInput, toast, setPreparedSignature, setApprovedSignature, setOicName]);
+  }, [period, dateInput, toast]);
 
   const fetchReport = useCallback(() => loadReport(), [loadReport]);
 
@@ -545,7 +409,7 @@ export default function AdmissionsReportPage() {
   const handleExport = async () => {
     setExporting(true);
     try {
-      await loadReport({ resetSignatures: false, throwOnError: true });
+      await loadReport({ throwOnError: true });
       await waitForPrintRender();
       window.print();
     } catch {
@@ -947,52 +811,6 @@ export default function AdmissionsReportPage() {
                   </table>
                 </div>
               </ScreenCard>
-
-              {/* ── S5: Digital Certification & Sign-off ── */}
-              <ScreenCard icon={MdCheckCircle} title="5 — Digital Certification & Sign-off" accent="blue">
-                <div className="text-sm text-gray-600 mb-5 leading-relaxed">
-                  You can sign this report digitally below. The captured signatures will be embedded directly into the final PDF/printout under the official certification strip.
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                  {/* Prepared By (Reception Officer) */}
-                  <div className="flex flex-col items-center md:items-start">
-                    <SignaturePad
-                      label="Prepared By (Reception Officer)"
-                      value={preparedSignature}
-                      onChange={setPreparedSignature}
-                      onClear={() => setPreparedSignature('')}
-                      placeholder={`Sign as ${meta?.generated_by ?? 'Reception Officer'}`}
-                    />
-                    <div className="mt-3 text-xs text-gray-500 font-semibold text-center md:text-left">
-                      Officer Name: <span className="text-gray-800">{meta?.generated_by || '—'}</span>
-                    </div>
-                  </div>
-
-                  {/* Reviewed & Approved By (OIC) */}
-                  <div className="flex flex-col items-center md:items-start gap-4">
-                    <SignaturePad
-                      label="Reviewed & Approved By (OIC)"
-                      value={approvedSignature}
-                      onChange={setApprovedSignature}
-                      onClear={() => setApprovedSignature('')}
-                      placeholder="Sign as Officer-in-Charge"
-                    />
-                    <div className="w-full max-w-[300px]">
-                      <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">
-                        OIC Officer Name (Prints on Report)
-                      </label>
-                      <input
-                        type="text"
-                        value={oicName}
-                        onChange={(e) => setOicName(e.target.value)}
-                        placeholder="Enter Officer's full name"
-                        className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-malawiGreen transition-all shadow-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </ScreenCard>
             </>
           )}
         </div>
@@ -1180,56 +998,6 @@ export default function AdmissionsReportPage() {
                 rows={blockRows}
                 highlightRow={(row) => parseFloat(row[4]) >= 100}
               />
-            </div>
-
-            {/* ── Certification / Signature strip ── */}
-            <div className="print-section" style={{ marginTop: 30, pageBreakInside: 'avoid' }}>
-              <div style={{ border: '1px solid #374151', padding: '14px 16px' }}>
-                <div style={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10 }}>
-                  Certification
-                </div>
-                <p style={{ fontSize: 10, color: '#374151', marginBottom: 16 }}>
-                  I, the undersigned, certify that the information contained in this report is accurate and true to the best of my knowledge
-                  and has been compiled from records held by the Mzuzu Correctional Facility Admissions Office.
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-                  {/* Prepared By Column */}
-                  <div>
-                    <div style={{ borderBottom: '1px solid #374151', marginBottom: 4, height: 50, position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-                      {preparedSignature ? (
-                        <img src={preparedSignature} alt="Prepared Signature" style={{ maxHeight: 45, maxWidth: '100%', objectFit: 'contain' }} />
-                      ) : (
-                        <div style={{ height: 20 }} />
-                      )}
-                    </div>
-                    <div style={{ fontSize: 10, color: '#111', fontWeight: 'bold' }}>
-                      {meta?.generated_by || 'Reception Officer'}
-                    </div>
-                    <div style={{ fontSize: 9, color: '#6b7280' }}>Prepared By (Reception Officer)</div>
-                    <div style={{ fontSize: 9, color: '#6b7280', marginTop: 2 }}>
-                      Date: {preparedSignature && meta?.generated_at ? new Date(meta.generated_at).toLocaleDateString('en-GB') : '______________________'}
-                    </div>
-                  </div>
-
-                  {/* Reviewed & Approved By Column */}
-                  <div>
-                    <div style={{ borderBottom: '1px solid #374151', marginBottom: 4, height: 50, position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-                      {approvedSignature ? (
-                        <img src={approvedSignature} alt="Approved Signature" style={{ maxHeight: 45, maxWidth: '100%', objectFit: 'contain' }} />
-                      ) : (
-                        <div style={{ height: 20 }} />
-                      )}
-                    </div>
-                    <div style={{ fontSize: 10, color: '#111', fontWeight: 'bold' }}>
-                      {oicName || '______________________'}
-                    </div>
-                    <div style={{ fontSize: 9, color: '#6b7280' }}>Reviewed &amp; Approved By (OIC)</div>
-                    <div style={{ fontSize: 9, color: '#6b7280', marginTop: 2 }}>
-                      Date: {approvedSignature ? new Date().toLocaleDateString('en-GB') : '______________________'}
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
 
             {/* ── Running footer ── */}
