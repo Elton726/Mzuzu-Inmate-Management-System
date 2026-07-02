@@ -241,7 +241,7 @@ export const Navigation = () => {
 
   useEffect(() => {
     const query = debouncedSearchQuery.trim();
-    if (!canSearchSystem || query.length < 2) return undefined;
+    if (!canSearchSystem || query.length < 1) return undefined;
 
     let active = true;
     const queryLower = query.toLowerCase();
@@ -421,44 +421,43 @@ export const Navigation = () => {
 
               <div className="flex items-center justify-end gap-3">
                 {canSearchSystem && (
-                  <div ref={searchRef} className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setSearchOpen((open) => !open)}
-                      className={`inline-flex h-10 w-10 items-center justify-center rounded-full border shadow-sm transition ${
-                        searchOpen
-                          ? 'border-blue-600 bg-blue-50 text-blue-700'
-                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                      }`}
-                      aria-label={isAdminArea ? 'Search admin interface' : isGatekeeperArea ? 'Search gatekeeper interface' : isCellPage ? 'Search cells and inmates' : 'Search inmates'}
-                      title={isAdminArea ? 'Search admin interface' : isGatekeeperArea ? 'Search gatekeeper interface' : isCellPage ? 'Search cells and inmates' : 'Search inmates'}
-                    >
-                      <MdSearch className="h-5 w-5" />
-                    </button>
+                  <div ref={searchRef} className="relative w-full sm:w-72 md:w-80 transition-all duration-300 focus-within:w-96">
+                    <div className="relative">
+                      <MdSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xl text-gray-400" />
+                      <input
+                        ref={searchInputRef}
+                        name="search"
+                        type="search"
+                        value={searchInput}
+                        onFocus={() => {
+                          if (searchInput.trim().length >= 1) {
+                            setSearchOpen(true);
+                          }
+                        }}
+                        onChange={(e) => {
+                          handleSearchChange(e);
+                          if (!searchOpen && e.target.value.length >= 1) setSearchOpen(true);
+                        }}
+                        placeholder={isAdminArea ? 'Search admin...' : isGatekeeperArea ? 'Search visitors, releases...' : isCellPage ? 'Search cells...' : 'Search inmates...'}
+                        className="h-10 w-full rounded-lg border border-gray-300 bg-gray-50 pl-10 pr-12 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:shadow-sm"
+                        autoComplete="off"
+                        spellCheck="false"
+                      />
+                      <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden items-center gap-1 sm:flex">
+                        <kbd className="inline-flex h-5 items-center justify-center rounded border border-gray-200 bg-white px-1.5 font-mono text-[10px] font-medium text-gray-400 shadow-sm">Ctrl</kbd>
+                        <kbd className="inline-flex h-5 items-center justify-center rounded border border-gray-200 bg-white px-1.5 font-mono text-[10px] font-medium text-gray-400 shadow-sm">K</kbd>
+                      </div>
+                    </div>
 
                     {searchOpen && (
-                      <div className="absolute right-0 top-12 z-50 w-[min(92vw,440px)] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl">
-                        <form onSubmit={handleSearch} className="border-b border-gray-100 p-3">
-                          <div className="relative">
-                            <MdSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xl text-gray-400" />
-                            <input
-                              ref={searchInputRef}
-                              name="search"
-                              type="search"
-                              value={searchInput}
-                              onChange={handleSearchChange}
-                              placeholder={isAdminArea ? 'Search admin pages or users...' : isGatekeeperArea ? 'Search visitors, releases, or tools...' : isCellPage ? 'Search cells, blocks, inmates...' : 'Search inmate, inmate number, National ID'}
-                              className="h-10 w-full rounded-md border border-gray-300 bg-white pl-10 pr-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-                            />
-                          </div>
-                        </form>
-
-                        <div className="border-b border-gray-100 px-4 py-2 text-xs font-bold uppercase text-gray-500">
+                      <div className="absolute right-0 top-12 z-50 w-full overflow-hidden rounded-xl border border-gray-100 bg-white shadow-2xl ring-1 ring-black/5">
+                        <div className="border-b border-gray-100 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-50/50">
                           {isAdminArea ? 'Admin interface results' : isGatekeeperArea ? 'Gatekeeper interface results' : isCellPage ? 'Page and system results' : 'Inmate results'}
                         </div>
-                        {searchInput.trim().length < 2 ? (
-                          <div className="px-4 py-4 text-sm text-gray-500">
-                            Type at least 2 characters to search {isAdminArea ? 'admin tools and users' : isGatekeeperArea ? 'gatekeeper tools and records' : 'system records'}.
+                        {searchInput.trim().length < 1 ? (
+                          <div className="px-4 py-4 text-sm text-gray-500 flex flex-col items-center justify-center text-center">
+                            <MdSearch className="h-8 w-8 text-gray-300 mb-2" />
+                            <p>Type to search {isAdminArea ? 'admin tools and users' : isGatekeeperArea ? 'gatekeeper tools and records' : 'system records'}.</p>
                           </div>
                         ) : searchPending ? (
                           <div className="px-4 py-4 text-sm text-gray-500">Searching system records...</div>

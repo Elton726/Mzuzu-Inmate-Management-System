@@ -57,7 +57,7 @@ class InmateController extends Controller
     public function search(Request $request)
     {
         $request->validate([
-            'q' => ['required', 'string', 'min:2'],
+            'q' => ['nullable', 'string'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 

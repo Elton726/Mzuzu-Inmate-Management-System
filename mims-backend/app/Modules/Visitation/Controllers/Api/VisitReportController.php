@@ -114,6 +114,20 @@ class VisitReportController extends Controller
         return sprintf('%02d:%02d left', $minutes, $remainingSeconds);
     }
 
+    private function averageDurationExpression(): string
+    {
+        return DB::connection()->getDriverName() === 'pgsql'
+            ? 'AVG(EXTRACT(EPOCH FROM (checked_out_at - checked_in_at)) / 60)'
+            : 'AVG(TIMESTAMPDIFF(MINUTE, checked_in_at, checked_out_at))';
+    }
+
+    private function hourExpression(): string
+    {
+        return DB::connection()->getDriverName() === 'pgsql'
+            ? 'EXTRACT(HOUR FROM checked_in_at)'
+            : 'HOUR(checked_in_at)';
+    }
+
     public function pendingCharity()
     {
         // Return all recent bookings (pending + resolved) so the station officer
@@ -144,13 +158,47 @@ class VisitReportController extends Controller
         $to = $data['to'] ?? today()->toDateString();
 
         $base = VisitSession::query()->whereBetween(DB::raw('DATE(created_at)'), [$from, $to]);
+        $durationExpression = $this->averageDurationExpression();
+        $hourExpression = $this->hourExpression();
 
         $rangeTotal = (clone $base)->count();
 
+        // Today-only count (always for the current day regardless of filter range)
+        $todayCount = VisitSession::whereDate('created_at', today())->count();
+
+        // Daily trend for the selected period
+        $byDay = (clone $base)
+            ->select(DB::raw('DATE(created_at) as date'), DB::raw('COUNT(*) as total'))
+            ->groupBy(DB::raw('DATE(created_at)'))
+            ->orderBy('date')
+            ->get()
+            ->map(fn ($row) => [
+                'date' => $row->date,
+                'total' => (int) $row->total,
+            ]);
+
+        // Average visit duration (only completed sessions with both check-in and check-out)
+        $avgDuration = (clone $base)
+            ->whereNotNull('checked_in_at')
+            ->whereNotNull('checked_out_at')
+            ->select(DB::raw("{$durationExpression} as avg_minutes"))
+            ->value('avg_minutes');
+
+        // Peak hour distribution
+        $byHour = (clone $base)
+            ->whereNotNull('checked_in_at')
+            ->select(DB::raw("{$hourExpression} as hour"), DB::raw('COUNT(*) as total'))
+            ->groupBy(DB::raw($hourExpression))
+            ->orderBy('hour')
+            ->get()
+            ->map(fn ($row) => [
+                'hour' => (int) $row->hour,
+                'label' => sprintf('%02d:00', $row->hour),
+                'total' => (int) $row->total,
+            ]);
+
         return response()->json(['data' => [
-            // Totals computed consistently for the validated from/to range.
-            // (UI labels use “Today/This Week”, but data is range-based.)
-            'total_today' => $rangeTotal,
+            'total_today' => $todayCount,
             'total_week' => $rangeTotal,
             'by_type' => (clone $base)
                 ->select('visit_type', DB::raw('COUNT(*) as total'))
@@ -160,6 +208,9 @@ class VisitReportController extends Controller
                 ->select('status', DB::raw('COUNT(*) as total'))
                 ->groupBy('status')
                 ->pluck('total', 'status'),
+            'by_day' => $byDay,
+            'avg_duration_minutes' => $avgDuration ? round($avgDuration, 1) : null,
+            'by_hour' => $byHour,
         ]]);
     }
 

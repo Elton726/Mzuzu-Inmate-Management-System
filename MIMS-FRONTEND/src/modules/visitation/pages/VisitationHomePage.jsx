@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { FiAlertTriangle, FiDownload, FiPackage, FiPhone, FiPlus, FiShield, FiUser, FiUserCheck, FiX, FiCalendar } from 'react-icons/fi';
+import { FiAlertTriangle, FiDownload, FiPackage, FiPhone, FiPlus, FiSearch, FiShield, FiUser, FiUserCheck, FiX, FiCalendar } from 'react-icons/fi';
 import { FaFemale, FaMale, FaUsers } from 'react-icons/fa';
 import Button from '../../../components/common/Button';
 import Modal from '../../../components/common/Modal';
@@ -88,17 +88,27 @@ function StatusBadge({ status }) {
 function InmateSearch({ value, onChange, error }) {
   const [query, setQuery] = useState('');
   const [options, setOptions] = useState([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     let active = true;
-    if (query.trim().length < 2) {
-      setTimeout(() => { if (active) setOptions([]); }, 0);
-      return undefined;
-    }
+
+    if (!isOpen) return undefined;
 
     const timer = setTimeout(async () => {
       try {
-        const data = await searchInmates({ q: query, per_page: 8 });
+        const data = await searchInmates({ q: query, per_page: 25 });
         if (active) setOptions(data.data || []);
       } catch {
         if (active) setOptions([]);
@@ -109,21 +119,26 @@ function InmateSearch({ value, onChange, error }) {
       active = false;
       clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, isOpen]);
 
   return (
-    <div>
+    <div ref={wrapperRef} className="relative">
       <label className="block text-sm font-semibold text-gray-700 mb-1">Inmate</label>
       <input
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search inmate name or inmate number"
-        className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-malawiGreen"
+        onFocus={() => setIsOpen(true)}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setIsOpen(true);
+        }}
+        placeholder="Search by name, ID, or single letter..."
+        className="w-full rounded-lg border border-gray-300 bg-slate-50 px-3 py-2.5 text-sm focus:border-malawiGreen focus:bg-white focus:outline-none focus:ring-2 focus:ring-malawiGreen/20"
       />
       {value && <p className="mt-1 text-xs text-gray-600">Selected inmate ID: {value}</p>}
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
-      {options.length > 0 && (
-        <div className="mt-2 max-h-44 overflow-auto rounded border border-gray-200 bg-white shadow">
+      
+      {isOpen && options.length > 0 && (
+        <div className="absolute z-10 mt-1 w-full max-h-60 overflow-auto rounded-lg border border-gray-200 bg-white shadow-xl">
           {options.map((inmate) => (
             <button
               key={inmate.id}
@@ -131,12 +146,12 @@ function InmateSearch({ value, onChange, error }) {
               onClick={() => {
                 onChange(inmate.id);
                 setQuery(`${nameOf(inmate)} - ${inmate.prison_number}`);
-                setOptions([]);
+                setIsOpen(false);
               }}
-              className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
+              className="block w-full px-4 py-2.5 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none transition-colors border-b border-gray-50 last:border-0"
             >
-              <span className="font-semibold">{nameOf(inmate)}</span>
-              <span className="ml-2 text-gray-500">{inmate.prison_number}</span>
+              <div className="text-sm font-semibold text-gray-900">{nameOf(inmate)}</div>
+              <div className="text-xs text-gray-500">{inmate.prison_number}</div>
             </button>
           ))}
         </div>
@@ -145,23 +160,33 @@ function InmateSearch({ value, onChange, error }) {
   );
 }
 
-function VisitorSearch({ selected, onSelect, onClear }) {
+function VisitorSearch({ selected, onSelect, onClear, onCreateNew }) {
   const [query, setQuery] = useState('');
   const [options, setOptions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchedQuery, setSearchedQuery] = useState('');
 
   useEffect(() => {
     let active = true;
     if (query.trim().length < 2) {
+      setLoading(false);
+      setSearchedQuery('');
       setTimeout(() => { if (active) setOptions([]); }, 0);
       return undefined;
     }
 
     const timer = setTimeout(async () => {
       try {
+        setLoading(true);
         const data = await searchVisitors({ q: query, per_page: 8 });
-        if (active) setOptions(data || []);
+        if (active) {
+          setOptions(data || []);
+          setSearchedQuery(query.trim());
+        }
       } catch {
         if (active) setOptions([]);
+      } finally {
+        if (active) setLoading(false);
       }
     }, 250);
 
@@ -174,26 +199,33 @@ function VisitorSearch({ selected, onSelect, onClear }) {
   const lastVisit = selected?.sessions_max_created_at
     ? new Date(selected.sessions_max_created_at).toLocaleDateString()
     : null;
+  const noResults = searchedQuery.length >= 2 && !loading && options.length === 0 && !selected;
 
   return (
-    <div className="rounded-lg border border-gray-200 p-4">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h4 className="font-semibold text-gray-900">Returning visitor lookup</h4>
-          <p className="text-sm text-gray-500">Search by name or phone to reuse an existing visitor profile.</p>
+          <h4 className="flex items-center gap-2 font-semibold text-gray-900">
+            <FiSearch className="text-malawiGreen" />
+            Visitor lookup
+          </h4>
+          <p className="text-sm text-gray-500">Search first. Manual visitor details appear only when no profile is found.</p>
         </div>
         {selected && <Button variant="outline" onClick={onClear}>Use new visitor</Button>}
       </div>
 
-      <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search existing visitor name or phone"
-        className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-malawiGreen"
-      />
+      <div className="relative">
+        <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search visitor name or phone number"
+          className="w-full rounded-lg border border-gray-300 bg-slate-50 py-2.5 pl-10 pr-3 text-sm focus:border-malawiGreen focus:bg-white focus:outline-none focus:ring-2 focus:ring-malawiGreen/20"
+        />
+      </div>
 
       {options.length > 0 && (
-        <div className="mt-2 max-h-52 overflow-auto rounded border border-gray-200 bg-white shadow">
+        <div className="mt-2 max-h-52 overflow-auto rounded-lg border border-gray-200 bg-white shadow-sm">
           {options.map((visitor) => (
             <button
               key={visitor.id}
@@ -203,7 +235,7 @@ function VisitorSearch({ selected, onSelect, onClear }) {
                 setQuery(`${visitor.full_name}${visitor.phone ? ` - ${visitor.phone}` : ''}`);
                 setOptions([]);
               }}
-              className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
+              className="block w-full border-b border-gray-100 px-3 py-2.5 text-left text-sm last:border-b-0 hover:bg-green-50"
             >
               <span className="font-semibold text-gray-900">{visitor.full_name}</span>
               {visitor.phone && <span className="ml-2 text-gray-500">{visitor.phone}</span>}
@@ -214,8 +246,20 @@ function VisitorSearch({ selected, onSelect, onClear }) {
         </div>
       )}
 
+      {loading && <p className="mt-2 text-sm text-gray-500">Searching visitor records...</p>}
+
+      {noResults && (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <div className="font-semibold">No visitor found for "{searchedQuery}".</div>
+          <p className="mt-1">Register a new visitor below and continue with the check-in.</p>
+          <Button className="mt-3" variant="outline" onClick={() => onCreateNew(searchedQuery)}>
+            Register new visitor
+          </Button>
+        </div>
+      )}
+
       {selected && (
-        <div className={`mt-3 rounded border px-3 py-2 text-sm ${selected.is_watchlisted ? 'border-red-200 bg-red-50 text-red-800' : 'border-green-200 bg-green-50 text-green-800'}`}>
+        <div className={`mt-3 rounded-lg border px-3 py-2 text-sm ${selected.is_watchlisted ? 'border-red-200 bg-red-50 text-red-800' : 'border-green-200 bg-green-50 text-green-800'}`}>
           <div className="font-semibold">{selected.full_name} selected</div>
           <div>{selected.sessions_count || 0} previous visits{lastVisit ? ` · Last visit ${lastVisit}` : ''}</div>
           {selected.is_watchlisted && (
@@ -234,6 +278,7 @@ export default function VisitationHomePage() {
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [flow, setFlow] = useState(null);
   const [regular, setRegular] = useState(emptyRegular);
+  const [manualVisitorOpen, setManualVisitorOpen] = useState(false);
   const [charity, setCharity] = useState(emptyCharity);
   const [fieldErrors, setFieldErrors] = useState({});
 
@@ -313,6 +358,7 @@ export default function VisitationHomePage() {
   const resetFlow = () => {
     setFlow(null);
     setRegular(emptyRegular);
+    setManualVisitorOpen(false);
     setCharity(emptyCharity);
     setFieldErrors({});
 
@@ -557,24 +603,61 @@ export default function VisitationHomePage() {
 
       {flow === 'regular' && <Modal title="Regular visit" widthClass="max-w-4xl" onClose={resetFlow}>
         <div className="space-y-5">
-          <div className="rounded border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-            Check in captures the visitor, inmate, and inspection items. Flagged items store the visit as flagged and prevent checkout.
+          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+            Search for the visitor first. If there is no match, register the visitor details before continuing with inmate selection and item inspection.
           </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Full name" value={regular.full_name} error={fieldErrors.full_name?.[0]} onChange={(v) => setRegular({ ...regular, full_name: v })} />
-              <Field label="Phone" value={regular.phone} error={fieldErrors.phone?.[0]} onChange={(v) => setRegular({ ...regular, phone: v })} />
+
+          <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-malawiGreen text-sm font-black text-white">1</span>
+              <h3 className="font-bold text-slate-950">Visitor</h3>
             </div>
             <VisitorSearch
               selected={regular.visitor}
-              onSelect={(visitor) => setRegular({
-                ...regular,
-                visitor,
-                visitor_id: visitor.id,
-                full_name: visitor.full_name || regular.full_name,
-                phone: visitor.phone || '',
-              })}
-              onClear={() => setRegular({ ...regular, visitor: null, visitor_id: '', full_name: '', phone: '' })}
+              onSelect={(visitor) => {
+                setManualVisitorOpen(false);
+                setRegular({
+                  ...regular,
+                  visitor,
+                  visitor_id: visitor.id,
+                  full_name: visitor.full_name || regular.full_name,
+                  phone: visitor.phone || '',
+                });
+              }}
+              onClear={() => {
+                setManualVisitorOpen(true);
+                setRegular({ ...regular, visitor: null, visitor_id: '', full_name: '', phone: '' });
+              }}
+              onCreateNew={(lookupValue) => {
+                setManualVisitorOpen(true);
+                setRegular({
+                  ...regular,
+                  visitor: null,
+                  visitor_id: '',
+                  full_name: regular.full_name || lookupValue,
+                });
+              }}
             />
+
+            {manualVisitorOpen && !regular.visitor && (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-white p-4">
+                <div className="mb-3">
+                  <h4 className="font-semibold text-gray-900">New visitor details</h4>
+                  <p className="text-sm text-gray-500">Use these fields only after lookup confirms this visitor is not already registered.</p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Visitor name" value={regular.full_name} error={fieldErrors.full_name?.[0]} onChange={(v) => setRegular({ ...regular, full_name: v })} />
+                  <Field label="Contact phone" value={regular.phone} error={fieldErrors.phone?.[0]} onChange={(v) => setRegular({ ...regular, phone: v })} />
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-sm font-black text-white">2</span>
+              <h3 className="font-bold text-slate-950">Inmate and relationship</h3>
+            </div>
             <InmateSearch value={regular.inmate_id} error={fieldErrors.inmate_id?.[0] || fieldErrors.slot?.[0]} onChange={(id) => setRegular({ ...regular, inmate_id: id })} />
             <div className="grid gap-4 md:grid-cols-2">
               <div>
@@ -582,7 +665,7 @@ export default function VisitationHomePage() {
                 <select
                   value={regular.relationship_type}
                   onChange={(e) => setRegular({ ...regular, relationship_type: e.target.value })}
-                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-malawiGreen"
+                  className="w-full rounded-lg border border-gray-300 bg-slate-50 px-3 py-2.5 text-sm focus:border-malawiGreen focus:bg-white focus:outline-none focus:ring-2 focus:ring-malawiGreen/20"
                 >
                   <option value="">Select relationship</option>
                   <option value="parent">Parent</option>
@@ -602,14 +685,21 @@ export default function VisitationHomePage() {
                 onChange={(v) => setRegular({ ...regular, relationship_notes: v })}
               />
             </div>
-            <div className="rounded-lg border border-gray-200 p-4">
+          </section>
+
+          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-sm font-black text-white">3</span>
+              <h3 className="font-bold text-slate-950">Item inspection</h3>
+            </div>
+            <div>
               <h4 className="mb-3 flex items-center gap-2 font-semibold text-gray-900"><FiPackage /> Items brought for inmate</h4>
               <div className="grid gap-3 md:grid-cols-[1fr_auto]">
                 <input
                   value={checkInItem.item_description}
                   onChange={(e) => setCheckInItem({ ...checkInItem, item_description: e.target.value })}
                   placeholder="e.g. food parcel, blanket, toiletries"
-                  className="rounded border border-gray-300 px-3 py-2"
+                  className="rounded-lg border border-gray-300 bg-slate-50 px-3 py-2.5 text-sm focus:border-malawiGreen focus:bg-white focus:outline-none focus:ring-2 focus:ring-malawiGreen/20"
                 />
                 <Button onClick={addCheckInItem}>Add item</Button>
               </div>
@@ -631,7 +721,11 @@ export default function VisitationHomePage() {
                 ))}
               </div>
             </div>
-            <Button loading={loading} onClick={startRegular}>Check in</Button>
+          </section>
+
+          <div className="flex justify-end border-t border-gray-100 pt-4">
+            <Button loading={loading} onClick={startRegular}>Check in visitor</Button>
+          </div>
         </div>
       </Modal>}
 
@@ -817,7 +911,7 @@ function Field({ label, value, onChange, error, type = 'text', onBlur }) {
   return (
     <div>
       <label className="block text-sm font-semibold text-gray-700 mb-1">{label}</label>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-malawiGreen" />
+      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} className="w-full rounded-lg border border-gray-300 bg-slate-50 px-3 py-2.5 text-sm focus:border-malawiGreen focus:bg-white focus:outline-none focus:ring-2 focus:ring-malawiGreen/20" />
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </div>
   );
@@ -827,7 +921,7 @@ function TextArea({ label, value, onChange, error }) {
   return (
     <div>
       <label className="block text-sm font-semibold text-gray-700 mb-1">{label}</label>
-      <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-malawiGreen" />
+      <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} className="w-full rounded-lg border border-gray-300 bg-slate-50 px-3 py-2.5 text-sm focus:border-malawiGreen focus:bg-white focus:outline-none focus:ring-2 focus:ring-malawiGreen/20" />
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </div>
   );
