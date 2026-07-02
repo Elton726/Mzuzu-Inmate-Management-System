@@ -83,8 +83,6 @@ import { ToastContainer } from 'react-toastify';
  */
 const AppContent = () => {
   const { isAuthenticated, loading } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = React.useState(true);
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 
   // Show loading spinner during authentication verification
   if (loading) {
@@ -98,28 +96,18 @@ const AppContent = () => {
     );
   }
 
-  const handleSidebarClose = () => setSidebarOpen(false);
-
-  const contentMarginClass = isAuthenticated && sidebarOpen
-    ? (sidebarCollapsed ? 'ml-20' : 'ml-64')
-    : 'ml-0';
+  const contentMarginClass = isAuthenticated ? 'ml-64' : 'ml-0';
 
   return (
     <div className="flex">
-      {/* Sidebar - only shown for authenticated users when open */}
-      {isAuthenticated && sidebarOpen && (
-        <Sidebar
-          onClose={handleSidebarClose}
-          isCollapsed={sidebarCollapsed}
-          setIsCollapsed={setSidebarCollapsed}
-        />
-      )}
+      {/* Sidebar - always shown for authenticated users */}
+      {isAuthenticated && <Sidebar />}
 
       {/* Main content area - adjusts margin based on sidebar state */}
       <div className={`${contentMarginClass} flex-1 min-w-0 transition-all duration-300`}>
 
         {/* Top Navigation Bar - shows for authenticated users */}
-        {isAuthenticated && <Navigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />}
+        {isAuthenticated && <Navigation />}
 
 
 

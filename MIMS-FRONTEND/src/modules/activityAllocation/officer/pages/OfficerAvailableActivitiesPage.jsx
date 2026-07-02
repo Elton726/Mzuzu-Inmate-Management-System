@@ -70,7 +70,7 @@ export default function OfficerAvailableActivitiesPage() {
   const [loading, setLoading] = useState(true);
   const [activities, setActivities] = useState([]);
   const [sessions, setSessions] = useState([]);
-  const [workingAction, setWorkingAction] = useState('');
+  const [workingAction] = useState('');
   const [dashboardMetrics, setDashboardMetrics] = useState(defaultDashboardMetrics);
 
   const filters = useMemo(() => {

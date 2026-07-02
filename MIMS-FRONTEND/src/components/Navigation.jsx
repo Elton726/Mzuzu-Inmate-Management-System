@@ -15,7 +15,6 @@ import {
   MdDarkMode,
   MdArrowForward,
   MdLightMode,
-  MdMenu,
   MdOutlineArticle,
   MdSearch,
   MdVisibility,
@@ -132,7 +131,7 @@ const getCellSearchText = (cell) => [
 
 const getCellLabel = (cell) => `Block ${cell?.block || '-'} | Cell ${cell?.cell_number || '-'}`;
 
-export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
+export const Navigation = () => {
   const { user, isAdmin } = useAuth();
   const { notifications, markAsRead, clearAll } = useNotification();
   const { theme, toggleTheme } = useContext(ThemeContext);
@@ -252,16 +251,6 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-3">
-              {!sidebarOpen && (
-                <button
-                  type="button"
-                  onClick={() => setSidebarOpen(true)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50"
-                  title="Open sidebar"
-                >
-                  <MdMenu className="text-2xl" />
-                </button>
-              )}
               <div className="min-w-0">
                 {showPageTitle && (
                   <div className="flex items-center gap-2 text-sm font-semibold text-gray-500">
@@ -471,7 +460,6 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
                     {(user?.name || user?.email || 'R').slice(0, 1).toUpperCase()}
                   </div>
                   <div className="hidden text-left sm:block">
-                    <div className="text-sm font-bold text-gray-950 dark:text-slate-200">{getRoleDisplayName(user) || 'Officer'}</div>
                     <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400">
                       <span className="h-2 w-2 rounded-full bg-emerald-500" />
                       Online
