@@ -187,6 +187,7 @@ already_approved: 0
         notes: data.notes || ''
       });
 
+      // Station officer feedback: only show after successful backend approval
       toast.success('Release approved successfully');
       setModalOpen(false);
       setSelectedRelease(null);
@@ -273,7 +274,7 @@ const handleClearFilters = () => {
               <FiSearch className="absolute left-3 top-3 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by inmate name or prison number..."
+                placeholder="Search by inmate name or inmate number..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-malawiGreen dark:bg-gray-700 dark:text-gray-100"

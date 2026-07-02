@@ -30,9 +30,26 @@ class ReleaseConfirmationController extends Controller
         $releases = $this->releaseService->getPendingReleases();
 
         if ($query) {
-            $releases = $releases->filter(function ($item) use ($query) {
-                return str_contains(strtolower($item->admission->inmate->first_name . ' ' . $item->admission->inmate->last_name), strtolower($query))
-                    || str_contains(strtolower($item->admission->inmate->prison_number), strtolower($query));
+            $terms = collect(preg_split('/\s+/', $query) ?: [])
+                ->filter()
+                ->values();
+
+            $releases = $releases->filter(function ($item) use ($query, $terms) {
+                $inmate = $item->admission->inmate;
+                $fullName = strtolower($inmate->first_name . ' ' . ($inmate->other_names ? $inmate->other_names . ' ' : '') . $inmate->last_name);
+                $prisonNo = strtolower($inmate->prison_number);
+
+                if (str_contains($fullName, strtolower($query)) || str_contains($prisonNo, strtolower($query))) {
+                    return true;
+                }
+
+                if ($terms->count() > 1) {
+                    return $terms->every(function ($term) use ($fullName, $prisonNo) {
+                        return str_contains($fullName, strtolower($term)) || str_contains($prisonNo, strtolower($term));
+                    });
+                }
+
+                return false;
             });
         }
 

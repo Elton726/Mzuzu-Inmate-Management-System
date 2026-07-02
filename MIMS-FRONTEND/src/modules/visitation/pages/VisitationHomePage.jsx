@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { FiAlertTriangle, FiDownload, FiPackage, FiPhone, FiPlus, FiShield, FiUser, FiUserCheck, FiX } from 'react-icons/fi';
+import { FiAlertTriangle, FiDownload, FiPackage, FiPhone, FiPlus, FiSearch, FiShield, FiUser, FiUserCheck, FiX, FiCalendar } from 'react-icons/fi';
 import { FaFemale, FaMale, FaUsers } from 'react-icons/fa';
 import Button from '../../../components/common/Button';
 import Modal from '../../../components/common/Modal';
@@ -19,8 +19,38 @@ import {
   updateVisitItem,
 } from '../services/visitationService';
 
+function LiveCountdown({ endsAt, status, fallback, large }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!endsAt || ['completed', 'denied', 'cancelled'].includes(status)) return undefined;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [endsAt, status]);
+
+  if (!endsAt) return <span>{fallback || '-'}</span>;
+  if (['completed', 'denied', 'cancelled'].includes(status)) return <span className="text-gray-500">-</span>;
+
+  const remainingMs = Math.max(0, endsAt - now);
+  if (remainingMs === 0) return <span className="text-red-600 font-bold">Time's up</span>;
+
+  const h = Math.floor(remainingMs / 3600000);
+  const m = Math.floor((remainingMs % 3600000) / 60000);
+  const s = Math.floor((remainingMs % 60000) / 1000);
+  
+  if (large) {
+    const timeString = h > 0 
+      ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+      : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    return <span>{timeString}</span>;
+  }
+  
+  const timeString = h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+  return <span className={m < 5 && h === 0 ? "text-red-600 font-bold" : "text-gray-900 font-medium"}>{timeString}</span>;
+}
+
 const emptyRegular = { visitor_id: '', full_name: '', phone: '', inmate_id: '', relationship_type: '', relationship_notes: '' };
-const emptyCharity = { organisation_name: '', contact_person: '', contact_person_phone: '', inmate_category: '', purpose: '', proposed_date: '', proposed_time: '', duration_minutes: 60 };
+const emptyCharity = { organisation_name: '', contact_person: '', contact_person_phone: '', inmate_category: '', purpose: '', proposed_date: '' };
 const denialReasons = ['Prohibited items found', 'Inmate refused visit', 'Visitor ID invalid', 'Security concern', 'Other'];
 const charityCategories = [
   { value: 'male', label: 'Male Wing', Icon: FaMale, tone: 'blue' },
@@ -58,17 +88,27 @@ function StatusBadge({ status }) {
 function InmateSearch({ value, onChange, error }) {
   const [query, setQuery] = useState('');
   const [options, setOptions] = useState([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     let active = true;
-    if (query.trim().length < 2) {
-      setTimeout(() => { if (active) setOptions([]); }, 0);
-      return undefined;
-    }
+
+    if (!isOpen) return undefined;
 
     const timer = setTimeout(async () => {
       try {
-        const data = await searchInmates({ q: query, per_page: 8 });
+        const data = await searchInmates({ q: query, per_page: 25 });
         if (active) setOptions(data.data || []);
       } catch {
         if (active) setOptions([]);
@@ -79,21 +119,26 @@ function InmateSearch({ value, onChange, error }) {
       active = false;
       clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, isOpen]);
 
   return (
-    <div>
+    <div ref={wrapperRef} className="relative">
       <label className="block text-sm font-semibold text-gray-700 mb-1">Inmate</label>
       <input
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search inmate name or prison number"
-        className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-malawiGreen"
+        onFocus={() => setIsOpen(true)}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setIsOpen(true);
+        }}
+        placeholder="Search by name, ID, or single letter..."
+        className="w-full rounded-lg border border-gray-300 bg-slate-50 px-3 py-2.5 text-sm focus:border-malawiGreen focus:bg-white focus:outline-none focus:ring-2 focus:ring-malawiGreen/20"
       />
       {value && <p className="mt-1 text-xs text-gray-600">Selected inmate ID: {value}</p>}
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
-      {options.length > 0 && (
-        <div className="mt-2 max-h-44 overflow-auto rounded border border-gray-200 bg-white shadow">
+      
+      {isOpen && options.length > 0 && (
+        <div className="absolute z-10 mt-1 w-full max-h-60 overflow-auto rounded-lg border border-gray-200 bg-white shadow-xl">
           {options.map((inmate) => (
             <button
               key={inmate.id}
@@ -101,12 +146,12 @@ function InmateSearch({ value, onChange, error }) {
               onClick={() => {
                 onChange(inmate.id);
                 setQuery(`${nameOf(inmate)} - ${inmate.prison_number}`);
-                setOptions([]);
+                setIsOpen(false);
               }}
-              className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
+              className="block w-full px-4 py-2.5 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none transition-colors border-b border-gray-50 last:border-0"
             >
-              <span className="font-semibold">{nameOf(inmate)}</span>
-              <span className="ml-2 text-gray-500">{inmate.prison_number}</span>
+              <div className="text-sm font-semibold text-gray-900">{nameOf(inmate)}</div>
+              <div className="text-xs text-gray-500">{inmate.prison_number}</div>
             </button>
           ))}
         </div>
@@ -115,23 +160,33 @@ function InmateSearch({ value, onChange, error }) {
   );
 }
 
-function VisitorSearch({ selected, onSelect, onClear }) {
+function VisitorSearch({ selected, onSelect, onClear, onCreateNew }) {
   const [query, setQuery] = useState('');
   const [options, setOptions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchedQuery, setSearchedQuery] = useState('');
 
   useEffect(() => {
     let active = true;
     if (query.trim().length < 2) {
+      setLoading(false);
+      setSearchedQuery('');
       setTimeout(() => { if (active) setOptions([]); }, 0);
       return undefined;
     }
 
     const timer = setTimeout(async () => {
       try {
+        setLoading(true);
         const data = await searchVisitors({ q: query, per_page: 8 });
-        if (active) setOptions(data || []);
+        if (active) {
+          setOptions(data || []);
+          setSearchedQuery(query.trim());
+        }
       } catch {
         if (active) setOptions([]);
+      } finally {
+        if (active) setLoading(false);
       }
     }, 250);
 
@@ -144,26 +199,33 @@ function VisitorSearch({ selected, onSelect, onClear }) {
   const lastVisit = selected?.sessions_max_created_at
     ? new Date(selected.sessions_max_created_at).toLocaleDateString()
     : null;
+  const noResults = searchedQuery.length >= 2 && !loading && options.length === 0 && !selected;
 
   return (
-    <div className="rounded-lg border border-gray-200 p-4">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h4 className="font-semibold text-gray-900">Returning visitor lookup</h4>
-          <p className="text-sm text-gray-500">Search by name or phone to reuse an existing visitor profile.</p>
+          <h4 className="flex items-center gap-2 font-semibold text-gray-900">
+            <FiSearch className="text-malawiGreen" />
+            Visitor lookup
+          </h4>
+          <p className="text-sm text-gray-500">Search first. Manual visitor details appear only when no profile is found.</p>
         </div>
         {selected && <Button variant="outline" onClick={onClear}>Use new visitor</Button>}
       </div>
 
-      <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search existing visitor name or phone"
-        className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-malawiGreen"
-      />
+      <div className="relative">
+        <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search visitor name or phone number"
+          className="w-full rounded-lg border border-gray-300 bg-slate-50 py-2.5 pl-10 pr-3 text-sm focus:border-malawiGreen focus:bg-white focus:outline-none focus:ring-2 focus:ring-malawiGreen/20"
+        />
+      </div>
 
       {options.length > 0 && (
-        <div className="mt-2 max-h-52 overflow-auto rounded border border-gray-200 bg-white shadow">
+        <div className="mt-2 max-h-52 overflow-auto rounded-lg border border-gray-200 bg-white shadow-sm">
           {options.map((visitor) => (
             <button
               key={visitor.id}
@@ -173,7 +235,7 @@ function VisitorSearch({ selected, onSelect, onClear }) {
                 setQuery(`${visitor.full_name}${visitor.phone ? ` - ${visitor.phone}` : ''}`);
                 setOptions([]);
               }}
-              className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
+              className="block w-full border-b border-gray-100 px-3 py-2.5 text-left text-sm last:border-b-0 hover:bg-green-50"
             >
               <span className="font-semibold text-gray-900">{visitor.full_name}</span>
               {visitor.phone && <span className="ml-2 text-gray-500">{visitor.phone}</span>}
@@ -184,8 +246,20 @@ function VisitorSearch({ selected, onSelect, onClear }) {
         </div>
       )}
 
+      {loading && <p className="mt-2 text-sm text-gray-500">Searching visitor records...</p>}
+
+      {noResults && (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <div className="font-semibold">No visitor found for "{searchedQuery}".</div>
+          <p className="mt-1">Register a new visitor below and continue with the check-in.</p>
+          <Button className="mt-3" variant="outline" onClick={() => onCreateNew(searchedQuery)}>
+            Register new visitor
+          </Button>
+        </div>
+      )}
+
       {selected && (
-        <div className={`mt-3 rounded border px-3 py-2 text-sm ${selected.is_watchlisted ? 'border-red-200 bg-red-50 text-red-800' : 'border-green-200 bg-green-50 text-green-800'}`}>
+        <div className={`mt-3 rounded-lg border px-3 py-2 text-sm ${selected.is_watchlisted ? 'border-red-200 bg-red-50 text-red-800' : 'border-green-200 bg-green-50 text-green-800'}`}>
           <div className="font-semibold">{selected.full_name} selected</div>
           <div>{selected.sessions_count || 0} previous visits{lastVisit ? ` · Last visit ${lastVisit}` : ''}</div>
           {selected.is_watchlisted && (
@@ -204,6 +278,7 @@ export default function VisitationHomePage() {
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [flow, setFlow] = useState(null);
   const [regular, setRegular] = useState(emptyRegular);
+  const [manualVisitorOpen, setManualVisitorOpen] = useState(false);
   const [charity, setCharity] = useState(emptyCharity);
   const [fieldErrors, setFieldErrors] = useState({});
 
@@ -217,6 +292,8 @@ export default function VisitationHomePage() {
   const [denial, setDenial] = useState({ denial_reason: 'Security concern', denial_notes: '' });
   const [pdfInfo, setPdfInfo] = useState(null);
   const [loading, setLoading] = useState(false);
+  const notifiedSessionsRef = useRef(new Set());
+  const scheduleRef = useRef([]);
 
   const loadSchedule = useCallback(async () => {
     try {
@@ -239,6 +316,8 @@ export default function VisitationHomePage() {
       displayTime: session.checked_in_at ? new Date(session.checked_in_at).toLocaleString() : new Date(session.created_at).toLocaleString(),
       status: session.status,
       isOverdue: session.is_overdue,
+      timeRemainingLabel: session.time_remaining_label || '-',
+      endsAt: session.expected_checkout_at && session.checked_in_at ? new Date(session.expected_checkout_at).getTime() : null,
       type: session.visit_type,
       session,
       hasFlags: (session.items || []).some((row) => row.status === 'flagged'),
@@ -250,14 +329,36 @@ export default function VisitationHomePage() {
       time: `${formatDateOnly(booking.proposed_date)} ${String(booking.proposed_time || '').slice(0, 5)}`,
       displayTime: `${formatDateOnly(booking.proposed_date)} ${String(booking.proposed_time || '').slice(0, 5)}`,
       status: 'approved',
+      timeRemainingLabel: booking.time_remaining_label || 'Not checked in',
+      endsAt: null,
       type: 'charity',
       booking,
     })),
   ], [schedule]);
 
+  useEffect(() => {
+    scheduleRef.current = allSchedule;
+  }, [allSchedule]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = Date.now();
+      scheduleRef.current.forEach((row) => {
+        if (row.endsAt && row.status === 'in_progress') {
+          if (row.endsAt <= now && !notifiedSessionsRef.current.has(row.id)) {
+            notifiedSessionsRef.current.add(row.id);
+            toast.warning(`Time is up for ${row.visitor}'s visit!`);
+          }
+        }
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const resetFlow = () => {
     setFlow(null);
     setRegular(emptyRegular);
+    setManualVisitorOpen(false);
     setCharity(emptyCharity);
     setFieldErrors({});
 
@@ -412,50 +513,64 @@ export default function VisitationHomePage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-malawiGreen/10 to-transparent p-6 border border-malawiGreen/20 shadow-sm">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Visitation</h1>
-          <p className="text-gray-600">Gatekeeper visit intake and same-day session control</p>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Visitation Management</h1>
+          <p className="mt-1 text-sm text-gray-600">Gatekeeper visit intake and same-day session control</p>
         </div>
-        <Button onClick={() => setSelectorOpen(true)}><FiPlus /> New visit</Button>
+        <Button onClick={() => setSelectorOpen(true)} className="shadow-sm hover:-translate-y-0.5 transition-transform"><FiPlus /> New visit</Button>
       </div>
 
-      <div className="rounded-lg bg-white shadow">
-        <div className="border-b border-gray-200 px-5 py-4">
+      <div className="rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5">
+        <div className="border-b border-gray-100 px-6 py-5">
           <h2 className="text-lg font-semibold text-gray-900">Today&apos;s schedule</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 text-left text-sm text-gray-600">
+            <thead className="bg-gray-50/50 text-left text-xs font-semibold tracking-wider text-gray-500 uppercase">
               <tr>
-                <th className="px-5 py-3">Visitor</th>
-                <th className="px-5 py-3">Inmate</th>
-                <th className="px-5 py-3">Type</th>
-                <th className="px-5 py-3">Time</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3">Action</th>
+                <th className="px-6 py-4">Visitor</th>
+                <th className="px-6 py-4">Inmate</th>
+                <th className="px-6 py-4">Type</th>
+                <th className="px-6 py-4">Time</th>
+                <th className="px-6 py-4">Time left</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 bg-white">
               {allSchedule.length === 0 ? (
-                <tr><td className="px-5 py-8 text-center text-gray-500" colSpan={6}>No visits scheduled for today.</td></tr>
+                <tr>
+                  <td className="px-6 py-16 text-center text-gray-500" colSpan={7}>
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="rounded-full bg-gray-50 p-4 ring-1 ring-gray-100 mb-4">
+                        <FiCalendar className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-sm font-medium text-gray-900">No visits scheduled</h3>
+                      <p className="mt-1 text-sm text-gray-500">There are no visits or approved charity bookings for today.</p>
+                    </div>
+                  </td>
+                </tr>
               ) : allSchedule.map((row) => (
-                <tr key={row.id}>
-                  <td className="px-5 py-4 font-medium text-gray-900">{row.visitor}</td>
-                  <td className="px-5 py-4 text-gray-700">{row.inmate}</td>
-                  <td className="px-5 py-4 capitalize text-gray-700">{row.type}</td>
-                  <td className="px-5 py-4 text-gray-700">{row.displayTime || '-'}</td>
-                  <td className="px-5 py-4">
+                <tr key={row.id} className="hover:bg-slate-50 transition-colors duration-150">
+                  <td className="px-6 py-4 font-semibold text-gray-900">{row.visitor}</td>
+                  <td className="px-6 py-4 text-gray-700">{row.inmate}</td>
+                  <td className="px-6 py-4 capitalize text-gray-600 font-medium">{row.type}</td>
+                  <td className="px-6 py-4 text-gray-600">{row.displayTime || '-'}</td>
+                  <td className="px-6 py-4 text-gray-800 font-medium">
+                    <LiveCountdown endsAt={row.endsAt} status={row.status} fallback={row.timeRemainingLabel} />
+                  </td>
+                  <td className="px-6 py-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusBadge status={row.status} />
                       {row.isOverdue && (
-                        <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-1 text-xs font-semibold text-red-800">
-                          <FiAlertTriangle /> Overdue
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800 border border-red-200">
+                          <FiAlertTriangle className="w-3.5 h-3.5" /> Overdue
                         </span>
                       )}
                     </div>
                   </td>
-                  <td className="px-5 py-4">
+                  <td className="px-6 py-4">
                     {row.booking ? (
                       <Button loading={loading} onClick={() => startApprovedCharity(row.booking)}>Start visit</Button>
                     ) : row.session && row.status === 'in_progress' && !row.hasFlags ? (
@@ -488,24 +603,61 @@ export default function VisitationHomePage() {
 
       {flow === 'regular' && <Modal title="Regular visit" widthClass="max-w-4xl" onClose={resetFlow}>
         <div className="space-y-5">
-          <div className="rounded border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-            Check in captures the visitor, inmate, and inspection items. Flagged items store the visit as flagged and prevent checkout.
+          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+            Search for the visitor first. If there is no match, register the visitor details before continuing with inmate selection and item inspection.
           </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Full name" value={regular.full_name} error={fieldErrors.full_name?.[0]} onChange={(v) => setRegular({ ...regular, full_name: v })} />
-              <Field label="Phone" value={regular.phone} error={fieldErrors.phone?.[0]} onChange={(v) => setRegular({ ...regular, phone: v })} />
+
+          <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-malawiGreen text-sm font-black text-white">1</span>
+              <h3 className="font-bold text-slate-950">Visitor</h3>
             </div>
             <VisitorSearch
               selected={regular.visitor}
-              onSelect={(visitor) => setRegular({
-                ...regular,
-                visitor,
-                visitor_id: visitor.id,
-                full_name: visitor.full_name || regular.full_name,
-                phone: visitor.phone || '',
-              })}
-              onClear={() => setRegular({ ...regular, visitor: null, visitor_id: '', full_name: '', phone: '' })}
+              onSelect={(visitor) => {
+                setManualVisitorOpen(false);
+                setRegular({
+                  ...regular,
+                  visitor,
+                  visitor_id: visitor.id,
+                  full_name: visitor.full_name || regular.full_name,
+                  phone: visitor.phone || '',
+                });
+              }}
+              onClear={() => {
+                setManualVisitorOpen(true);
+                setRegular({ ...regular, visitor: null, visitor_id: '', full_name: '', phone: '' });
+              }}
+              onCreateNew={(lookupValue) => {
+                setManualVisitorOpen(true);
+                setRegular({
+                  ...regular,
+                  visitor: null,
+                  visitor_id: '',
+                  full_name: regular.full_name || lookupValue,
+                });
+              }}
             />
+
+            {manualVisitorOpen && !regular.visitor && (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-white p-4">
+                <div className="mb-3">
+                  <h4 className="font-semibold text-gray-900">New visitor details</h4>
+                  <p className="text-sm text-gray-500">Use these fields only after lookup confirms this visitor is not already registered.</p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Visitor name" value={regular.full_name} error={fieldErrors.full_name?.[0]} onChange={(v) => setRegular({ ...regular, full_name: v })} />
+                  <Field label="Contact phone" value={regular.phone} error={fieldErrors.phone?.[0]} onChange={(v) => setRegular({ ...regular, phone: v })} />
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-sm font-black text-white">2</span>
+              <h3 className="font-bold text-slate-950">Inmate and relationship</h3>
+            </div>
             <InmateSearch value={regular.inmate_id} error={fieldErrors.inmate_id?.[0] || fieldErrors.slot?.[0]} onChange={(id) => setRegular({ ...regular, inmate_id: id })} />
             <div className="grid gap-4 md:grid-cols-2">
               <div>
@@ -513,7 +665,7 @@ export default function VisitationHomePage() {
                 <select
                   value={regular.relationship_type}
                   onChange={(e) => setRegular({ ...regular, relationship_type: e.target.value })}
-                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-malawiGreen"
+                  className="w-full rounded-lg border border-gray-300 bg-slate-50 px-3 py-2.5 text-sm focus:border-malawiGreen focus:bg-white focus:outline-none focus:ring-2 focus:ring-malawiGreen/20"
                 >
                   <option value="">Select relationship</option>
                   <option value="parent">Parent</option>
@@ -533,14 +685,21 @@ export default function VisitationHomePage() {
                 onChange={(v) => setRegular({ ...regular, relationship_notes: v })}
               />
             </div>
-            <div className="rounded-lg border border-gray-200 p-4">
+          </section>
+
+          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-sm font-black text-white">3</span>
+              <h3 className="font-bold text-slate-950">Item inspection</h3>
+            </div>
+            <div>
               <h4 className="mb-3 flex items-center gap-2 font-semibold text-gray-900"><FiPackage /> Items brought for inmate</h4>
               <div className="grid gap-3 md:grid-cols-[1fr_auto]">
                 <input
                   value={checkInItem.item_description}
                   onChange={(e) => setCheckInItem({ ...checkInItem, item_description: e.target.value })}
                   placeholder="e.g. food parcel, blanket, toiletries"
-                  className="rounded border border-gray-300 px-3 py-2"
+                  className="rounded-lg border border-gray-300 bg-slate-50 px-3 py-2.5 text-sm focus:border-malawiGreen focus:bg-white focus:outline-none focus:ring-2 focus:ring-malawiGreen/20"
                 />
                 <Button onClick={addCheckInItem}>Add item</Button>
               </div>
@@ -562,7 +721,11 @@ export default function VisitationHomePage() {
                 ))}
               </div>
             </div>
-            <Button loading={loading} onClick={startRegular}>Check in</Button>
+          </section>
+
+          <div className="flex justify-end border-t border-gray-100 pt-4">
+            <Button loading={loading} onClick={startRegular}>Check in visitor</Button>
+          </div>
         </div>
       </Modal>}
 
@@ -671,26 +834,25 @@ export default function VisitationHomePage() {
           </div>
 
           <TextArea label="Purpose of visit" value={charity.purpose} error={fieldErrors.purpose?.[0]} onChange={(v) => setCharity({ ...charity, purpose: v })} />
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-1">
             <Field type="date" label="Proposed date" value={charity.proposed_date} error={fieldErrors.proposed_date?.[0]} onChange={(v) => setCharity({ ...charity, proposed_date: v })} />
-            <Field type="time" label="Proposed time" value={charity.proposed_time} error={fieldErrors.proposed_time?.[0]} onChange={(v) => setCharity({ ...charity, proposed_time: v })} />
-            <Field type="number" label="Duration (minutes)" value={charity.duration_minutes} error={fieldErrors.duration_minutes?.[0]} onChange={(v) => setCharity({ ...charity, duration_minutes: v })} />
           </div>
-
-          {pdfInfo ? (
-            <div className="rounded-lg border border-green-200 bg-green-50 p-3 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="font-semibold text-green-900 text-sm">✅ Request sent to station officer for approval.</p>
-                <p className="text-xs text-green-700 mt-0.5">PDF generated successfully.</p>
+          <div className="flex flex-wrap gap-3">
+            {pdfInfo ? (
+              <div className="rounded-lg border border-green-200 bg-green-50 p-3 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-green-900 text-sm">✅ Request sent to station officer for approval.</p>
+                  <p className="text-xs text-green-700 mt-0.5">PDF generated successfully.</p>
+                </div>
+                <Button onClick={() => downloadPdf(pdfInfo.download_url, `charity-booking-${pdfInfo.data.id}.pdf`)}><FiDownload /> Download PDF</Button>
               </div>
-              <Button onClick={() => downloadPdf(pdfInfo.download_url, `charity-booking-${pdfInfo.data.id}.pdf`)}><FiDownload /> Download PDF</Button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-100 bg-amber-50 px-4 py-3">
-              <p className="text-xs text-amber-700">Generates a PDF &amp; sends to station officer for approval.</p>
-              <Button loading={loading} onClick={submitCharity}><FiDownload /> Generate PDF &amp; Submit</Button>
-            </div>
-          )}
+            ) : (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-100 bg-amber-50 px-4 py-3">
+                <p className="text-xs text-amber-700">Generates a PDF &amp; sends to station officer for approval.</p>
+                <Button loading={loading} onClick={submitCharity}><FiDownload /> Generate PDF &amp; Submit</Button>
+              </div>
+            )}
+          </div>
         </div>
       </Modal>}
 
@@ -749,7 +911,7 @@ function Field({ label, value, onChange, error, type = 'text', onBlur }) {
   return (
     <div>
       <label className="block text-sm font-semibold text-gray-700 mb-1">{label}</label>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-malawiGreen" />
+      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} className="w-full rounded-lg border border-gray-300 bg-slate-50 px-3 py-2.5 text-sm focus:border-malawiGreen focus:bg-white focus:outline-none focus:ring-2 focus:ring-malawiGreen/20" />
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </div>
   );
@@ -759,7 +921,7 @@ function TextArea({ label, value, onChange, error }) {
   return (
     <div>
       <label className="block text-sm font-semibold text-gray-700 mb-1">{label}</label>
-      <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-malawiGreen" />
+      <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} className="w-full rounded-lg border border-gray-300 bg-slate-50 px-3 py-2.5 text-sm focus:border-malawiGreen focus:bg-white focus:outline-none focus:ring-2 focus:ring-malawiGreen/20" />
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </div>
   );
@@ -768,68 +930,65 @@ function TextArea({ label, value, onChange, error }) {
 function ActiveSession({ session, item, setItem, onCheckIn, onCheckOut, onAddItem, onItemStatus, onFlagItem, onDeny }) {
   const [now, setNow] = useState(() => Date.now());
   const charityBooking = session.charity_booking || session.charityBooking;
-  const durationMinutes = Number(charityBooking?.duration_minutes || 0);
   const isCharity = session.visit_type === 'charity';
   const hasFlags = session.status === 'flagged' || (session.items || []).some((row) => row.status === 'flagged');
-  const checkedInAt = session.checked_in_at ? new Date(session.checked_in_at).getTime() : null;
-  const endsAt = checkedInAt && durationMinutes ? checkedInAt + durationMinutes * 60 * 1000 : null;
+  const endsAt = session.expected_checkout_at ? new Date(session.expected_checkout_at).getTime() : null;
   const remainingMs = endsAt ? Math.max(0, endsAt - now) : null;
-  const remainingMinutes = remainingMs !== null ? Math.floor(remainingMs / 60000) : null;
-  const remainingSeconds = remainingMs !== null ? Math.floor((remainingMs % 60000) / 1000) : null;
 
   useEffect(() => {
-    if (!isCharity || !checkedInAt || session.status === 'completed') return undefined;
+    if (!session.checked_in_at || ['completed', 'denied', 'cancelled'].includes(session.status)) return undefined;
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, [checkedInAt, isCharity, session.status]);
+  }, [session.checked_in_at, session.status]);
 
   return (
-    <div className="space-y-5">
-      <div className="rounded-lg border border-gray-200 p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="space-y-6">
+      <div className="rounded-xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-sm text-gray-500">Active session</p>
-            <h3 className="text-xl font-bold text-gray-900">{session.visitor?.full_name}</h3>
-            <p className="text-gray-700">
-              {isCharity ? `${categoryName(charityBooking?.inmate_category)} charity visit` : nameOf(session.inmate)}
+            <div className="mb-1 text-xs font-bold tracking-wider text-gray-400 uppercase">Active Session</div>
+            <h3 className="text-2xl font-bold text-gray-900 tracking-tight">{session.visitor?.full_name}</h3>
+            <p className="mt-1 text-base font-medium text-gray-700">
+              Visiting: <span className="text-gray-900">{isCharity ? `${categoryName(charityBooking?.inmate_category)} charity group` : nameOf(session.inmate)}</span>
             </p>
-            <p className="text-sm text-gray-500">Checked in: {session.checked_in_at ? new Date(session.checked_in_at).toLocaleString() : 'Not yet checked in'}</p>
-            {isCharity && charityBooking && (
-              <p className="text-sm text-gray-500">
-                Requested duration: {charityBooking.duration_minutes} minutes
-              </p>
-            )}
+            <div className="mt-3 flex items-center gap-4 text-sm text-gray-500">
+              <span className="flex items-center gap-1.5 bg-gray-100/80 px-2.5 py-1 rounded-md"><FiUserCheck className="text-gray-400" /> {session.checked_in_at ? new Date(session.checked_in_at).toLocaleTimeString() : 'Pending Check-in'}</span>
+              {isCharity && charityBooking && (
+                <span className="flex items-center gap-1.5 bg-gray-100/80 px-2.5 py-1 rounded-md">⏳ {charityBooking.duration_minutes} min requested</span>
+              )}
+            </div>
           </div>
           <StatusBadge status={session.status} />
         </div>
       </div>
-      {isCharity && (
-        <div className={`rounded-lg border px-4 py-3 ${remainingMs === 0 ? 'border-red-200 bg-red-50 text-red-800' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
-          <div className="text-sm font-semibold">Charity visit countdown</div>
-          {checkedInAt ? (
-            <div className="mt-1 text-3xl font-bold tabular-nums">
-              {String(remainingMinutes).padStart(2, '0')}:{String(remainingSeconds).padStart(2, '0')}
+      {session.checked_in_at && !['completed', 'denied', 'cancelled'].includes(session.status) && (
+        <div className={`relative overflow-hidden rounded-xl border p-5 shadow-sm transition-colors duration-300 ${remainingMs === 0 ? 'border-red-200 bg-red-50/80 text-red-900 shadow-red-100' : 'border-emerald-200 bg-emerald-50/80 text-emerald-900 shadow-emerald-100'}`}>
+          {remainingMs > 0 && <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-emerald-400/20 blur-2xl"></div>}
+          <div className="text-sm font-bold tracking-wide uppercase opacity-80">{isCharity ? 'Charity' : 'Regular'} Visit Countdown</div>
+          {endsAt ? (
+            <div className="mt-2 text-4xl font-extrabold tabular-nums tracking-tight">
+              <LiveCountdown endsAt={endsAt} status={session.status} large />
             </div>
           ) : (
-            <p className="mt-1 text-sm">Countdown starts when the organisation is checked in.</p>
+            <p className="mt-2 text-sm opacity-90">Countdown starts when the visitor is checked in.</p>
           )}
-          {remainingMs === 0 && <p className="mt-1 text-sm font-semibold">Requested visit duration has ended.</p>}
+          {remainingMs === 0 && <p className="mt-2 text-sm font-bold flex items-center gap-1.5"><FiAlertTriangle /> Allocated visit duration has ended.</p>}
         </div>
       )}
       <div className="flex flex-wrap gap-3">
-        {!session.checked_in_at && <Button onClick={onCheckIn}><FiUserCheck /> Check in</Button>}
+        {!session.checked_in_at && !isCharity && <Button onClick={onCheckIn}><FiUserCheck /> Check in</Button>}
         <Button onClick={onCheckOut} disabled={session.status === 'completed' || hasFlags}>Check out</Button>
-        <Button variant="danger" onClick={onDeny}><FiX /> Deny / Cancel</Button>
+        {!isCharity && <Button variant="danger" onClick={onDeny}><FiX /> Deny / Cancel</Button>}
       </div>
-      <div className="rounded-lg border border-gray-200 p-4">
-        <h4 className="mb-3 flex items-center gap-2 font-semibold text-gray-900"><FiPackage /> Inspect items</h4>
+      <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+        <h4 className="mb-4 flex items-center gap-2 font-bold text-gray-900 text-lg"><FiPackage className="text-malawiGreen" /> Inspect items</h4>
         <div className="grid gap-3 md:grid-cols-[1fr_160px_auto]">
-          <input value={item.item_description} onChange={(e) => setItem({ ...item, item_description: e.target.value })} placeholder="Item description" className="rounded border border-gray-300 px-3 py-2" />
-          <select value={item.status} onChange={(e) => setItem({ ...item, status: e.target.value })} className="rounded border border-gray-300 px-3 py-2">
+          <input value={item.item_description} onChange={(e) => setItem({ ...item, item_description: e.target.value })} placeholder="Item description" className="rounded-md border border-gray-200 px-3 py-2 text-sm shadow-sm focus:border-malawiGreen focus:ring-1 focus:ring-malawiGreen outline-none transition-all" />
+          <select value={item.status} onChange={(e) => setItem({ ...item, status: e.target.value })} className="rounded-md border border-gray-200 px-3 py-2 text-sm shadow-sm focus:border-malawiGreen focus:ring-1 focus:ring-malawiGreen outline-none transition-all">
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
           </select>
-          <Button onClick={onAddItem}>Add item</Button>
+          <Button onClick={onAddItem} className="shadow-sm">Add item</Button>
         </div>
         <div className="mt-4 divide-y divide-gray-100">
           {(session.items || []).map((row) => (
@@ -839,13 +998,18 @@ function ActiveSession({ session, item, setItem, onCheckIn, onCheckOut, onAddIte
                 <StatusBadge status={row.status} />
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => onItemStatus(row, 'approved')}>Approve</Button>
+                {row.status !== 'approved' && <Button variant="outline" onClick={() => onItemStatus(row, 'approved')}>Approve</Button>}
                 <Button variant="danger" onClick={() => onFlagItem(row)}>Flag</Button>
               </div>
             </div>
           ))}
         </div>
       </div>
+      {isCharity && !session.checked_in_at && (
+        <div className="mt-4 flex justify-end">
+          <Button onClick={onCheckIn}><FiUserCheck /> Check in</Button>
+        </div>
+      )}
     </div>
   );
 }

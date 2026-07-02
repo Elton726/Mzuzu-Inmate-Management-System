@@ -250,7 +250,7 @@ export default function ReleaseHistoryPage() {
                     Inmate Name
                   </th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Prison Number
+                    Inmate number
                   </th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
                     Approved By

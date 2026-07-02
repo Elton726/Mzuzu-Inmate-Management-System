@@ -68,6 +68,26 @@ class OfficerActivitySessionTest extends TestCase
             ]);
     }
 
+    public function test_officer_cannot_create_session_without_assigned_inmates(): void
+    {
+        $officer = $this->createOfficer();
+        $activity = $this->createActivity();
+
+        $response = $this->actingAs($officer, 'sanctum')->postJson('/api/officer/activity-sessions', [
+            'activity_id' => $activity->id,
+            'session_date' => '2026-04-02',
+            'session_time' => 'Morning',
+            'supervising_officer_id' => $officer->id,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonFragment([
+                'error' => 'Cannot create a session when there are no assigned inmates for this activity.',
+            ]);
+
+        $this->assertDatabaseCount('activity_sessions', 0);
+    }
+
     public function test_officers_only_see_their_own_sessions(): void
     {
         $firstOfficer = $this->createOfficer();

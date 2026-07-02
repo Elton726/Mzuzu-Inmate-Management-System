@@ -86,14 +86,7 @@ export default function OfficerSessionsPage() {
         </div>
 
         <Card title="Filters">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Input
-              label="Activity ID"
-              type="number"
-              value={filters.activity_id ?? ''}
-              onChange={(e) => setFilters((p) => ({ ...p, activity_id: e.target.value }))}
-              hint="Optional numeric activity id"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Session date"
               type="date"
@@ -106,9 +99,6 @@ export default function OfficerSessionsPage() {
               onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))}
               options={statusOptions}
             />
-            <div className="flex items-end">
-              <p className="text-sm text-gray-600">Sessions are automatically filtered to your officer account.</p>
-            </div>
           </div>
           <div className="mt-4 flex justify-end gap-2">
             <Button

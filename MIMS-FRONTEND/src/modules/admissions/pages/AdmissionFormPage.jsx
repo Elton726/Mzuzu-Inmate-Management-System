@@ -49,9 +49,9 @@ const buildAdmissionPayload = ({ inmateId, admission, warrantDocId }) => {
   };
 
   if (admission.inmateType === 'convict') {
-    payload.sentence_years = admission.sentenceYears != null && admission.sentenceYears !== '' ? Number(admission.sentenceYears) : null;
-    payload.sentence_months = admission.sentenceMonths != null && admission.sentenceMonths !== '' ? Number(admission.sentenceMonths) : null;
-    payload.sentence_days = admission.sentenceDays != null && admission.sentenceDays !== '' ? Number(admission.sentenceDays) : null;
+    payload.sentence_years = admission.sentenceYears != null && admission.sentenceYears !== '' ? Number(admission.sentenceYears) : 0;
+    payload.sentence_months = admission.sentenceMonths != null && admission.sentenceMonths !== '' ? Number(admission.sentenceMonths) : 0;
+    payload.sentence_days = admission.sentenceDays != null && admission.sentenceDays !== '' ? Number(admission.sentenceDays) : 0;
     payload.sentence_start_date = toIso(admission.sentenceStartDate);
     payload.committal_warrant_id = warrantDocId || null;
     payload.remand_warrant_id = null;
@@ -64,6 +64,7 @@ const buildAdmissionPayload = ({ inmateId, admission, warrantDocId }) => {
     payload.committal_warrant_id = null;
     payload.sentence_years = null;
     payload.sentence_months = null;
+    payload.sentence_days = null;
     payload.sentence_start_date = null;
   }
 
@@ -193,6 +194,11 @@ export default function AdmissionFormPage() {
       setCurrent(1);
       return;
     }
+    if (!docs?.warrant) {
+      toast.error('Upload or capture the warrant document before submitting the admission.');
+      setCurrent(2);
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -246,8 +252,9 @@ export default function AdmissionFormPage() {
           addNotification({ title: 'Warrant uploaded', message: `Warrant uploaded for ${selectedInmate.first_name} ${selectedInmate.last_name}`, type: 'success', action: { label: 'Open inmate', url: `/inmates/${selectedInmate.id}` } });
         } catch (warrantErr) {
           console.error('Warrant upload failed:', warrantErr);
-          toast.warning('Warrant upload failed, continuing with admission');
+          toast.error('Warrant upload failed. Admission cannot be submitted without a valid warrant.');
           addNotification({ title: 'Warrant upload failed', message: `Warrant upload failed for ${selectedInmate.first_name} ${selectedInmate.last_name}`, type: 'error', duration: 0 });
+          return;
         }
       }
 

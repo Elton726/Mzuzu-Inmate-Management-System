@@ -863,7 +863,7 @@ export default function AdmissionsReportPage() {
                       <table className="w-full text-sm border-collapse">
                         <thead>
                           <tr className="bg-gray-800 text-white">
-                            {['Prison No.', 'Name', 'Case No.', 'Court Date', 'Days Overdue', 'Type'].map(h => (
+                            {['Inmate number', 'Name', 'Case No.', 'Court Date', 'Days Overdue', 'Type'].map(h => (
                               <th key={h} className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wide border border-gray-600">{h}</th>
                             ))}
                           </tr>
@@ -1149,7 +1149,7 @@ export default function AdmissionsReportPage() {
                     ⚠ Overdue Court Appearances ({remand.overdue_count})
                   </div>
                   <PrintTable
-                    headers={['Prison No.', 'Full Name', 'Case Number', 'Court Date', 'Days Overdue', 'Inmate Type']}
+                    headers={['Inmate number', 'Full Name', 'Case Number', 'Court Date', 'Days Overdue', 'Inmate Type']}
                     rows={overdueRows}
                     highlightRow={(_, i) => i % 2 === 0}
                   />

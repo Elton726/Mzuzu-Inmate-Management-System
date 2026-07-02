@@ -1,16 +1,28 @@
 <?php
 
+
 namespace App\Modules\ActivityAllocation\Requests\Officer;
+
 
 use Illuminate\Foundation\Http\FormRequest;
 
+
 class StoreActivitySessionRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if ($this->missing('supervising_officer_id') && $this->user()) {
+            $this->merge(['supervising_officer_id' => (int) $this->user()->id]);
+        }
+    }
+
+
     public function authorize()
     {
         $user = $this->user();
         return (bool) $user && $user->hasRole('officer_on_duty');
     }
+
 
     public function rules()
     {
@@ -25,4 +37,4 @@ class StoreActivitySessionRequest extends FormRequest
             'notes' => 'nullable|string',
         ];
     }
-}
+};

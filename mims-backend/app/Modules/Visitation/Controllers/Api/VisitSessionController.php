@@ -70,7 +70,7 @@ class VisitSessionController extends Controller
 
             $visitTime = now()->toDateString();
             $visitClock = now()->format('H:i');
-            $durationMinutes = 60;
+            $durationMinutes = \App\Modules\Visitation\Models\VisitationRule::intValue('regular_visit_duration') ?: 60;
 
             // For regular visits, re-validate slot availability inside the transaction.
             // Additionally, lock competing rows for this inmate to reduce race conditions.
@@ -185,7 +185,7 @@ class VisitSessionController extends Controller
         $session->update([
             'status' => 'in_progress',
             'checked_in_at' => now(),
-            'expected_checkout_at' => now()->addMinutes((int) ($session->charityBooking?->duration_minutes ?? 60)),
+            'expected_checkout_at' => now()->addMinutes((int) ($session->charityBooking?->duration_minutes ?? \App\Modules\Visitation\Models\VisitationRule::intValue('regular_visit_duration') ?: 60)),
         ]);
 
         $events->log($session, 'checked_in', 'Visit checked in.', null, request()->user()->id);
@@ -259,7 +259,7 @@ class VisitSessionController extends Controller
             $inmate->id,
             $data['date'],
             $data['time'],
-            $data['duration_minutes'] ?? 60
+            $data['duration_minutes'] ?? \App\Modules\Visitation\Models\VisitationRule::intValue('regular_visit_duration') ?: 60
         );
 
         return response()->json([

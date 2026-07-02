@@ -193,7 +193,7 @@ export default function SentenceLengthPage() {
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                 <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Prison Number</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Inmate number</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Inmate</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Admission</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Sentence</th>
@@ -302,7 +302,7 @@ export default function SentenceLengthPage() {
                 {selectedInmate.first_name} {selectedInmate.last_name}
               </p>
               <p className="text-sm text-gray-600">
-                {selectedInmate.prison_number || 'No prison number'} - Admission #{selectedAdmission?.id}
+                {selectedInmate.prison_number || 'No inmate number'} - Admission #{selectedAdmission?.id}
               </p>
             </div>
 

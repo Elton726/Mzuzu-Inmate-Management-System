@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { FiRefreshCw, FiSave, FiSettings } from 'react-icons/fi';
 import Button from '../../../components/common/Button';
-import { getVisitationRules, updateVisitationRules } from '../services/visitationService';
+import { getVisitationRules, updateVisitationRules } from '../../visitation/services/visitationService';
 
 const getErrorMessage = (err, fallback) =>
   err?.response?.data?.message || err?.response?.data?.error || err?.message || fallback;
@@ -66,7 +66,7 @@ export default function VisitationRulesPage() {
             <div>
               <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-semibold uppercase text-malawiGreen">
                 <FiSettings className="h-4 w-4" />
-                Station officer controls
+                Admin controls
               </div>
               <h1 className="text-3xl font-bold text-slate-950">Visitation Rules</h1>
               <p className="mt-1 max-w-2xl text-sm text-slate-500">

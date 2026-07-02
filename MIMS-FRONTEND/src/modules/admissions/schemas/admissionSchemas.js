@@ -40,8 +40,8 @@ export const admissionSchema = z
     admissionType: z.enum(['first_time', 'repeat']),
     inmateType: z.enum(['convict', 'remandee', 'murder_remandee']),
     caseNumber: z.string().min(1, 'Case number is required').max(50, 'Case number must be at most 50 characters'),
-    courtName: z.string().max(100, 'Court name must be at most 100 characters').optional().or(z.literal('')),
-    offenceDescription: z.string().optional().or(z.literal('')),
+    courtName: z.string().min(1, 'Court name is required').max(100, 'Court name must be at most 100 characters'),
+    offenceDescription: z.string().min(1, 'Offence description is required').max(3000, 'Offence description must be at most 3000 characters'),
 
     sentenceYears: z.any().optional(),
     sentenceMonths: z.any().optional(),
@@ -64,6 +64,12 @@ export const admissionSchema = z
         if (!Number.isFinite(n) || n < 0) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Sentence years must be a valid number', path: ['sentenceYears'] });
         }
+      }
+
+      const totalSentence =
+        Number(data.sentenceYears || 0) + Number(data.sentenceMonths || 0) + Number(data.sentenceDays || 0);
+      if (totalSentence <= 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Enter at least one year, month, or day', path: ['sentenceYears'] });
       }
 
       if (!data.sentenceStartDate) {
@@ -94,6 +100,6 @@ export const admissionSchema = z
   });
 
 export const documentsSchema = z.object({
-  warrant: z.any().optional(),
+  warrant: z.any().refine((file) => file, 'Warrant document is required'),
   warrantDescription: z.string().optional().or(z.literal(''))
 });

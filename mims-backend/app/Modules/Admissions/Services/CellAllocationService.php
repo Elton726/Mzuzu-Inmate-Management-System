@@ -9,8 +9,10 @@ class CellAllocationService
 {
     public function findAvailableCell(string $securityClassification, ?string $gender = null): ?Cell
     {
+        $securityLevels = $this->compatibleSecurityLevels($securityClassification);
+
         $query = Cell::query()
-            ->where('security_classification', $securityClassification)
+            ->whereIn('security_classification', $securityLevels)
             ->where('status', 'available')
             ->whereColumn('current_occupancy', '<', 'capacity');
 
@@ -18,7 +20,11 @@ class CellAllocationService
             $query->where('gender', $gender);
         }
 
-        return $query->orderBy('current_occupancy')
+        return $query->orderByRaw(
+                "CASE security_classification WHEN ? THEN 0 WHEN 'minimum' THEN 1 WHEN 'medium' THEN 2 WHEN 'maximum' THEN 3 ELSE 4 END",
+                [$securityClassification]
+            )
+            ->orderBy('current_occupancy')
             ->orderBy('id')
             ->first();
     }
@@ -41,5 +47,24 @@ class CellAllocationService
         $cell->save();
 
         return $allocation;
+    }
+
+    /**
+     * Allocation may place an inmate in the requested level or a stricter level
+     * when the exact tier is unavailable. It never downgrades security.
+     *
+     * Security tier order (least → most strict): minimum < low < medium < high < maximum
+     *
+     * @return array<int, string>
+     */
+    private function compatibleSecurityLevels(string $securityClassification): array
+    {
+        return match ($securityClassification) {
+            'minimum', 'low' => ['minimum', 'low', 'medium', 'high', 'maximum'],
+            'medium'         => ['medium', 'high', 'maximum'],
+            'high'           => ['high', 'maximum'],
+            'maximum'        => ['maximum'],
+            default          => ['medium', 'high', 'maximum'],
+        };
     }
 }

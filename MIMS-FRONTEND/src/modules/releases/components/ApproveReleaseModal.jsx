@@ -42,7 +42,7 @@ export default function ApproveReleaseModal({
             <p className="font-semibold text-gray-900 dark:text-gray-100">{inmate.first_name} {inmate.last_name}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Prison Number</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Inmate number</p>
             <p className="font-semibold text-gray-900 dark:text-gray-100">{inmate.prison_number}</p>
           </div>
           <div>

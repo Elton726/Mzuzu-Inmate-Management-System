@@ -23,10 +23,17 @@ return new class extends Migration
             }
         });
 
-        DB::statement('ALTER TABLE charity_bookings ALTER COLUMN inmate_id DROP NOT NULL');
-        DB::statement("UPDATE charity_bookings SET inmate_category = 'all' WHERE inmate_category IS NULL OR inmate_category = ''");
-        DB::statement("UPDATE charity_bookings SET contact_person_phone = '' WHERE contact_person_phone IS NULL");
-        DB::statement('ALTER TABLE charity_bookings ALTER COLUMN contact_person_phone SET NOT NULL');
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE charity_bookings ALTER COLUMN inmate_id DROP NOT NULL');
+            DB::statement("UPDATE charity_bookings SET inmate_category = 'all' WHERE inmate_category IS NULL OR inmate_category = ''");
+            DB::statement("UPDATE charity_bookings SET contact_person_phone = '' WHERE contact_person_phone IS NULL");
+            DB::statement('ALTER TABLE charity_bookings ALTER COLUMN contact_person_phone SET NOT NULL');
+        } else {
+            Schema::table('charity_bookings', function (Blueprint $table) {
+                $table->unsignedBigInteger('inmate_id')->nullable()->change();
+                $table->string('contact_person_phone')->nullable(false)->change();
+            });
+        }
     }
 
     public function down(): void

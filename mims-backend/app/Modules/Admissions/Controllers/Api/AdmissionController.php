@@ -165,7 +165,9 @@ class AdmissionController extends Controller
         return response()->json($admission->load(
             'inmate',
             'cellAllocations.cell',
-            'inmateActivities.activity.latestSession.supervisingOfficer',
+            'inmateActivities.activity.category',
+            'sessionAttendances.session.activity.category',
+            'sessionAttendances.session.supervisingOfficer',
             'documents',
             'admittedBy'
         ));

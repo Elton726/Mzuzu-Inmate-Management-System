@@ -698,7 +698,7 @@ export default function StepInmateSelect({ defaultValues, onSelected }) {
                               {m.first_name} {m.last_name}
                             </p>
                             {m.prison_number && (
-                              <p className="text-xs font-medium text-gray-500">Prison No: {m.prison_number}</p>
+                              <p className="text-xs font-medium text-gray-500">Inmate number: {m.prison_number}</p>
                             )}
                           </div>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${isPerfectMatch ? 'bg-red-200 text-red-900' : 'bg-yellow-100 text-yellow-800'}`}>

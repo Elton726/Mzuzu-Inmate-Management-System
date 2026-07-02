@@ -11,7 +11,9 @@ return new class extends Migration
     {
         Schema::table('admissions', function (Blueprint $table) {
             // Keep the original case number capacity used by the admissions form and seeders.
-            $table->string('case_number', 50)->change();
+            if (DB::getDriverName() !== 'sqlite') {
+                $table->string('case_number', 50)->change();
+            }
 
             if (!Schema::hasColumn('admissions', 'sentence_days')) {
                 $table->integer('sentence_days')->nullable()->after('sentence_months');
@@ -48,7 +50,9 @@ return new class extends Migration
     {
         Schema::table('admissions', function (Blueprint $table) {
             // Restore original column length
-            $table->string('case_number', 50)->change();
+            if (DB::getDriverName() !== 'sqlite') {
+                $table->string('case_number', 50)->change();
+            }
 
             if (Schema::hasColumn('admissions', 'sentence_days')) {
                 $table->dropColumn('sentence_days');

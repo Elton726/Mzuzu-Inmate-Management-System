@@ -23,8 +23,8 @@
  * - Admin: /admin/*
  */
 
-import React from 'react';
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { HashRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
@@ -63,7 +63,7 @@ import VisitationHomePage from './modules/visitation/pages/VisitationHomePage';
 import PendingCharityPage from './modules/visitation/pages/PendingCharityPage';
 import VisitationStatisticsPage from './modules/visitation/pages/VisitationStatisticsPage';
 import VisitationHistoryPage from './modules/visitation/pages/VisitationHistoryPage';
-import VisitationRulesPage from './modules/visitation/pages/VisitationRulesPage';
+import VisitationRulesPage from './modules/admin/pages/VisitationRulesPage';
 import VisitFlagReviewsPage from './modules/visitation/pages/VisitFlagReviewsPage';
 import VisitationAlertsPage from './modules/visitation/pages/VisitationAlertsPage';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -82,8 +82,40 @@ import { ToastContainer } from 'react-toastify';
  * - Route rendering based on authentication status
  */
 const AppContent = () => {
-  const { isAuthenticated, loading } = useAuth();
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const { isAuthenticated, loading, logout } = useAuth();
+  const navigate = useNavigate();
+  const inactivityTimerRef = useRef(null);
+
+  const handleIdleLogout = useCallback(async () => {
+    await logout();
+    navigate('/login', { replace: true });
+  }, [logout, navigate]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+
+    const timeoutMs = 20 * 60 * 1000;
+    const activityEvents = ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'];
+
+    const resetTimer = () => {
+      window.clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = window.setTimeout(handleIdleLogout, timeoutMs);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') resetTimer();
+    };
+
+    resetTimer();
+    activityEvents.forEach((eventName) => window.addEventListener(eventName, resetTimer, { passive: true }));
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.clearTimeout(inactivityTimerRef.current);
+      activityEvents.forEach((eventName) => window.removeEventListener(eventName, resetTimer));
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [handleIdleLogout, isAuthenticated]);
 
   // Show loading spinner during authentication verification
   if (loading) {
@@ -97,19 +129,12 @@ const AppContent = () => {
     );
   }
 
-  const contentMarginClass = isAuthenticated
-    ? (sidebarCollapsed ? 'ml-20' : 'ml-64')
-    : 'ml-0';
+  const contentMarginClass = isAuthenticated ? 'ml-64' : 'ml-0';
 
   return (
-    <div className="min-h-screen bg-malawiGold text-gray-900 dark:bg-slate-900 dark:text-slate-100">
-      {/* Persistent authenticated layout shell: sidebar stays outside the route tree. */}
-      {isAuthenticated && (
-        <Sidebar
-          isCollapsed={sidebarCollapsed}
-          setIsCollapsed={setSidebarCollapsed}
-        />
-      )}
+    <div className="flex">
+      {/* Sidebar - always shown for authenticated users */}
+      {isAuthenticated && <Sidebar />}
 
       {/* Main content area - adjusts margin based on sidebar state */}
       <div className={`${contentMarginClass} flex-1 min-w-0 bg-malawiGold transition-all duration-300 dark:bg-slate-900`}>
@@ -117,11 +142,8 @@ const AppContent = () => {
         {/* Top Navigation Bar - shows for authenticated users */}
         {isAuthenticated && <Navigation />}
 
-        {isAuthenticated && (
-          <div className="border-b border-gray-100 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900 sm:px-6 lg:px-8">
-            <Breadcrumb />
-          </div>
-        )}
+
+
 
         {/* Application Routes */}
         <Routes>
@@ -372,9 +394,9 @@ const AppContent = () => {
             }
           />
           <Route
-            path="/visitation/rules"
+            path="/admin/visitation-rules"
             element={
-              <ProtectedRoute allowedRoles={['station_officer']}>
+              <ProtectedRoute requireAdmin={true}>
                 <VisitationRulesPage />
               </ProtectedRoute>
             }

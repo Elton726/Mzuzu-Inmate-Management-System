@@ -60,8 +60,8 @@ export const getPendingCharity = async () => {
   return res.data.data;
 };
 
-export const approveCharityBooking = async (id) => {
-  const res = await apiClient.put(`/visitation/charity-bookings/${id}/approve`);
+export const approveCharityBooking = async (id, payload = {}) => {
+  const res = await apiClient.put(`/visitation/charity-bookings/${id}/approve`, payload);
   return res.data.data;
 };
 

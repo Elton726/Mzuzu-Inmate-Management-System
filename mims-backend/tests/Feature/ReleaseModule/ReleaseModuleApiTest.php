@@ -15,6 +15,12 @@ class ReleaseModuleApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['ratelimit.enabled' => false]);
+    }
+
     private function userWithRole(string $roleName): User
     {
         $role = Role::firstOrCreate(['name' => $roleName], ['description' => null]);
@@ -278,5 +284,96 @@ class ReleaseModuleApiTest extends TestCase
         $response->assertOk();
         $response->assertHeader('Content-Type', 'application/pdf');
         $this->assertStringStartsWith('%PDF', $response->baseResponse->getContent());
+    }
+
+    public function test_station_officer_can_lookup_release_dates_and_search_by_full_name_case_insensitive(): void
+    {
+        $stationOfficer = $this->userWithRole('station_officer');
+
+        // Create a few inmates with specific names
+        $inmate1 = Inmate::query()->create([
+            'prison_number' => 'MIMS/2026/00001',
+            'first_name' => 'John',
+            'last_name' => 'Doe',
+            'other_names' => 'Malawi',
+            'date_of_birth' => '1990-01-01',
+            'status' => 'active',
+        ]);
+        Admission::query()->create([
+            'inmate_id' => $inmate1->id,
+            'admission_date' => '2026-01-01',
+            'admission_type' => 'first_time',
+            'inmate_type' => 'convict',
+            'case_number' => 'CASE-123',
+            'sentence_years' => 1,
+            'sentence_months' => 0,
+            'sentence_start_date' => '2026-01-01',
+            'projected_release_date' => '2027-01-01',
+            'original_release_date' => '2027-01-01',
+            'admitted_by' => $stationOfficer->id,
+            'is_current' => true,
+        ]);
+
+        $inmate2 = Inmate::query()->create([
+            'prison_number' => 'MIMS/2026/00002',
+            'first_name' => 'Peter',
+            'last_name' => 'Chirwa',
+            'other_names' => 'Phiri',
+            'date_of_birth' => '1992-05-05',
+            'status' => 'active',
+        ]);
+        Admission::query()->create([
+            'inmate_id' => $inmate2->id,
+            'admission_date' => '2026-01-01',
+            'admission_type' => 'first_time',
+            'inmate_type' => 'remandee',
+            'case_number' => 'CASE-456',
+            'sentence_years' => 0,
+            'sentence_months' => 0,
+            'sentence_start_date' => '2026-01-01',
+            'projected_release_date' => null,
+            'original_release_date' => null,
+            'admitted_by' => $stationOfficer->id,
+            'is_current' => true,
+        ]);
+
+        // 1. Check basic listing
+        $response = $this->actingAs($stationOfficer, 'sanctum')
+            ->getJson('/api/releases/date-lookup');
+
+        $response->assertOk()
+            ->assertJsonCount(2, 'data');
+
+        // 2. Search for "john doe" (full name, lowercase)
+        $response = $this->actingAs($stationOfficer, 'sanctum')
+            ->getJson('/api/releases/date-lookup?q=john+doe');
+
+        $response->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.prison_number', 'MIMS/2026/00001');
+
+        // 3. Search for "chirwa peter" (swapped terms, lowercase)
+        $response = $this->actingAs($stationOfficer, 'sanctum')
+            ->getJson('/api/releases/date-lookup?q=chirwa+peter');
+
+        $response->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.prison_number', 'MIMS/2026/00002');
+
+        // 4. Search for other_names "Malawi"
+        $response = $this->actingAs($stationOfficer, 'sanctum')
+            ->getJson('/api/releases/date-lookup?q=malawi');
+
+        $response->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.prison_number', 'MIMS/2026/00001');
+
+        // 5. Search for case_number "CASE-456"
+        $response = $this->actingAs($stationOfficer, 'sanctum')
+            ->getJson('/api/releases/date-lookup?q=case-456');
+
+        $response->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.prison_number', 'MIMS/2026/00002');
     }
 }

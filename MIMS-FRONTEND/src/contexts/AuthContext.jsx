@@ -54,6 +54,16 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setUser(null);
+      setError('Your session has expired. Please log in again.');
+    };
+
+    window.addEventListener('mims:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('mims:unauthorized', handleUnauthorized);
+  }, []);
+
   /**
    * Fetch current user profile from API
    * Called on app initialization if token exists, or manually to refresh user data

@@ -194,19 +194,19 @@ function MonthlyTrend({ data }) {
         </div>
       </div>
 
-      <div className="flex h-56 items-end gap-2 overflow-x-auto rounded-2xl bg-slate-50 p-4">
+      <div className="flex h-64 items-end gap-2 overflow-x-auto rounded-2xl bg-slate-50 px-4 pb-4 pt-8">
         {rows.map((item) => {
           const count = Number(item.count || 0);
-          const height = Math.max(8, Math.round((count / max) * 170));
+          const height = Math.max(8, Math.round((count / max) * 140));
           return (
-            <div key={item.month} className="flex min-w-10 flex-1 flex-col items-center justify-end gap-2">
-              <span className="text-xs font-black text-slate-700">{count}</span>
+            <div key={item.month} className="flex min-w-10 flex-1 flex-col items-center justify-end">
+              <span className="mb-2 h-5 text-xs font-black leading-5 text-slate-800">{count}</span>
               <div
-                className="w-full rounded-t-xl bg-gradient-to-t from-malawiGreen to-malawiGold"
+                className="w-full min-w-7 rounded-t-xl bg-gradient-to-t from-malawiGreen to-malawiGold shadow-sm"
                 style={{ height: `${height}px` }}
                 title={`${MONTH_LABELS[(item.month || 1) - 1]}: ${count}`}
               />
-              <span className="text-xs font-semibold text-slate-500">{MONTH_LABELS[(item.month || 1) - 1]}</span>
+              <span className="mt-2 h-5 text-xs font-semibold leading-5 text-slate-500">{MONTH_LABELS[(item.month || 1) - 1]}</span>
             </div>
           );
         })}
@@ -401,7 +401,7 @@ export default function AdminDashboard() {
             <StatLine label="Confirmed this month" value={release.confirmed_this_month} />
           </ModuleCard>
 
-          <ModuleCard icon={MdSecurity} title="Visitation security" subtitle="Visit sessions, charity bookings, and item flags.">
+          <ModuleCard icon={MdSecurity} title="Visitation security" subtitle="Visit sessions, charity bookings, and item flags." to="/admin/visitation-rules" action="Manage rules">
             <StatLine label="Sessions today" value={visitation.sessions_today} />
             <StatLine label="Active sessions" value={visitation.active_sessions} />
             <StatLine label="Denied today" value={visitation.denied_today} />
@@ -445,7 +445,7 @@ export default function AdminDashboard() {
                 <div key={admission.id} className="rounded-2xl bg-slate-50 p-4">
                   <p className="font-black text-slate-950">{getInmateName(admission.inmate)}</p>
                   <p className="text-sm text-slate-500">
-                    {admission.inmate?.prison_number || 'No prison number'} - {formatLabel(admission.inmate_type)}
+                    {admission.inmate?.prison_number || 'No inmate number'} - {formatLabel(admission.inmate_type)}
                   </p>
                   <p className="mt-1 text-sm text-slate-600">
                     {admission.court_name || 'Court not recorded'} - {admission.remand_next_court_date ? formatDate(admission.remand_next_court_date) : 'No date'}
@@ -465,7 +465,7 @@ export default function AdminDashboard() {
                 <div key={workflow.id} className="rounded-2xl bg-slate-50 p-4">
                   <p className="font-black text-slate-950">{getInmateName(workflow.admission?.inmate)}</p>
                   <p className="text-sm text-slate-500">
-                    {workflow.admission?.inmate?.prison_number || 'No prison number'} - {formatLabel(workflow.status)}
+                    {workflow.admission?.inmate?.prison_number || 'No inmate number'} - {formatLabel(workflow.status)}
                   </p>
                 </div>
               )}

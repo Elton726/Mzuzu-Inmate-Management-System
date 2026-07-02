@@ -49,6 +49,8 @@ class CharityBookingController extends Controller
 
         $data = $request->validate([
             'approval_notes' => ['nullable', 'string', 'max:2000'],
+            'proposed_time' => ['required', 'date_format:H:i'],
+            'duration_minutes' => ['required', 'integer', 'min:15', 'max:480'],
         ]);
 
         $booking->update([
@@ -56,6 +58,8 @@ class CharityBookingController extends Controller
             'approved_by' => request()->user()->id,
             'approved_at' => now(),
             'approval_notes' => $data['approval_notes'] ?? null,
+            'proposed_time' => $data['proposed_time'],
+            'duration_minutes' => $data['duration_minutes'],
         ]);
 
         $notifications->forRole(
