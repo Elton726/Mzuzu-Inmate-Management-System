@@ -23,6 +23,7 @@ import {
   MdGavel,
   MdSettings
 } from 'react-icons/md';
+import { useSidebarContext } from '../contexts/SidebarContext';
 import { ROLES, getRoleDisplayName, getRoleName } from '../utils/helpers';
 import logo from '/cuffs.png';
 
@@ -54,7 +55,8 @@ const getInitials = (user) => {
   return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
 };
 
-export default function Sidebar({ isCollapsed = false, setIsCollapsed }) {
+export default function Sidebar() {
+  const { isSidebarCollapsed: isCollapsed, setIsSidebarCollapsed: setIsCollapsed, toggleSidebar } = useSidebarContext();
   const { user, isAdmin, logout, loading } = useAuth();
   const navigate = useNavigate();
   const role = getRoleName(user);
@@ -329,7 +331,7 @@ export default function Sidebar({ isCollapsed = false, setIsCollapsed }) {
         {/* Toggle Collapse Button */}
         <button
           type="button"
-          onClick={() => setIsCollapsed?.(!isCollapsed)}
+          onClick={toggleSidebar}
           className="hidden md:flex items-center justify-center p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200 dark:text-zinc-400 dark:hover:bg-slate-800 dark:hover:text-white"
           title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
         >

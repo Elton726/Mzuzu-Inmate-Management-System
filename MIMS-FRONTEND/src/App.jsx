@@ -28,6 +28,7 @@ import { HashRouter as Router, Routes, Route, Navigate, useNavigate } from 'reac
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { SidebarProvider, useSidebarContext } from './contexts/SidebarContext';
 import { useAuth } from './contexts/useAuth';
 import { ROLES } from './utils/helpers';
 import LoginPage from './modules/auth/pages/LoginPage';
@@ -84,7 +85,7 @@ import { ToastContainer } from 'react-toastify';
 const AppContent = () => {
   const { isAuthenticated, loading, logout } = useAuth();
   const navigate = useNavigate();
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const { isSidebarCollapsed, setIsSidebarCollapsed } = useSidebarContext();
   const inactivityTimerRef = useRef(null);
 
   const handleIdleLogout = useCallback(async () => {
@@ -137,12 +138,7 @@ const AppContent = () => {
   return (
     <div className="flex">
       {/* Sidebar - always shown for authenticated users */}
-      {isAuthenticated && (
-        <Sidebar
-          isCollapsed={isSidebarCollapsed}
-          setIsCollapsed={setIsSidebarCollapsed}
-        />
-      )}
+      {isAuthenticated && <Sidebar />}
 
       {/* Main content area - adjusts margin based on sidebar state */}
       <div className={`${contentMarginClass} flex-1 min-w-0 bg-malawiGold transition-all duration-300 dark:bg-slate-900`}>
@@ -530,7 +526,9 @@ function App() {
           <ToastProvider>
             <ToastContainer position="top-right" autoClose={7000} />
             <AuthProvider>
-              <AppContent />
+              <SidebarProvider>
+                <AppContent />
+              </SidebarProvider>
             </AuthProvider>
           </ToastProvider>
         </NotificationProvider>
