@@ -5,6 +5,7 @@ namespace App\Modules\Admissions\Models;
 use App\Models\User;
 use App\Modules\Release\Models\ReleaseWorkflow;
 use App\Modules\Release\Models\SentenceAdjustment;
+use App\Modules\ActivityAllocation\Models\SessionAttendance;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -84,5 +85,10 @@ class Admission extends Model
     public function sentenceAdjustments(): HasMany
     {
         return $this->hasMany(SentenceAdjustment::class);
+    }
+
+    public function sessionAttendances(): HasMany
+    {
+        return $this->hasMany(SessionAttendance::class);
     }
 }

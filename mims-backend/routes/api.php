@@ -175,12 +175,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::put('/charity-bookings/{booking}/approve', [CharityBookingController::class, 'approve']);
             Route::put('/charity-bookings/{booking}/reject', [CharityBookingController::class, 'reject']);
             Route::put('/visitors/{visitor}/watchlist', [VisitorController::class, 'updateWatchlist']);
-            Route::put('/rules', [VisitationRuleController::class, 'update']);
             Route::get('/flag-reviews', [VisitFlagReviewController::class, 'index']);
             Route::put('/flag-reviews/{review}/resolve', [VisitFlagReviewController::class, 'resolve']);
         });
 
-        Route::middleware(['role:gatekeeper,station_officer'])->group(function () {
+        Route::middleware(['role:admin,station_officer'])->group(function () {
+            Route::put('/rules', [VisitationRuleController::class, 'update']);
+        });
+
+        Route::middleware(['role:gatekeeper,station_officer,admin'])->group(function () {
             Route::get('/rules', [VisitationRuleController::class, 'index']);
             Route::get('/today-schedule', [VisitReportController::class, 'todaySchedule']);
             Route::get('/pending-charity', [VisitReportController::class, 'pendingCharity']);

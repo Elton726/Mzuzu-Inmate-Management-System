@@ -68,6 +68,10 @@ class VisitReportController extends Controller
                     && ! $session->checked_out_at
                     && $session->expected_checkout_at->isPast()
                     && in_array($session->status, ['in_progress', 'checked_in', 'flagged'], true);
+                $session->time_remaining_seconds = $session->expected_checkout_at && ! $session->checked_out_at
+                    ? now()->diffInSeconds($session->expected_checkout_at, false)
+                    : null;
+                $session->time_remaining_label = $this->timeRemainingLabel($session->time_remaining_seconds);
 
                 return $session;
             });
@@ -82,6 +86,8 @@ class VisitReportController extends Controller
             ->map(function (CharityBooking $booking) {
                 $booking->valid_until = $booking->proposed_date->copy()->addDays(7)->toDateString();
                 $booking->can_start = true;
+                $booking->time_remaining_seconds = null;
+                $booking->time_remaining_label = 'Not checked in';
 
                 return $booking;
             });
@@ -90,6 +96,22 @@ class VisitReportController extends Controller
             'sessions' => $sessions,
             'approved_charity' => $charity,
         ]]);
+    }
+
+    private function timeRemainingLabel(?int $seconds): string
+    {
+        if ($seconds === null) {
+            return '-';
+        }
+
+        if ($seconds <= 0) {
+            return 'Overdue';
+        }
+
+        $minutes = intdiv($seconds, 60);
+        $remainingSeconds = $seconds % 60;
+
+        return sprintf('%02d:%02d left', $minutes, $remainingSeconds);
     }
 
     public function pendingCharity()

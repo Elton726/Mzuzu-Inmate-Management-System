@@ -4,12 +4,52 @@ import apiService from '../../../services/apiService';
 import { useToast } from '../../../contexts/useToast';
 import { formatDateTime } from '../../../utils/helpers';
 
+const formatFieldName = (field) => String(field).replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+
+const formatValue = (value) => {
+  if (value === null || value === undefined || value === '') return 'empty';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+};
+
+const getChangedFields = (log) => {
+  const oldData = log.old_data || {};
+  const newData = log.new_data || {};
+  const fields = Array.from(new Set([...Object.keys(oldData), ...Object.keys(newData)]));
+
+  return fields
+    .filter((field) => JSON.stringify(oldData[field] ?? null) !== JSON.stringify(newData[field] ?? null))
+    .filter((field) => !['password', 'remember_token'].includes(field));
+};
+
+const renderChangeSummary = (log) => {
+  const fields = getChangedFields(log);
+
+  if (fields.length === 0) return <span className="text-gray-500">No field changes recorded</span>;
+
+  return (
+    <div className="space-y-1">
+      {fields.slice(0, 5).map((field) => (
+        <div key={field} className="text-xs leading-5">
+          <span className="font-semibold text-gray-800">{formatFieldName(field)}:</span>{' '}
+          <span className="text-red-700">{formatValue(log.old_data?.[field])}</span>
+          <span className="mx-1 text-gray-400">to</span>
+          <span className="text-green-700">{formatValue(log.new_data?.[field])}</span>
+        </div>
+      ))}
+      {fields.length > 5 && <div className="text-xs text-gray-500">+{fields.length - 5} more change(s)</div>}
+    </div>
+  );
+};
+
 export default function AuditLogsPage() {
   const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [filters, setFilters] = useState({
+    q: '',
     table_name: '',
     user_id: ''
   });
@@ -100,7 +140,17 @@ export default function AuditLogsPage() {
         {/* Filters */}
         {showFilters && (
           <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <form onSubmit={handleFilterSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <form onSubmit={handleFilterSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-gray-700 font-semibold mb-2">Search</label>
+                <input
+                  type="text"
+                  value={filters.q}
+                  onChange={(e) => handleFilterChange('q', e.target.value)}
+                  placeholder="User, action, table, record"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-malawiRed"
+                />
+              </div>
               <div>
                 <label className="block text-gray-700 font-semibold mb-2">Table Name</label>
                 <input
@@ -162,7 +212,8 @@ export default function AuditLogsPage() {
                         {formatDateTime(log.created_at)}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        {log.user?.name || `User ${log.user_id}`}
+                        <div className="font-semibold">{log.user?.name || log.user_name || `User ${log.user_id || 'System'}`}</div>
+                        {log.user?.email && <div className="text-xs text-gray-500">{log.user.email}</div>}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getActionColor(log.action)}`}>
@@ -175,8 +226,8 @@ export default function AuditLogsPage() {
                       <td className="px-6 py-4 text-sm text-gray-900">
                         {log.record_id}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                        {log.changes ? JSON.stringify(log.changes) : 'N/A'}
+                      <td className="px-6 py-4 text-sm text-gray-900 max-w-md">
+                        {renderChangeSummary(log)}
                       </td>
                     </tr>
                   ))

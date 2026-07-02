@@ -231,6 +231,10 @@ class ApiService {
       if (response.status === 429 && retryAfter != null) {
         error.message = `${serverMessage || 'Rate limit exceeded'}. Retry in ${retryAfter}s.`;
       }
+      if (response.status === 401) {
+        this.clearToken();
+        window.dispatchEvent(new CustomEvent('mims:unauthorized'));
+      }
       throw error;
     }
 

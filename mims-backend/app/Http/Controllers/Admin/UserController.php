@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -12,6 +13,32 @@ use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
+    private function auditUserChange(Request $request, string $action, ?User $user, ?array $oldData = null, ?array $newData = null): void
+    {
+        app(AuditLogService::class)->log(
+            $request->user()?->id,
+            $action,
+            'users',
+            $user?->id,
+            $oldData,
+            $newData,
+            $request->ip()
+        );
+    }
+
+    private function auditUserSnapshot(User $user): array
+    {
+        $freshUser = $user->fresh()?->load('role') ?? $user->load('role');
+
+        return [
+            'id' => $freshUser->id,
+            'name' => $freshUser->name,
+            'email' => $freshUser->email,
+            'role' => $freshUser->role?->name,
+            'is_active' => $freshUser->is_active,
+        ];
+    }
+
     /**
      * Display a listing of all users with optional filtering.
      */
@@ -75,6 +102,8 @@ class UserController extends Controller
             'role_id' => $role->id,
         ]);
 
+        $this->auditUserChange($request, 'insert', $user, null, $this->auditUserSnapshot($user));
+
         return response()->json([
             'message' => 'User created successfully',
             'user' => $user->load('role'),
@@ -108,9 +137,11 @@ class UserController extends Controller
         ];
 
         $validated = $request->validate($rules);
+        $oldData = $this->auditUserSnapshot($user);
 
         if (isset($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
+            $oldData['password'] = 'unchanged';
         }
 
         if (isset($validated['role'])) {
@@ -130,6 +161,12 @@ class UserController extends Controller
         }
 
         $user->update($validated);
+        $newData = $this->auditUserSnapshot($user);
+        if ($request->filled('password')) {
+            $newData['password'] = 'changed';
+        }
+
+        $this->auditUserChange($request, 'update', $user, $oldData, $newData);
 
         return response()->json([
             'message' => 'User updated successfully',
@@ -140,7 +177,7 @@ class UserController extends Controller
     /**
      * Remove the specified user.
      */
-    public function destroy(User $user)
+    public function destroy(Request $request, User $user)
     {
         // Admin-only access is enforced by middleware
         $authUser = Auth::user();
@@ -152,6 +189,8 @@ class UserController extends Controller
             ], 400);
         }
 
+        $oldData = $this->auditUserSnapshot($user);
+        $this->auditUserChange($request, 'delete', $user, $oldData, null);
         $user->delete();
 
         return response()->json([
@@ -201,6 +240,7 @@ class UserController extends Controller
         }
 
         $deletedCount = User::whereIn('id', $userIds)->delete();
+        $this->auditUserChange($request, 'bulk_delete', null, ['user_ids' => $userIds], ['deleted_count' => $deletedCount]);
 
         return response()->json([
             'message' => "{$deletedCount} user(s) deleted successfully",
@@ -232,7 +272,21 @@ class UserController extends Controller
         }
 
         $role = Role::firstOrCreate(['name' => $request->role], ['description' => null]);
+        $oldData = User::query()
+            ->with('role')
+            ->whereIn('id', $userIds)
+            ->get()
+            ->map(fn (User $user) => $this->auditUserSnapshot($user))
+            ->values()
+            ->all();
         $updatedCount = User::whereIn('id', $userIds)->update(['role_id' => $role->id]);
+        $this->auditUserChange(
+            $request,
+            'bulk_update_role',
+            null,
+            ['users' => $oldData],
+            ['user_ids' => $userIds, 'role' => $role->name, 'updated_count' => $updatedCount]
+        );
 
         return response()->json([
             'message' => "{$updatedCount} user(s) updated successfully",

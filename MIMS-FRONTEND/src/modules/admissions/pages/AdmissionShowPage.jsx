@@ -27,6 +27,14 @@ const statusBadgeClass = (status) => {
 };
 
 const empty = (value) => value || '-';
+const isRemandType = (type) => type === 'remandee' || type === 'murder_remandee';
+const isPastDate = (value) => {
+  if (!value) return false;
+  const date = new Date(`${String(value).split('T')[0]}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return !Number.isNaN(date.getTime()) && date < today;
+};
 
 const cellLabel = (cell) => {
   if (!cell?.cell_number) return '-';
@@ -90,14 +98,17 @@ export default function AdmissionShowPage() {
       ? admission.cell_allocations
       : (Array.isArray(admission.cellAllocations) ? admission.cellAllocations : []);
   }, [admission]);
-  const activities = useMemo(() => {
+  const participatedSessions = useMemo(() => {
     if (!admission) return [];
-    return Array.isArray(admission.inmate_activities)
-      ? admission.inmate_activities
-      : (Array.isArray(admission.inmateActivities) ? admission.inmateActivities : []);
+    const rows = Array.isArray(admission.session_attendances)
+      ? admission.session_attendances
+      : (Array.isArray(admission.sessionAttendances) ? admission.sessionAttendances : []);
+
+    return rows.filter((row) => ['present', 'late'].includes(row.attendance_status));
   }, [admission]);
   const documents = Array.isArray(admission?.documents) ? admission.documents : [];
   const currentCell = allocations[0]?.cell;
+  const canAdmitAsConvict = isRemandType(admission?.inmate_type) && isPastDate(admission?.remand_next_court_date) && inmate?.id;
 
   if (loading) {
     return (
@@ -162,6 +173,15 @@ export default function AdmissionShowPage() {
                 Inmate profile
               </Link>
             )}
+            {canAdmitAsConvict && (
+              <Link
+                className="inline-flex items-center gap-2 rounded bg-malawiGold px-4 py-2 text-sm font-bold text-malawiBlack shadow-sm transition hover:opacity-90"
+                to={`/admissions/new?inmateId=${inmate.id}`}
+              >
+                <MdGavel className="h-4 w-4" />
+                Admit as Convict
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -170,7 +190,7 @@ export default function AdmissionShowPage() {
         <StatTile icon={MdCalendarToday} label="Admission Date" value={formatDate(admission.admission_date)} helper={titleCase(admission.admission_type)} />
         <StatTile icon={MdHomeWork} label="Cell" value={cellLabel(currentCell)} helper={currentCell ? titleCase(currentCell.security_classification) : 'Automatic allocation pending'} />
         <StatTile icon={MdGavel} label="Court" value={empty(admission.court_name)} helper="Case jurisdiction" />
-        <StatTile icon={MdAssignment} label="Activities" value={activities.length} helper={admission.inmate_type === 'convict' ? 'Assigned work activities' : 'Not required for remand'} />
+        <StatTile icon={MdAssignment} label="Activities" value={participatedSessions.length} helper={admission.inmate_type === 'convict' ? 'Sessions attended' : 'Not required for remand'} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.35fr_0.9fr]">
@@ -236,25 +256,26 @@ export default function AdmissionShowPage() {
 
           {admission.inmate_type === 'convict' && (
             <div className="mt-6">
-              <h3 className="mb-3 text-sm font-bold uppercase text-gray-700">Activities</h3>
-              {activities.length === 0 ? (
-                <p className="rounded-lg bg-gray-50 p-4 text-sm text-gray-600">No activity assigned.</p>
+              <h3 className="mb-3 text-sm font-bold uppercase text-gray-700">Participated Activities</h3>
+              {participatedSessions.length === 0 ? (
+                <p className="rounded-lg bg-gray-50 p-4 text-sm text-gray-600">No completed activity participation recorded for this admission.</p>
               ) : (
                 <div className="space-y-3">
-                  {activities.map((item) => {
-                    const latest = item.activity?.latest_session || item.activity?.latestSession;
+                  {participatedSessions.map((item) => {
+                    const session = item.session || {};
+                    const activity = session.activity || {};
+                    const description = session.notes || activity.category?.description || `${activity.name || 'Activity'} session`;
                     return (
                       <div key={item.id} className="rounded-lg border border-gray-200 p-4">
-                        <p className="font-bold text-gray-950">{item.activity?.name || '-'}</p>
-                        <p className="mt-1 text-sm text-gray-600">Assigned {item.assigned_date ? formatDate(item.assigned_date) : '-'}</p>
-                        {latest && (
-                          <div className="mt-3 rounded bg-gray-50 p-3 text-sm text-gray-700">
-                            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-bold ${statusBadgeClass(latest.status)}`}>
-                              {titleCase(latest.status)}
-                            </span>
-                            <p className="mt-2">{latest.session_date ? formatDate(latest.session_date) : '-'} | {latest.session_time || '-'}</p>
-                          </div>
-                        )}
+                        <p className="font-bold text-gray-950">{activity.name || '-'}</p>
+                        <p className="mt-1 text-sm text-gray-600">{description}</p>
+                        <div className="mt-3 rounded bg-gray-50 p-3 text-sm text-gray-700">
+                          <span className={`inline-flex rounded-full px-2 py-1 text-xs font-bold ${statusBadgeClass(session.status)}`}>
+                            {titleCase(session.status)}
+                          </span>
+                          <p className="mt-2">{session.session_date ? formatDate(session.session_date) : '-'} | {session.session_time || '-'}</p>
+                          <p className="mt-1 text-xs font-semibold uppercase text-gray-500">Attendance: {titleCase(item.attendance_status)}</p>
+                        </div>
                       </div>
                     );
                   })}

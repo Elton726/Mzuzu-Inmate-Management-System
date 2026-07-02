@@ -605,6 +605,16 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
     return null;
   }, [inmateType, sentenceStartDate, sentenceYears, sentenceMonths, sentenceDays]);
 
+  useEffect(() => {
+    if (inmateType !== 'convict') return;
+    const hasAnySentencePart = [sentenceYears, sentenceMonths, sentenceDays].some((value) => value !== '' && value != null);
+    if (!hasAnySentencePart) return;
+
+    if (sentenceYears === '' || sentenceYears == null) setValue('sentenceYears', 0, { shouldDirty: true, shouldValidate: true });
+    if (sentenceMonths === '' || sentenceMonths == null) setValue('sentenceMonths', 0, { shouldDirty: true, shouldValidate: true });
+    if (sentenceDays === '' || sentenceDays == null) setValue('sentenceDays', 0, { shouldDirty: true, shouldValidate: true });
+  }, [inmateType, sentenceYears, sentenceMonths, sentenceDays, setValue]);
+
   const [loadingLookups, setLoadingLookups] = useState(true);
   const [activities, setActivities] = useState([]);
 
@@ -803,15 +813,17 @@ export default function StepAdmissionDetails({ defaultValues, selectedInmate, on
               </div>
 
               {projectedReleaseDate && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
-                  <p className="text-sm text-blue-800">
-                    <span className="font-semibold">Projected release date (with 1/3 remission):</span>{' '}
-                    {new Date(projectedReleaseDate).toLocaleDateString('en-US', {
-                      year: 'numeric',
+                <div className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-blue-700">Projected release date</p>
+                  <p className="mt-1 text-2xl font-bold text-blue-950">
+                    {new Date(projectedReleaseDate).toLocaleDateString('en-GB', {
+                      weekday: 'short',
+                      day: '2-digit',
                       month: 'long',
-                      day: 'numeric'
+                      year: 'numeric'
                     })}
                   </p>
+                  <p className="mt-1 text-sm text-blue-700">Automatically calculated with standard one-third remission.</p>
                 </div>
               )}
             </>

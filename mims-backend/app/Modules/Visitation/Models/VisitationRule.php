@@ -37,6 +37,12 @@ class VisitationRule extends Model
             'type' => 'integer',
             'description' => 'Maximum regular visit sessions allowed for one inmate in a calendar week.',
         ],
+        'regular_visit_duration' => [
+            'value' => '60',
+            'label' => 'Regular visit duration (minutes)',
+            'type' => 'integer',
+            'description' => 'Allocated time in minutes for a regular visit session.',
+        ],
     ];
 
     protected $fillable = [

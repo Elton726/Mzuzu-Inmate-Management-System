@@ -74,7 +74,7 @@ export default function StepDocuments({ defaultValues, onBack, onNext }) {
 
       <form onSubmit={handleSubmit(onNext)} className="space-y-4">
         <div className="space-y-3">
-          <p className="block text-sm font-semibold text-gray-700">Warrant document (optional)</p>
+          <p className="block text-sm font-semibold text-gray-700">Warrant document <span className="text-red-600">*</span></p>
           <div className="flex gap-1.5 p-1 bg-gray-100 rounded-xl max-w-xs">
             <button
               type="button"
@@ -151,6 +151,7 @@ export default function StepDocuments({ defaultValues, onBack, onNext }) {
               Selected: {warrant.name || 'Captured warrant image'}
             </div>
           )}
+          {errors.warrant && <p className="text-sm font-semibold text-red-600">{errors.warrant.message}</p>}
         </div>
 
         <FormField label="Warrant description" error={errors.warrantDescription?.message}>

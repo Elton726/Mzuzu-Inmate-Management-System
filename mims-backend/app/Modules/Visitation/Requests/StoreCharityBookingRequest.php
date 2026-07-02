@@ -21,8 +21,8 @@ class StoreCharityBookingRequest extends FormRequest
             'inmate_category'     => ['required', 'string', Rule::in(['male', 'female', 'all'])],
             'purpose'             => ['required', 'string', 'max:3000'],
             'proposed_date'       => ['required', 'date', 'after:today'],
-            'proposed_time'       => ['required', 'date_format:H:i'],
-            'duration_minutes'    => ['required', 'integer', 'min:15', 'max:480'],
+            'proposed_time'       => ['nullable', 'date_format:H:i'],
+            'duration_minutes'    => ['nullable', 'integer', 'min:15', 'max:480'],
         ];
     }
 }

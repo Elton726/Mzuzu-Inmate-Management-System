@@ -25,10 +25,11 @@ class StoreAdmissionRequest extends FormRequest
                 'string',
                 'max:5',
                 Rule::unique('admissions', 'case_number')
-                    ->where('inmate_id', $this->input('inmate_id')),
+                    ->where('inmate_id', $this->input('inmate_id'))
+                    ->where('is_current', false),
             ],
-            'court_name' => ['nullable', 'string', 'max:100'],
-            'offence_description' => ['nullable', 'string'],
+            'court_name' => ['required', 'string', 'max:100'],
+            'offence_description' => ['required', 'string', 'max:3000'],
 
             'sentence_years' => ['nullable', 'integer', 'min:0', 'required_if:inmate_type,convict'],
             'sentence_months' => ['nullable', 'integer', 'min:0', 'max:11'],
@@ -49,14 +50,33 @@ class StoreAdmissionRequest extends FormRequest
                 }),
             ],
 
-            'committal_warrant_id' => ['nullable', 'exists:documents,id'],
-            'remand_warrant_id' => ['nullable', 'exists:documents,id'],
+            'committal_warrant_id' => ['required_if:inmate_type,convict', 'nullable', 'exists:documents,id'],
+            'remand_warrant_id' => ['required_if:inmate_type,remandee,murder_remandee', 'nullable', 'exists:documents,id'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'sentence_years' => $this->normaliseSentencePart($this->input('sentence_years')),
+            'sentence_months' => $this->normaliseSentencePart($this->input('sentence_months')),
+            'sentence_days' => $this->normaliseSentencePart($this->input('sentence_days')),
+        ]);
     }
 
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
+            if ($this->input('inmate_type') === 'convict') {
+                $years = (int) $this->input('sentence_years', 0);
+                $months = (int) $this->input('sentence_months', 0);
+                $days = (int) $this->input('sentence_days', 0);
+
+                if (($years + $months + $days) <= 0) {
+                    $validator->errors()->add('sentence_years', 'Sentence length must include at least one year, month, or day.');
+                }
+            }
+
             if (!in_array($this->input('inmate_type'), ['remandee', 'murder_remandee'], true)) {
                 return;
             }
@@ -73,5 +93,14 @@ class StoreAdmissionRequest extends FormRequest
                 $validator->errors()->add('remand_next_court_time', 'Court time is required when the next court date is today.');
             }
         });
+    }
+
+    private function normaliseSentencePart(mixed $value): mixed
+    {
+        if ($this->input('inmate_type') !== 'convict') {
+            return $value;
+        }
+
+        return $value === null || $value === '' ? 0 : $value;
     }
 }

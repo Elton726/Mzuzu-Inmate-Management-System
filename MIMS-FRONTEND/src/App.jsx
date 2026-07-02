@@ -23,8 +23,8 @@
  * - Admin: /admin/*
  */
 
-import React from 'react';
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { HashRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
@@ -64,7 +64,7 @@ import VisitationHomePage from './modules/visitation/pages/VisitationHomePage';
 import PendingCharityPage from './modules/visitation/pages/PendingCharityPage';
 import VisitationStatisticsPage from './modules/visitation/pages/VisitationStatisticsPage';
 import VisitationHistoryPage from './modules/visitation/pages/VisitationHistoryPage';
-import VisitationRulesPage from './modules/visitation/pages/VisitationRulesPage';
+import VisitationRulesPage from './modules/admin/pages/VisitationRulesPage';
 import VisitFlagReviewsPage from './modules/visitation/pages/VisitFlagReviewsPage';
 import VisitationAlertsPage from './modules/visitation/pages/VisitationAlertsPage';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -82,7 +82,40 @@ import { ToastContainer } from 'react-toastify';
  * - Route rendering based on authentication status
  */
 const AppContent = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, logout } = useAuth();
+  const navigate = useNavigate();
+  const inactivityTimerRef = useRef(null);
+
+  const handleIdleLogout = useCallback(async () => {
+    await logout();
+    navigate('/login', { replace: true });
+  }, [logout, navigate]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+
+    const timeoutMs = 20 * 60 * 1000;
+    const activityEvents = ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'];
+
+    const resetTimer = () => {
+      window.clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = window.setTimeout(handleIdleLogout, timeoutMs);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') resetTimer();
+    };
+
+    resetTimer();
+    activityEvents.forEach((eventName) => window.addEventListener(eventName, resetTimer, { passive: true }));
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.clearTimeout(inactivityTimerRef.current);
+      activityEvents.forEach((eventName) => window.removeEventListener(eventName, resetTimer));
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [handleIdleLogout, isAuthenticated]);
 
   // Show loading spinner during authentication verification
   if (loading) {
@@ -361,9 +394,9 @@ const AppContent = () => {
             }
           />
           <Route
-            path="/visitation/rules"
+            path="/admin/visitation-rules"
             element={
-              <ProtectedRoute allowedRoles={['station_officer']}>
+              <ProtectedRoute requireAdmin={true}>
                 <VisitationRulesPage />
               </ProtectedRoute>
             }

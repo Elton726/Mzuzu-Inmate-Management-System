@@ -196,24 +196,29 @@ function DateInput({ label, value, onChange }) {
   );
 }
 
-// eslint-disable-next-line no-unused-vars
 function MetricCard({ title, value, detail, icon: Icon, tone }) {
   const tones = {
-    green: 'border-green-200 bg-white text-malawiGreen',
-    blue: 'border-blue-200 bg-white text-blue-600',
-    amber: 'border-amber-200 bg-white text-amber-600',
-    slate: 'border-slate-200 bg-white text-slate-700',
+    green: 'border-emerald-200 bg-white text-emerald-600 shadow-emerald-100',
+    blue: 'border-blue-200 bg-white text-blue-600 shadow-blue-100',
+    amber: 'border-amber-200 bg-white text-amber-600 shadow-amber-100',
+    slate: 'border-gray-200 bg-white text-gray-700 shadow-gray-100',
+  };
+  const iconBg = {
+    green: 'bg-emerald-50 text-emerald-500 ring-emerald-100',
+    blue: 'bg-blue-50 text-blue-500 ring-blue-100',
+    amber: 'bg-amber-50 text-amber-500 ring-amber-100',
+    slate: 'bg-gray-50 text-gray-500 ring-gray-100',
   };
 
   return (
-    <div className={`rounded-lg border p-5 shadow-sm ${tones[tone] || tones.green}`}>
+    <div className={`rounded-2xl border p-6 shadow-sm transition-transform hover:-translate-y-1 hover:shadow-md ${tones[tone] || tones.green}`}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-slate-500">{title}</p>
-          <p className="mt-2 text-3xl font-bold text-slate-950">{value}</p>
-          <p className="mt-1 text-xs text-slate-500">{detail}</p>
+          <p className="text-sm font-bold tracking-wide uppercase opacity-70">{title}</p>
+          <p className="mt-2 text-4xl font-extrabold tracking-tight text-gray-900">{value}</p>
+          <p className="mt-2 text-xs font-medium text-gray-500">{detail}</p>
         </div>
-        <div className="rounded-lg bg-slate-50 p-3">
+        <div className={`rounded-xl p-3 ring-1 ${iconBg[tone] || iconBg.green}`}>
           <Icon className="h-6 w-6" />
         </div>
       </div>
@@ -221,20 +226,19 @@ function MetricCard({ title, value, detail, icon: Icon, tone }) {
   );
 }
 
-// eslint-disable-next-line no-unused-vars
 function Panel({ title, subtitle, icon: Icon, children }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-4">
-        <div className="rounded bg-slate-100 p-2 text-slate-700">
+    <section className="rounded-2xl border border-gray-100 bg-white shadow-sm transition-shadow hover:shadow-md">
+      <div className="flex items-start gap-4 border-b border-gray-50 bg-gray-50/30 px-6 py-5">
+        <div className="rounded-xl bg-white p-2.5 text-malawiGreen shadow-sm ring-1 ring-gray-100">
           <Icon className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-base font-bold text-slate-950">{title}</h2>
-          <p className="text-sm text-slate-500">{subtitle}</p>
+          <h2 className="text-lg font-bold text-gray-900 tracking-tight">{title}</h2>
+          <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>
         </div>
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-6">{children}</div>
     </section>
   );
 }
@@ -279,9 +283,9 @@ function BreakdownBars({ data, emptyText, toneFor, chipFor, iconFor }) {
 
 function OutcomePill({ label, value, className }) {
   return (
-    <div className={`rounded-lg border px-4 py-3 ${className}`}>
-      <p className="text-xs font-bold uppercase opacity-80">{label}</p>
-      <p className="mt-1 text-2xl font-bold">{value}</p>
+    <div className={`rounded-xl border p-5 shadow-sm transition-transform hover:-translate-y-0.5 ${className}`}>
+      <p className="text-xs font-bold tracking-wide uppercase opacity-80">{label}</p>
+      <p className="mt-2 text-3xl font-extrabold tracking-tight">{value}</p>
     </div>
   );
 }

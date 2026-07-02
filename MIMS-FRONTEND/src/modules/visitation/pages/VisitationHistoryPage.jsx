@@ -8,6 +8,7 @@ import {
   FiShield,
   FiTable,
   FiTrendingUp,
+  FiCalendar,
 } from 'react-icons/fi';
 import VisitationHistoryDetailsDrawer from './VisitationHistoryDetailsDrawer';
 
@@ -44,27 +45,30 @@ function TabButton({ active, onClick, children }) {
 
 function EmptyState({ text }) {
   return (
-    <div className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-center">
-      <div className="text-sm font-semibold text-slate-500">{text}</div>
+    <div className="rounded-xl border border-dashed border-gray-200 bg-white p-12 text-center shadow-sm">
+      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-50 ring-1 ring-gray-100">
+        <FiCalendar className="h-6 w-6 text-gray-400" />
+      </div>
+      <div className="text-sm font-semibold text-gray-900">{text}</div>
     </div>
   );
 }
 
 function NormalVisitsTable({ rows, onOpen }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-sm">
-          <thead className="bg-slate-50">
-            <tr className="border-b border-slate-200">
-              <th className="px-4 py-3 font-bold text-slate-600">Date</th>
-              <th className="px-4 py-3 font-bold text-slate-600">Visitor</th>
-              <th className="px-4 py-3 font-bold text-slate-600">Group visited</th>
-              <th className="px-4 py-3 font-bold text-slate-600">Status</th>
-              <th className="px-4 py-3 font-bold text-slate-600">Type</th>
+          <thead className="bg-gray-50/50">
+            <tr className="border-b border-gray-100">
+              <th className="px-6 py-4 font-semibold tracking-wider text-gray-500 uppercase text-xs">Date</th>
+              <th className="px-6 py-4 font-semibold tracking-wider text-gray-500 uppercase text-xs">Visitor</th>
+              <th className="px-6 py-4 font-semibold tracking-wider text-gray-500 uppercase text-xs">Group visited</th>
+              <th className="px-6 py-4 font-semibold tracking-wider text-gray-500 uppercase text-xs">Status</th>
+              <th className="px-6 py-4 font-semibold tracking-wider text-gray-500 uppercase text-xs">Type</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-100">
             {rows.map((s) => (
               <tr
                 key={s.id}
@@ -111,19 +115,19 @@ function NormalVisitsTable({ rows, onOpen }) {
 
 function CharityVisitsTable({ rows, onOpen }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-sm">
-          <thead className="bg-slate-50">
-            <tr className="border-b border-slate-200">
-              <th className="px-4 py-3 font-bold text-slate-600">Proposed Date</th>
-              <th className="px-4 py-3 font-bold text-slate-600">Organisation</th>
-              <th className="px-4 py-3 font-bold text-slate-600">Group visited</th>
-              <th className="px-4 py-3 font-bold text-slate-600">Status</th>
-              <th className="px-4 py-3 font-bold text-slate-600">Purpose</th>
+          <thead className="bg-gray-50/50">
+            <tr className="border-b border-gray-100">
+              <th className="px-6 py-4 font-semibold tracking-wider text-gray-500 uppercase text-xs">Proposed Date</th>
+              <th className="px-6 py-4 font-semibold tracking-wider text-gray-500 uppercase text-xs">Organisation</th>
+              <th className="px-6 py-4 font-semibold tracking-wider text-gray-500 uppercase text-xs">Group visited</th>
+              <th className="px-6 py-4 font-semibold tracking-wider text-gray-500 uppercase text-xs">Status</th>
+              <th className="px-6 py-4 font-semibold tracking-wider text-gray-500 uppercase text-xs">Purpose</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-100">
             {rows.map((b) => (
               <tr
                 key={b.id}
@@ -221,15 +225,15 @@ export default function VisitationHistoryPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="mb-6 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mb-8 rounded-2xl border border-malawiGreen/20 bg-gradient-to-r from-malawiGreen/10 to-transparent p-8 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div>
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-semibold uppercase text-malawiGreen">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-malawiGreen/30 bg-malawiGreen/20 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-malawiGreen">
                 <FiShield className="h-4 w-4" />
                 Visitation history
               </div>
-              <h1 className="text-3xl font-bold text-slate-950">Visit History</h1>
-              <p className="mt-1 max-w-2xl text-sm text-slate-500">
+              <h1 className="text-3xl font-bold tracking-tight text-gray-900">Visit History</h1>
+              <p className="mt-2 max-w-2xl text-sm text-gray-600">
                 Review all normal and charity visitation records for the selected period.
               </p>
             </div>

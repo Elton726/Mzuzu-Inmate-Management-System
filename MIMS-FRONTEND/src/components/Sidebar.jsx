@@ -223,12 +223,6 @@ export default function Sidebar() {
               show: role === ROLES.GATEKEEPER || role === ROLES.STATION_OFFICER
             },
             {
-              to: '/visitation/rules',
-              icon: MdSettings,
-              title: 'Visit Rules',
-              show: role === ROLES.STATION_OFFICER
-            },
-            {
               to: '/visitation/flag-reviews',
               icon: MdGavel,
               title: 'Flag Reviews',
@@ -262,6 +256,12 @@ export default function Sidebar() {
           to: '/admin/cells',
           icon: MdHomeWork,
           title: 'Cell Management',
+          show: isAdmin
+        },
+        {
+          to: '/admin/visitation-rules',
+          icon: MdSettings,
+          title: 'Visitation Rules',
           show: isAdmin
         },
         {

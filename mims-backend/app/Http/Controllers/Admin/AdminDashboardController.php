@@ -63,6 +63,7 @@ class AdminDashboardController extends Controller
                 ['label' => 'Manage cells', 'to' => '/admin/cells'],
                 ['label' => 'Duty rosters', 'to' => '/admin/duty-rosters'],
                 ['label' => 'Activities', 'to' => '/admin/activities'],
+                ['label' => 'Visitation rules', 'to' => '/admin/visitation-rules'],
                 ['label' => 'Sentence types', 'to' => '/admin/sentence-adjustment-types'],
                 ['label' => 'Audit logs', 'to' => '/admin/audit-logs'],
             ],

@@ -10,6 +10,9 @@ import { getModuleFromPathname } from '../utils/helpers';
 import { useDebouncedValue } from '../utils/useDebouncedValue';
 import { searchInmates } from '../modules/admissions/services/inmateService';
 import { listCells } from '../modules/admissions/services/cellService';
+import apiService from '../services/apiService';
+import { listPendingConfirmations } from '../modules/releases/services/releaseService';
+import { searchVisitors } from '../modules/visitation/services/visitationService';
 import {
   MdAdd,
   MdDarkMode,
@@ -131,6 +134,60 @@ const getCellSearchText = (cell) => [
 
 const getCellLabel = (cell) => `Block ${cell?.block || '-'} | Cell ${cell?.cell_number || '-'}`;
 
+const adminDestinations = [
+  { label: 'Admin Dashboard', description: 'Overview, risk queue, metrics', to: '/admin/dashboard', icon: MdDashboard },
+  { label: 'User Management', description: 'Create, edit, and manage roles', to: '/admin/users', icon: MdPeople },
+  { label: 'Audit Logs', description: 'System changes and accountability trail', to: '/admin/audit-logs', icon: MdHistory },
+  { label: 'Cell Management', description: 'Capacity, occupancy, and maintenance', to: '/admin/cells', icon: MdHomeWork },
+  { label: 'Duty Rosters', description: 'Officer duty coverage', to: '/admin/duty-rosters', icon: MdSchedule },
+  { label: 'Activities', description: 'Activity setup and availability', to: '/admin/activities', icon: MdLocalActivity },
+  { label: 'Visitation Rules', description: 'Visit policy and limits', to: '/admin/visitation-rules', icon: MdGavel },
+  { label: 'Adjustment Types', description: 'Sentence adjustment configuration', to: '/admin/sentence-adjustment-types', icon: MdEditCalendar },
+];
+
+const getAdminSearchText = (item) => `${item.label} ${item.description}`.toLowerCase();
+
+const gatekeeperDestinations = [
+  { label: 'Visitation Desk', description: 'Register visits, check in sessions, inspect items', to: '/visitation', icon: MdPerson },
+  { label: 'Charity Approvals', description: 'Review pending charity visit requests', to: '/visitation/charity-pending', icon: MdOutlineArticle },
+  { label: 'Visit Statistics', description: 'Daily and period visitation statistics', to: '/visitation/statistics', icon: MdDashboard },
+  { label: 'Visit History', description: 'Normal and charity visit records', to: '/visitation/history', icon: MdHistory },
+  { label: 'Visit Alerts', description: 'Overdue sessions and flagged visits', to: '/visitation/alerts', icon: MdGavel },
+  { label: 'Confirm Release', description: 'Confirm physical exits for approved releases', to: '/releases/confirmation', icon: MdExitToApp },
+  { label: 'Release History', description: 'Release audit and historical records', to: '/releases/history', icon: MdHistory },
+];
+
+const getGatekeeperSearchText = (item) => `${item.label} ${item.description}`.toLowerCase();
+
+const normalizeArrayResponse = (data) => {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.normal)) return data.normal;
+  return [];
+};
+
+const getReleaseSearchText = (release) => {
+  const admission = release?.admission || {};
+  const inmate = release?.inmate || admission?.inmate || {};
+  return [
+    inmate?.first_name,
+    inmate?.last_name,
+    inmate?.prison_number,
+    release?.first_name,
+    release?.last_name,
+    release?.prison_number,
+    release?.approved_by_name,
+    release?.workflow_id,
+    release?.id,
+  ].filter(Boolean).join(' ').toLowerCase();
+};
+
+const getReleaseName = (release) => {
+  const admission = release?.admission || {};
+  const inmate = release?.inmate || admission?.inmate || {};
+  return [inmate?.first_name || release?.first_name, inmate?.last_name || release?.last_name].filter(Boolean).join(' ') || 'Unnamed inmate';
+};
+
 export const Navigation = () => {
   const { user, isAdmin } = useAuth();
   const { notifications, markAsRead, clearAll } = useNotification();
@@ -142,6 +199,11 @@ export const Navigation = () => {
   const [searchInput, setSearchInput] = useState('');
   const [inmateResults, setInmateResults] = useState([]);
   const [cellResults, setCellResults] = useState([]);
+  const [adminRouteResults, setAdminRouteResults] = useState([]);
+  const [adminUserResults, setAdminUserResults] = useState([]);
+  const [gatekeeperRouteResults, setGatekeeperRouteResults] = useState([]);
+  const [visitorResults, setVisitorResults] = useState([]);
+  const [releaseConfirmationResults, setReleaseConfirmationResults] = useState([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchError, setSearchError] = useState('');
   const [searchPending, setSearchPending] = useState(false);
@@ -155,6 +217,9 @@ export const Navigation = () => {
   );
   const isAdmissionsModule = location.pathname.startsWith('/admissions');
   const isCellPage = location.pathname.startsWith('/admissions/cells') || location.pathname.startsWith('/admin/cells');
+  const isAdminArea = location.pathname.startsWith('/admin');
+  const isGatekeeper = role === ROLES.GATEKEEPER;
+  const isGatekeeperArea = isGatekeeper && (location.pathname.startsWith('/visitation') || location.pathname.startsWith('/releases'));
   const showPageTitle = Boolean(pageTitle.title && pageTitle.icon);
   const isOfficerHome = location.pathname === '/' && role === ROLES.OFFICER_ON_DUTY;
 
@@ -179,39 +244,97 @@ export const Navigation = () => {
     if (!canSearchSystem || query.length < 2) return undefined;
 
     let active = true;
+    const queryLower = query.toLowerCase();
 
-    const inmateSearch = searchInmates({
-      q: query,
-      per_page: 6,
-      page: 1,
-      sort_by: 'id',
-      sort_order: 'desc',
-    });
+    const inmateSearch = isAdminArea || isGatekeeperArea
+      ? Promise.resolve({ data: [] })
+      : searchInmates({
+          q: query,
+          per_page: 6,
+          page: 1,
+          sort_by: 'id',
+          sort_order: 'desc',
+        });
 
     const cellSearch = isCellPage
       ? listCells().then((data) =>
           normalizeCells(data)
-            .filter((cell) => getCellSearchText(cell).includes(query.toLowerCase()))
+            .filter((cell) => getCellSearchText(cell).includes(queryLower))
             .slice(0, 8)
         )
       : Promise.resolve([]);
 
-    Promise.allSettled([inmateSearch, cellSearch])
-      .then(([inmateResponse, cellResponse]) => {
+    const adminRouteSearch = isAdminArea
+      ? Promise.resolve(adminDestinations.filter((item) => getAdminSearchText(item).includes(queryLower)).slice(0, 8))
+      : Promise.resolve([]);
+
+    const adminUserSearch = isAdminArea && isAdmin
+      ? apiService.listUsers({ search: query, per_page: 6, sort_by: 'name', sort_order: 'asc' })
+      : Promise.resolve({ data: [] });
+
+    const gatekeeperRouteSearch = isGatekeeperArea
+      ? Promise.resolve(gatekeeperDestinations.filter((item) => getGatekeeperSearchText(item).includes(queryLower)).slice(0, 8))
+      : Promise.resolve([]);
+
+    const visitorSearch = isGatekeeperArea
+      ? searchVisitors({ q: query, per_page: 6 })
+      : Promise.resolve([]);
+
+    const releaseConfirmationSearch = isGatekeeperArea
+      ? listPendingConfirmations({ per_page: 25 }).then((data) =>
+          normalizeArrayResponse(data)
+            .filter((release) => getReleaseSearchText(release).includes(queryLower))
+            .slice(0, 6)
+        )
+      : Promise.resolve([]);
+
+    Promise.allSettled([
+      inmateSearch,
+      cellSearch,
+      adminRouteSearch,
+      adminUserSearch,
+      gatekeeperRouteSearch,
+      visitorSearch,
+      releaseConfirmationSearch,
+    ])
+      .then(([
+        inmateResponse,
+        cellResponse,
+        adminRouteResponse,
+        adminUserResponse,
+        gatekeeperRouteResponse,
+        visitorResponse,
+        releaseConfirmationResponse,
+      ]) => {
         if (!active) return;
 
         const nextInmates = inmateResponse.status === 'fulfilled'
           ? (Array.isArray(inmateResponse.value?.data) ? inmateResponse.value.data : [])
           : [];
         const nextCells = cellResponse.status === 'fulfilled' ? cellResponse.value : [];
+        const nextAdminRoutes = adminRouteResponse.status === 'fulfilled' ? adminRouteResponse.value : [];
+        const nextAdminUsers = adminUserResponse.status === 'fulfilled'
+          ? (Array.isArray(adminUserResponse.value?.data) ? adminUserResponse.value.data : [])
+          : [];
+        const nextGatekeeperRoutes = gatekeeperRouteResponse.status === 'fulfilled' ? gatekeeperRouteResponse.value : [];
+        const nextVisitors = visitorResponse.status === 'fulfilled' ? normalizeArrayResponse(visitorResponse.value) : [];
+        const nextReleaseConfirmations = releaseConfirmationResponse.status === 'fulfilled' ? releaseConfirmationResponse.value : [];
 
         setInmateResults(nextInmates);
         setCellResults(nextCells);
+        setAdminRouteResults(nextAdminRoutes);
+        setAdminUserResults(nextAdminUsers);
+        setGatekeeperRouteResults(nextGatekeeperRoutes);
+        setVisitorResults(nextVisitors);
+        setReleaseConfirmationResults(nextReleaseConfirmations);
 
         const errors = [];
         if (inmateResponse.status === 'rejected') errors.push(inmateResponse.reason?.message || 'Inmate search failed');
         if (cellResponse.status === 'rejected') errors.push(cellResponse.reason?.message || 'Cell search failed');
-        setSearchError(errors.join(' · '));
+        if (adminUserResponse.status === 'rejected') errors.push(adminUserResponse.reason?.message || 'User search failed');
+        if (visitorResponse.status === 'rejected') errors.push(visitorResponse.reason?.message || 'Visitor search failed');
+        if (releaseConfirmationResponse.status === 'rejected') errors.push(releaseConfirmationResponse.reason?.message || 'Release search failed');
+        setSearchError(errors.join(' - '));
       })
       .finally(() => {
         if (active) setSearchPending(false);
@@ -220,7 +343,7 @@ export const Navigation = () => {
     return () => {
       active = false;
     };
-  }, [canSearchSystem, debouncedSearchQuery, isCellPage]);
+  }, [canSearchSystem, debouncedSearchQuery, isAdmin, isAdminArea, isCellPage, isGatekeeperArea]);
 
   const handleSearch = (event) => {
     event.preventDefault();
@@ -235,6 +358,11 @@ export const Navigation = () => {
     if (value.trim().length < 2) {
       setInmateResults([]);
       setCellResults([]);
+      setAdminRouteResults([]);
+      setAdminUserResults([]);
+      setGatekeeperRouteResults([]);
+      setVisitorResults([]);
+      setReleaseConfirmationResults([]);
       setSearchOpen(false);
       setSearchPending(false);
     } else {
@@ -302,8 +430,8 @@ export const Navigation = () => {
                           ? 'border-blue-600 bg-blue-50 text-blue-700'
                           : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                       }`}
-                      aria-label={isCellPage ? 'Search cells and inmates' : 'Search inmates'}
-                      title={isCellPage ? 'Search cells and inmates' : 'Search inmates'}
+                      aria-label={isAdminArea ? 'Search admin interface' : isGatekeeperArea ? 'Search gatekeeper interface' : isCellPage ? 'Search cells and inmates' : 'Search inmates'}
+                      title={isAdminArea ? 'Search admin interface' : isGatekeeperArea ? 'Search gatekeeper interface' : isCellPage ? 'Search cells and inmates' : 'Search inmates'}
                     >
                       <MdSearch className="h-5 w-5" />
                     </button>
@@ -319,29 +447,151 @@ export const Navigation = () => {
                               type="search"
                               value={searchInput}
                               onChange={handleSearchChange}
-                              placeholder={isCellPage ? 'Search cells, blocks, inmates...' : 'Search inmate, inmate number, National ID'}
+                              placeholder={isAdminArea ? 'Search admin pages or users...' : isGatekeeperArea ? 'Search visitors, releases, or tools...' : isCellPage ? 'Search cells, blocks, inmates...' : 'Search inmate, inmate number, National ID'}
                               className="h-10 w-full rounded-md border border-gray-300 bg-white pl-10 pr-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                             />
                           </div>
                         </form>
 
                         <div className="border-b border-gray-100 px-4 py-2 text-xs font-bold uppercase text-gray-500">
-                          {isCellPage ? 'Page and system results' : 'Inmate results'}
+                          {isAdminArea ? 'Admin interface results' : isGatekeeperArea ? 'Gatekeeper interface results' : isCellPage ? 'Page and system results' : 'Inmate results'}
                         </div>
                         {searchInput.trim().length < 2 ? (
                           <div className="px-4 py-4 text-sm text-gray-500">
-                            Type at least 2 characters to search system records.
+                            Type at least 2 characters to search {isAdminArea ? 'admin tools and users' : isGatekeeperArea ? 'gatekeeper tools and records' : 'system records'}.
                           </div>
                         ) : searchPending ? (
                           <div className="px-4 py-4 text-sm text-gray-500">Searching system records...</div>
-                        ) : searchError && inmateResults.length === 0 && cellResults.length === 0 ? (
+                        ) : searchError && inmateResults.length === 0 && cellResults.length === 0 && adminRouteResults.length === 0 && adminUserResults.length === 0 && gatekeeperRouteResults.length === 0 && visitorResults.length === 0 && releaseConfirmationResults.length === 0 ? (
                           <div className="px-4 py-4 text-sm text-red-600">{searchError}</div>
-                        ) : inmateResults.length === 0 && cellResults.length === 0 ? (
+                        ) : inmateResults.length === 0 && cellResults.length === 0 && adminRouteResults.length === 0 && adminUserResults.length === 0 && gatekeeperRouteResults.length === 0 && visitorResults.length === 0 && releaseConfirmationResults.length === 0 ? (
                           <div className="px-4 py-4 text-sm text-gray-500">
-                            No matching {isCellPage ? 'cells or inmates' : 'inmates'} found.
+                            No matching {isAdminArea ? 'admin pages or users' : isGatekeeperArea ? 'gatekeeper records or tools' : isCellPage ? 'cells or inmates' : 'inmates'} found.
                           </div>
                         ) : (
                           <div className="max-h-96 overflow-y-auto">
+                            {isAdminArea && adminRouteResults.length > 0 && (
+                              <div>
+                                <div className="bg-gray-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-gray-500">
+                                  Admin pages
+                                </div>
+                                {adminRouteResults.map((item) => {
+                                  const Icon = item.icon;
+                                  return (
+                                    <Link
+                                      key={item.to}
+                                      to={item.to}
+                                      onClick={() => setSearchOpen(false)}
+                                      className="flex items-start gap-3 border-b border-gray-100 px-4 py-3 hover:bg-gray-50"
+                                    >
+                                      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" />
+                                      <span className="min-w-0">
+                                        <span className="block text-sm font-bold text-gray-950">{item.label}</span>
+                                        <span className="block text-xs text-gray-500">{item.description}</span>
+                                      </span>
+                                    </Link>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {isAdminArea && adminUserResults.length > 0 && (
+                              <div>
+                                <div className="bg-gray-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-gray-500">
+                                  Users
+                                </div>
+                                {adminUserResults.map((adminUser) => (
+                                  <Link
+                                    key={adminUser.id}
+                                    to="/admin/users"
+                                    onClick={() => setSearchOpen(false)}
+                                    className="block border-b border-gray-100 px-4 py-3 hover:bg-gray-50"
+                                  >
+                                    <div className="truncate text-sm font-bold text-gray-950">{adminUser.name || 'Unnamed user'}</div>
+                                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                                      <span>{adminUser.email}</span>
+                                      <span>{adminUser.role?.name || adminUser.role || 'No role'}</span>
+                                    </div>
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+
+                            {isGatekeeperArea && gatekeeperRouteResults.length > 0 && (
+                              <div>
+                                <div className="bg-gray-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-gray-500">
+                                  Gatekeeper pages
+                                </div>
+                                {gatekeeperRouteResults.map((item) => {
+                                  const Icon = item.icon;
+                                  return (
+                                    <Link
+                                      key={item.to}
+                                      to={item.to}
+                                      onClick={() => setSearchOpen(false)}
+                                      className="flex items-start gap-3 border-b border-gray-100 px-4 py-3 hover:bg-gray-50"
+                                    >
+                                      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" />
+                                      <span className="min-w-0">
+                                        <span className="block text-sm font-bold text-gray-950">{item.label}</span>
+                                        <span className="block text-xs text-gray-500">{item.description}</span>
+                                      </span>
+                                    </Link>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {isGatekeeperArea && visitorResults.length > 0 && (
+                              <div>
+                                <div className="bg-gray-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-gray-500">
+                                  Visitors
+                                </div>
+                                {visitorResults.map((visitor) => (
+                                  <Link
+                                    key={visitor.id}
+                                    to="/visitation"
+                                    onClick={() => setSearchOpen(false)}
+                                    className="block border-b border-gray-100 px-4 py-3 hover:bg-gray-50"
+                                  >
+                                    <div className="truncate text-sm font-bold text-gray-950">{visitor.full_name || 'Unnamed visitor'}</div>
+                                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                                      <span>{visitor.phone || 'No phone recorded'}</span>
+                                      <span>{visitor.sessions_count ?? 0} visit(s)</span>
+                                      {visitor.is_watchlisted && <span className="font-bold text-red-700">Watchlisted</span>}
+                                    </div>
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+
+                            {isGatekeeperArea && releaseConfirmationResults.length > 0 && (
+                              <div>
+                                <div className="bg-gray-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-gray-500">
+                                  Pending release confirmations
+                                </div>
+                                {releaseConfirmationResults.map((release) => {
+                                  const admission = release?.admission || {};
+                                  const inmate = release?.inmate || admission?.inmate || {};
+                                  return (
+                                    <Link
+                                      key={release.workflow_id || release.id || release.admission_id}
+                                      to="/releases/confirmation"
+                                      onClick={() => setSearchOpen(false)}
+                                      className="block border-b border-gray-100 px-4 py-3 hover:bg-gray-50"
+                                    >
+                                      <div className="truncate text-sm font-bold text-gray-950">{getReleaseName(release)}</div>
+                                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                                        <span>{inmate.prison_number || release.prison_number || 'No prison number'}</span>
+                                        <span>{release.projected_release_date || admission.projected_release_date || 'No release date'}</span>
+                                        <span>Approved by {release.approved_by_name || release.approver?.name || release.approved_by || 'N/A'}</span>
+                                      </div>
+                                    </Link>
+                                  );
+                                })}
+                              </div>
+                            )}
+
                             {isCellPage && cellResults.length > 0 && (
                               <div>
                                 <div className="bg-gray-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-gray-500">
