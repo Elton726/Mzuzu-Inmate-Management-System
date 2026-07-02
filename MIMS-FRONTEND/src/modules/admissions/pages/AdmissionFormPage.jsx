@@ -59,7 +59,9 @@ const buildAdmissionPayload = ({ inmateId, admission, warrantDocId }) => {
   } else {
     payload.remand_next_court_date = toIso(admission.remandNextCourtDate);
     payload.remand_next_court_time = admission.remandNextCourtTime || null;
-    payload.remand_duration_days = admission.remandDurationDays ? Number(admission.remandDurationDays) : null;
+    payload.remand_duration_days = admission.remandDurationDays !== '' && admission.remandDurationDays != null
+      ? Number(admission.remandDurationDays)
+      : null;
     payload.remand_warrant_id = warrantDocId || null;
     payload.committal_warrant_id = null;
     payload.sentence_years = null;
@@ -222,7 +224,7 @@ export default function AdmissionFormPage() {
             inmate_photo_path: photoRes?.inmate?.photo_path
           });
           if (photoRes?.inmate?.photo_path) {
-            toast.success(`✓ Photo uploaded: ${photoRes.file_name}`);
+            toast.success(`Photo uploaded: ${photoRes.file_name}`);
             addNotification({ title: 'Photo uploaded', message: `Photo saved for ${selectedInmate.first_name} ${selectedInmate.last_name}`, type: 'success', action: { label: 'Open inmate', url: `/inmates/${selectedInmate.id}` } });
           } else {
             toast.success('Photo uploaded');
