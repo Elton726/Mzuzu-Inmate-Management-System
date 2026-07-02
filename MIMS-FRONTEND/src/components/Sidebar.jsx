@@ -317,11 +317,11 @@ export default function Sidebar() {
             className="h-10 w-10 rounded-full border border-malawiRed flex-shrink-0"
           />
           {!isCollapsed && (
-            <div className="flex min-w-0 flex-col justify-center leading-tight">
-              <span className="truncate text-base font-bold text-gray-950 dark:text-white">
+            <div className="flex min-w-0 flex-col justify-center">
+              <span className="font-['Outfit',sans-serif] text-[15px] font-black tracking-tight text-gray-900 dark:text-white leading-tight">
                 Mzuzu Inmate
               </span>
-              <span className="truncate text-sm font-normal text-gray-600 dark:text-gray-300">
+              <span className="font-['Outfit',sans-serif] text-[11px] font-bold uppercase tracking-widest text-malawiGreen dark:text-emerald-400 mt-0.5">
                 Management System
               </span>
             </div>
