@@ -54,7 +54,7 @@ const getInitials = (user) => {
   return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
 };
 
-export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }) {
+export default function Sidebar({ isCollapsed = false, setIsCollapsed }) {
   const { user, isAdmin, logout, loading } = useAuth();
   const navigate = useNavigate();
   const role = getRoleName(user);
@@ -73,13 +73,13 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
   // Show loading skeleton while auth is initializing
   if (loading) {
     return (
-      <aside className={`h-screen bg-zinc-950 text-gray-300 border-r border-zinc-800/80 shadow-lg fixed top-0 left-0 z-50 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
-        <div className="flex items-center justify-center h-20 border-b border-zinc-800/80 px-4">
-          <div className="animate-pulse bg-zinc-800 h-10 w-10 rounded-full"></div>
+      <aside className={`box-border h-screen border-r-0 bg-white text-gray-700 dark:border-r-[3px] dark:border-slate-700 dark:bg-slate-900 dark:text-gray-300 fixed top-0 left-0 z-50 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
+        <div className="flex h-16 items-center justify-center px-4">
+          <div className="h-10 w-10 animate-pulse rounded-full bg-gray-200 dark:bg-slate-800"></div>
         </div>
         <div className="flex-1 mt-8 px-4 space-y-4">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="animate-pulse bg-zinc-900 h-10 rounded-lg"></div>
+            <div key={i} className="h-10 animate-pulse rounded-lg bg-gray-100 dark:bg-slate-800"></div>
           ))}
         </div>
       </aside>
@@ -305,9 +305,9 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
 
   return (
     <>
-    <aside className={`h-screen bg-zinc-950 text-gray-300 border-r border-zinc-800/80 shadow-2xl fixed top-0 left-0 z-50 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'}`}>
+    <aside className={`box-border h-screen border-r-0 bg-white text-gray-700 dark:border-r-[3px] dark:border-slate-700 dark:bg-slate-900 dark:text-gray-300 fixed top-0 left-0 z-50 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'}`}>
       {/* Header with cuffs logo */}
-      <div className="flex items-center h-20 border-b border-zinc-800/80 px-4 justify-between gap-3 flex-shrink-0">
+      <div className="flex h-16 flex-shrink-0 items-center justify-between gap-3 px-4">
         <div className="flex items-center gap-3 min-w-0">
           <img
             src={logo}
@@ -315,9 +315,14 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
             className="h-10 w-10 rounded-full border border-malawiRed flex-shrink-0"
           />
           {!isCollapsed && (
-            <span className="text-white text-base font-bold tracking-wide truncate">
-              Mzuzu-MIMS
-            </span>
+            <div className="flex min-w-0 flex-col justify-center leading-tight">
+              <span className="truncate text-base font-bold text-gray-950 dark:text-white">
+                Mzuzu Inmate
+              </span>
+              <span className="truncate text-sm font-normal text-gray-600 dark:text-gray-300">
+                Management System
+              </span>
+            </div>
           )}
         </div>
 
@@ -325,7 +330,7 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
         <button
           type="button"
           onClick={() => setIsCollapsed?.(!isCollapsed)}
-          className="hidden md:flex items-center justify-center p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors duration-200"
+          className="hidden md:flex items-center justify-center p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200 dark:text-zinc-400 dark:hover:bg-slate-800 dark:hover:text-white"
           title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
         >
           {isCollapsed ? <MdChevronRight className="text-xl" /> : <MdChevronLeft className="text-xl" />}
@@ -349,24 +354,23 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
                     <NavLink
                       to={item.to}
                       end={item.end}
-                      onClick={() => onClose?.()}
                       className={({ isActive }) =>
                         `flex items-center rounded-lg px-3 py-2.5 transition-all duration-200 ${
                           isCollapsed ? 'justify-center' : 'gap-3'
                         } ${
                           isActive
-                            ? 'bg-malawiGreen/25 text-white font-semibold border-l-4 border-malawiGreen shadow-inner'
-                            : 'text-zinc-400 hover:bg-zinc-900/60 hover:text-white'
+                            ? 'bg-malawiGreen/15 text-malawiGreen font-semibold border-l-4 border-malawiGreen dark:bg-malawiGreen/25 dark:text-white'
+                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-950 dark:text-zinc-400 dark:hover:bg-slate-800/80 dark:hover:text-white'
                         }`
                       }
                     >
-                      <Icon className="text-xl flex-shrink-0 transition-colors group-hover:text-white" />
+                      <Icon className="text-xl flex-shrink-0 transition-colors" />
                       {!isCollapsed && <span className="truncate text-sm">{item.title}</span>}
                     </NavLink>
 
                     {/* Collapsed Tooltip */}
                     {isCollapsed && (
-                      <div className="absolute left-full ml-4 px-2.5 py-1.5 bg-zinc-900 text-xs font-semibold text-white rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-x-2 group-hover:translate-x-0 pointer-events-none whitespace-nowrap z-50 shadow-xl border border-zinc-800">
+                      <div className="absolute left-full ml-4 px-2.5 py-1.5 bg-white text-xs font-semibold text-gray-900 rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-x-2 group-hover:translate-x-0 pointer-events-none whitespace-nowrap z-50 shadow-xl border border-gray-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
                         {item.title}
                       </div>
                     )}
@@ -380,11 +384,10 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
 
       {/* Profile Footer Section */}
       {user && (
-        <div className="border-t border-zinc-800/80 p-4 bg-zinc-950/40 flex-shrink-0">
+        <div className="flex-shrink-0 p-4">
           <div className={`flex items-center ${isCollapsed ? 'justify-center flex-col' : 'justify-between'} gap-3`}>
             <NavLink
               to="/profile"
-              onClick={() => onClose?.()}
               className={`flex items-center gap-3 min-w-0 ${isCollapsed ? 'justify-center' : 'flex-1'}`}
               title="Open profile"
             >
@@ -396,7 +399,7 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
               {/* Text Info */}
               {!isCollapsed && (
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-white truncate">
+                  <div className="text-sm font-semibold text-gray-950 truncate dark:text-white">
                     {user.name || 'Unnamed Officer'}
                   </div>
                   <div className={`mt-0.5 inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold uppercase border ${roleTone[role] || 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}>
@@ -411,7 +414,7 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
               <button
                 type="button"
                 onClick={handleLogoutClick}
-                className="p-2 text-zinc-400 hover:text-red-500 transition-colors duration-200 rounded-lg hover:bg-zinc-900 flex-shrink-0"
+                className="p-2 text-gray-500 hover:text-red-500 transition-colors duration-200 rounded-lg hover:bg-gray-100 flex-shrink-0 dark:text-zinc-400 dark:hover:bg-slate-800"
                 title="Logout"
               >
                 <MdLogout className="text-xl" />
@@ -420,7 +423,7 @@ export default function Sidebar({ onClose, isCollapsed = false, setIsCollapsed }
               <button
                 type="button"
                 onClick={handleLogoutClick}
-                className="w-10 h-10 mt-1 flex items-center justify-center text-zinc-400 hover:text-red-500 transition-colors duration-200 rounded-lg hover:bg-zinc-900 flex-shrink-0"
+                className="w-10 h-10 mt-1 flex items-center justify-center text-gray-500 hover:text-red-500 transition-colors duration-200 rounded-lg hover:bg-gray-100 flex-shrink-0 dark:text-zinc-400 dark:hover:bg-slate-800"
                 title="Logout"
               >
                 <MdLogout className="text-xl" />

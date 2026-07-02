@@ -16,10 +16,18 @@ class ActivityController extends Controller
     {
         return response()->json(
             Activity::query()
-                ->where('is_active', true)
-                ->where('activity_type', 'internal')
-                ->where('source_type', 'predefined')
-                ->orderBy('name')
+                ->select('activities.*')
+                ->selectRaw("
+                    CASE
+                        WHEN LOWER(activities.name) = 'farm work' OR activities.activity_type = 'external' THEN 'External'
+                        WHEN activities.source_type = 'custom' THEN 'Internal Custom'
+                        ELSE 'Internal Predefined'
+                    END AS category
+                ")
+                ->where('activities.is_active', true)
+                ->where('activities.activity_type', 'internal')
+                ->where('activities.source_type', 'predefined')
+                ->orderBy('activities.name')
                 ->get()
         );
     }

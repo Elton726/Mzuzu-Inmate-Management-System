@@ -40,7 +40,6 @@ import DutyRosterPage from './modules/activityAllocation/admin/pages/DutyRosterP
 import ActivityListPage from './modules/activityAllocation/admin/pages/ActivityListPage';
 import ActivityFormPage from './modules/activityAllocation/admin/pages/ActivityFormPage';
 import OfficerAvailableActivitiesPage from './modules/activityAllocation/officer/pages/OfficerAvailableActivitiesPage';
-import OfficerExternalActivityAllocationPage from './modules/activityAllocation/officer/pages/OfficerExternalActivityAllocationPage';
 import OfficerSessionsPage from './modules/activityAllocation/officer/pages/OfficerSessionsPage';
 import OfficerSessionFormPage from './modules/activityAllocation/officer/pages/OfficerSessionFormPage';
 import OfficerSessionDetailPage from './modules/activityAllocation/officer/pages/OfficerSessionDetailPage';
@@ -70,6 +69,7 @@ import VisitationAlertsPage from './modules/visitation/pages/VisitationAlertsPag
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import { Navigation } from './components/Navigation';
+import { Breadcrumb } from './components/Breadcrumb';
 import { ToastProvider } from './contexts/ToastContext';
 import { ToastContainer } from 'react-toastify';
 
@@ -83,7 +83,6 @@ import { ToastContainer } from 'react-toastify';
  */
 const AppContent = () => {
   const { isAuthenticated, loading } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 
   // Show loading spinner during authentication verification
@@ -98,31 +97,31 @@ const AppContent = () => {
     );
   }
 
-  const handleSidebarClose = () => setSidebarOpen(false);
-
-  const contentMarginClass = isAuthenticated && sidebarOpen
+  const contentMarginClass = isAuthenticated
     ? (sidebarCollapsed ? 'ml-20' : 'ml-64')
     : 'ml-0';
 
   return (
-    <div className="flex">
-      {/* Sidebar - only shown for authenticated users when open */}
-      {isAuthenticated && sidebarOpen && (
+    <div className="min-h-screen bg-malawiGold text-gray-900 dark:bg-slate-900 dark:text-slate-100">
+      {/* Persistent authenticated layout shell: sidebar stays outside the route tree. */}
+      {isAuthenticated && (
         <Sidebar
-          onClose={handleSidebarClose}
           isCollapsed={sidebarCollapsed}
           setIsCollapsed={setSidebarCollapsed}
         />
       )}
 
       {/* Main content area - adjusts margin based on sidebar state */}
-      <div className={`${contentMarginClass} flex-1 min-w-0 transition-all duration-300`}>
+      <div className={`${contentMarginClass} flex-1 min-w-0 bg-malawiGold transition-all duration-300 dark:bg-slate-900`}>
 
         {/* Top Navigation Bar - shows for authenticated users */}
-        {isAuthenticated && <Navigation sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />}
+        {isAuthenticated && <Navigation />}
 
-
-
+        {isAuthenticated && (
+          <div className="border-b border-gray-100 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900 sm:px-6 lg:px-8">
+            <Breadcrumb />
+          </div>
+        )}
 
         {/* Application Routes */}
         <Routes>
@@ -403,14 +402,6 @@ const AppContent = () => {
             element={
               <ProtectedRoute allowedRoles={['officer_on_duty']}>
                 <OfficerAvailableActivitiesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/officer/activities/:activityId/allocations"
-            element={
-              <ProtectedRoute allowedRoles={['officer_on_duty']}>
-                <OfficerExternalActivityAllocationPage />
               </ProtectedRoute>
             }
           />

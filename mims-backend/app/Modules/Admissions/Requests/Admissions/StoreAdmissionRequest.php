@@ -23,7 +23,7 @@ class StoreAdmissionRequest extends FormRequest
             'case_number' => [
                 'required',
                 'string',
-                'max:5',
+                'max:50',
                 Rule::unique('admissions', 'case_number')
                     ->where('inmate_id', $this->input('inmate_id')),
             ],

@@ -7,7 +7,7 @@ const Select = React.forwardRef(
       <FormField label={label} error={error?.message || error} hint={hint}>
         <select
           ref={ref}
-          className={`w-full border rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-malawiGreen ${className}`}
+          className={`w-full border rounded px-3 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-malawiGreen dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 ${className}`}
           {...props}
         >
           <option value="">Select...</option>

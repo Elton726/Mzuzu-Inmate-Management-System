@@ -11,54 +11,13 @@ import { useDebouncedValue } from '../utils/useDebouncedValue';
 import { searchInmates } from '../modules/admissions/services/inmateService';
 import { listCells } from '../modules/admissions/services/cellService';
 import {
-  MdAdd,
   MdDarkMode,
   MdArrowForward,
   MdLightMode,
-  MdMenu,
   MdOutlineArticle,
   MdSearch,
   MdVisibility,
-  MdHome,
-  MdDashboard,
-  MdPeople,
-  MdHistory,
-  MdSchedule,
-  MdLocalActivity,
-  MdCheckCircle,
-  MdEditCalendar,
-  MdExitToApp,
-  MdPerson,
-  MdHomeWork,
-  MdGavel,
 } from 'react-icons/md';
-
-const getPageTitle = (pathname, role) => {
-  if (pathname === '/') return { title: 'Home', icon: MdHome };
-  if (pathname.startsWith('/admissions/new')) return { title: 'New Admission', icon: MdAdd };
-  if (pathname.startsWith('/admissions/cells')) return { title: 'Cell Management', icon: MdHomeWork };
-  if (pathname.startsWith('/admissions/')) return { title: 'Admission Details', icon: MdOutlineArticle };
-  if (pathname.startsWith('/admissions')) return { title: 'Admissions Register', icon: MdOutlineArticle };
-  if (pathname.startsWith('/inmates/')) return { title: 'Inmate Profile', icon: MdPerson };
-  if (pathname.startsWith('/admin/dashboard')) return { title: 'Admin Dashboard', icon: MdDashboard };
-  if (pathname.startsWith('/admin/users')) return { title: 'User Management', icon: MdPeople };
-  if (pathname.startsWith('/admin/audit-logs')) return { title: 'Audit Logs', icon: MdHistory };
-  if (pathname.startsWith('/admin/cells')) return { title: 'Cell Management', icon: MdHomeWork };
-  if (pathname.startsWith('/admin/sentence-adjustment-types')) return { title: 'Sentence Adjustment Types', icon: MdGavel };
-  if (pathname.startsWith('/admin/duty-rosters')) return { title: 'Duty Rosters', icon: MdSchedule };
-  if (pathname.startsWith('/admin/activities')) return { title: 'Activities', icon: MdLocalActivity };
-  if (pathname.startsWith('/releases/approval')) return { title: 'Release Approval', icon: MdCheckCircle };
-  if (pathname.startsWith('/releases/sentences')) return { title: 'Sentence Lengths', icon: MdEditCalendar };
-  if (pathname.startsWith('/releases/confirmation')) return { title: 'Confirm Release', icon: MdExitToApp };
-  if (pathname.startsWith('/releases/confirmed')) return { title: 'Confirmed Releases', icon: MdHistory };
-  if (pathname.startsWith('/releases/history')) return { title: 'Release History', icon: MdHistory };
-  if (pathname.startsWith('/visitation/visitors')) return { title: 'Visitation', icon: MdPerson };
-  if (pathname.startsWith('/visitation/visitors')) return { title: 'Visitation', icon: MdPerson };
-  if (pathname.startsWith('/visitation')) return { title: 'Visitation', icon: MdLocalActivity };
-  if (pathname.startsWith('/officer')) return { title: 'Officer Dashboard', icon: MdDashboard };
-  if (pathname.startsWith('/profile')) return { title: 'Profile', icon: MdPerson };
-  return { title: role === ROLES.RECEPTION_OFFICER ? 'Home' : 'MIMS', icon: MdHome };
-};
 
 const getTimeOfDayGreeting = () => {
   const hour = new Date().getHours();
@@ -80,7 +39,7 @@ const getHeaderCopy = (pathname, user, role) => {
 
   if (pathname === '/' && role === ROLES.OFFICER_ON_DUTY) {
     return {
-      title: 'Home',
+      title: `${greeting}, ${roleLabel}`,
       subtitle: 'Activity allocation and session management.',
     };
   }
@@ -131,7 +90,7 @@ const getCellSearchText = (cell) => [
 
 const getCellLabel = (cell) => `Block ${cell?.block || '-'} | Cell ${cell?.cell_number || '-'}`;
 
-export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
+export const Navigation = () => {
   const { user, isAdmin } = useAuth();
   const { notifications, markAsRead, clearAll } = useNotification();
   const { theme, toggleTheme } = useContext(ThemeContext);
@@ -148,7 +107,6 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
   const debouncedSearchQuery = useDebouncedValue(searchInput, 250);
   const canSearchSystem = Boolean(user);
 
-  const pageTitle = useMemo(() => getPageTitle(location.pathname, role), [location.pathname, role]);
   const headerCopy = useMemo(
     () => getHeaderCopy(location.pathname, user, role),
     [location.pathname, user, role]
@@ -245,29 +203,15 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
 
   return (
     <header className="border-b border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-      <div className="px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div className="flex min-h-[104px] items-center px-4 py-4 sm:px-6 lg:px-8">
+        <div className="flex w-full flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              {!sidebarOpen && (
-                <button
-                  type="button"
-                  onClick={() => setSidebarOpen(true)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50"
-                  title="Open sidebar"
-                >
-                  <MdMenu className="text-2xl" />
-                </button>
-              )}
+            <div className="flex items-center gap-3 text-left">
               <div className="min-w-0">
-                <div className="flex items-center gap-2 text-sm font-semibold text-gray-500">
-                  <pageTitle.icon className="text-lg" />
-                  <span>{pageTitle.title}</span>
-                </div>
-                <h1 className="mt-2 truncate text-2xl font-bold text-gray-950">
+                <h1 className="truncate text-2xl font-bold text-gray-950 dark:text-slate-100">
                   {headerCopy.title}
                 </h1>
-                <p className="mt-1 text-sm text-gray-500">{headerCopy.subtitle}</p>
+                <p className="mt-1 text-sm text-gray-500 dark:text-slate-300">{headerCopy.subtitle}</p>
               </div>
             </div>
           </div>
@@ -278,7 +222,7 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
                 <div className="flex flex-wrap items-center gap-3">
                   <Link
                     to="/admissions"
-                    className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 text-sm font-bold leading-tight text-gray-800 shadow-sm transition hover:bg-gray-50"
+                    className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 text-sm font-bold leading-tight text-gray-800 shadow-sm transition hover:bg-gray-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   >
                     <MdOutlineArticle className="shrink-0 text-lg" />
                     <span className="min-w-0">Open Admissions Register</span>
@@ -289,7 +233,7 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
               {isAdmin && (
                 <Link
                   to="/admin/dashboard"
-                  className="inline-flex h-10 items-center justify-center rounded-md border border-gray-300 bg-white px-4 text-sm font-bold text-gray-800 shadow-sm transition hover:bg-gray-50"
+                  className="inline-flex h-10 items-center justify-center rounded-md border border-gray-300 bg-white px-4 text-sm font-bold text-gray-800 shadow-sm transition hover:bg-gray-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                 >
                   Admin Dashboard
                 </Link>
@@ -304,7 +248,7 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
                       className={`inline-flex h-10 w-10 items-center justify-center rounded-full border shadow-sm transition ${
                         searchOpen
                           ? 'border-blue-600 bg-blue-50 text-blue-700'
-                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700'
                       }`}
                       aria-label={isCellPage ? 'Search cells and inmates' : 'Search inmates'}
                       title={isCellPage ? 'Search cells and inmates' : 'Search inmates'}
@@ -313,8 +257,8 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
                     </button>
 
                     {searchOpen && (
-                      <div className="absolute right-0 top-12 z-50 w-[min(92vw,440px)] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl">
-                        <form onSubmit={handleSearch} className="border-b border-gray-100 p-3">
+                      <div className="absolute right-0 top-12 z-50 w-[min(92vw,440px)] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                        <form onSubmit={handleSearch} className="border-b border-gray-100 p-3 dark:border-slate-700">
                           <div className="relative">
                             <MdSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xl text-gray-400" />
                             <input
@@ -324,41 +268,41 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
                               value={searchInput}
                               onChange={handleSearchChange}
                               placeholder={isCellPage ? 'Search cells, blocks, inmates...' : 'Search inmate, prison no., National ID'}
-                              className="h-10 w-full rounded-md border border-gray-300 bg-white pl-10 pr-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                              className="h-10 w-full rounded-md border border-gray-300 bg-white pl-10 pr-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-blue-900/50"
                             />
                           </div>
                         </form>
 
-                        <div className="border-b border-gray-100 px-4 py-2 text-xs font-bold uppercase text-gray-500">
+                        <div className="border-b border-gray-100 px-4 py-2 text-xs font-bold uppercase text-gray-500 dark:border-slate-700 dark:text-slate-400">
                           {isCellPage ? 'Page and system results' : 'Inmate results'}
                         </div>
                         {searchInput.trim().length < 2 ? (
-                          <div className="px-4 py-4 text-sm text-gray-500">
+                          <div className="px-4 py-4 text-sm text-gray-500 dark:text-slate-400">
                             Type at least 2 characters to search system records.
                           </div>
                         ) : searchPending ? (
-                          <div className="px-4 py-4 text-sm text-gray-500">Searching system records...</div>
+                          <div className="px-4 py-4 text-sm text-gray-500 dark:text-slate-400">Searching system records...</div>
                         ) : searchError && inmateResults.length === 0 && cellResults.length === 0 ? (
-                          <div className="px-4 py-4 text-sm text-red-600">{searchError}</div>
+                          <div className="px-4 py-4 text-sm text-red-600 dark:text-red-300">{searchError}</div>
                         ) : inmateResults.length === 0 && cellResults.length === 0 ? (
-                          <div className="px-4 py-4 text-sm text-gray-500">
+                          <div className="px-4 py-4 text-sm text-gray-500 dark:text-slate-400">
                             No matching {isCellPage ? 'cells or inmates' : 'inmates'} found.
                           </div>
                         ) : (
                           <div className="max-h-96 overflow-y-auto">
                             {isCellPage && cellResults.length > 0 && (
                               <div>
-                                <div className="bg-gray-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-gray-500">
+                                <div className="bg-gray-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-gray-500 dark:bg-slate-800 dark:text-slate-400">
                                   Cells
                                 </div>
                                 {cellResults.map((cell) => (
-                                  <div key={cell.id} className="border-b border-gray-100 px-4 py-3">
+                                  <div key={cell.id} className="border-b border-gray-100 px-4 py-3 dark:border-slate-700">
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                       <div className="min-w-0">
-                                        <div className="truncate text-sm font-bold text-gray-950">
+                                        <div className="truncate text-sm font-bold text-gray-950 dark:text-slate-100">
                                           {getCellLabel(cell)}
                                         </div>
-                                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-slate-400">
                                           <span>{cell.gender ? `${cell.gender} cells` : 'Gender unassigned'}</span>
                                           <span>{cell.security_classification || 'No security level'}</span>
                                           <span>{cell.status || 'No status'}</span>
@@ -380,20 +324,20 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
                             )}
 
                             {inmateResults.length > 0 && (
-                              <div className="bg-gray-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-gray-500">
+                              <div className="bg-gray-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-gray-500 dark:bg-slate-800 dark:text-slate-400">
                                 Inmates
                               </div>
                             )}
                             {inmateResults.map((inmate) => {
                               const admission = getCurrentAdmission(inmate);
                               return (
-                                <div key={inmate.id} className="border-b border-gray-100 px-4 py-3 last:border-b-0">
+                                <div key={inmate.id} className="border-b border-gray-100 px-4 py-3 last:border-b-0 dark:border-slate-700">
                                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                     <div className="min-w-0">
-                                      <div className="truncate text-sm font-bold text-gray-950">
+                                      <div className="truncate text-sm font-bold text-gray-950 dark:text-slate-100">
                                         {getFullName(inmate)}
                                       </div>
-                                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-slate-400">
                                         <span>{inmate.prison_number || 'No prison number'}</span>
                                         {inmate.national_id && <span>National ID {inmate.national_id}</span>}
                                         <span>{formatInmateType(admission?.inmate_type)}</span>
@@ -403,7 +347,7 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
                                       <Link
                                         to={`/inmates/${inmate.id}`}
                                         onClick={() => setSearchOpen(false)}
-                                        className="inline-flex h-8 items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+                                        className="inline-flex h-8 items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                                       >
                                         <MdVisibility />
                                         View
@@ -441,7 +385,7 @@ export const Navigation = ({ sidebarOpen, setSidebarOpen }) => {
 
                 <button
                   onClick={toggleTheme}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                   aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
                   title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                 >

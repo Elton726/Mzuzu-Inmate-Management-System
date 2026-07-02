@@ -15,12 +15,8 @@ const formatStatusLabel = (value) =>
 
 export default function ActivityTable({
   activities,
-  workingAction,
   onOpenTodaySession,
   onOpenExternalOnceSession,
-  onOpenAllocation,
-  onOpenCreateSession,
-  onOpenAutoAssign,
 }) {
   return (
     <div className="overflow-x-auto">
@@ -65,21 +61,12 @@ export default function ActivityTable({
                       Today’s Session
                     </Button>
                   ) : (
-                    <>
-                      <Button
-                        className="px-3 py-1 text-xs"
-                        onClick={() => onOpenExternalOnceSession(activity)}
-                      >
-                        Create Session
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="px-3 py-1 text-xs"
-                        onClick={() => onOpenAllocation(activity)}
-                      >
-                        Allocate Inmates
-                      </Button>
-                    </>
+                    <Button
+                      className="px-3 py-1 text-xs"
+                      onClick={() => onOpenExternalOnceSession(activity)}
+                    >
+                      Create Session
+                    </Button>
                   )}
                 </div>
               </td>

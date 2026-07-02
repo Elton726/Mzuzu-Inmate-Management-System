@@ -80,7 +80,6 @@ export default function OfficerAvailableActivitiesPage() {
   const [loading, setLoading] = useState(true);
   const [activities, setActivities] = useState([]);
   const [sessions, setSessions] = useState([]);
-  const [workingAction, setWorkingAction] = useState('');
   const [dashboardMetrics, setDashboardMetrics] = useState(defaultDashboardMetrics);
 
   const filters = useMemo(() => {
@@ -150,24 +149,16 @@ export default function OfficerAvailableActivitiesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryParams]);
 
-  const openCreateSession = (activity) => {
-    navigate(`/officer/activity-sessions/new?activity_id=${activity.id}`);
-  };
-
   const openTodaySession = (activity) => {
-    navigate(`/officer/activity-sessions/new?activity_id=${activity.id}`);
+    navigate(`/officer/activity-sessions/new?activity_id=${activity.id}`, {
+      state: { activityId: activity.id, activityName: activity.name },
+    });
   };
 
   const openExternalOnceSession = (activity) => {
-    navigate(`/officer/activity-sessions/new?activity_id=${activity.id}`);
-  };
-
-  const openAllocation = (activity) => {
-    navigate(`/officer/activities/${activity.id}/allocations`);
-  };
-
-  const openAutoAssign = (activity) => {
-    navigate(`/officer/internal-activities/${activity.id}/auto-assign`);
+    navigate(`/officer/activity-sessions/new?activity_id=${activity.id}`, {
+      state: { activityId: activity.id, activityName: activity.name },
+    });
   };
 
   const internalActivities = useMemo(
@@ -200,12 +191,8 @@ export default function OfficerAvailableActivitiesPage() {
 
   if (isActivitiesPage) {
     const queueHandlers = {
-      workingAction,
       onOpenTodaySession: openTodaySession,
       onOpenExternalOnceSession: openExternalOnceSession,
-      onOpenAllocation: openAllocation,
-      onOpenCreateSession: openCreateSession,
-      onOpenAutoAssign: openAutoAssign,
     };
 
     const activeTab = activityTypeFilter || 'all';
@@ -270,7 +257,6 @@ export default function OfficerAvailableActivitiesPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="rounded-2xl bg-malawiBlack p-6 text-white shadow-xl dark:bg-slate-800 md:p-8">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-malawiGold dark:text-amber-300">🏠 Home</span>
             <span className="rounded-full bg-white/10 px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/75 dark:bg-slate-700/80 dark:text-slate-300">
               Officer On Duty
             </span>

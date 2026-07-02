@@ -91,7 +91,7 @@ body {
 }
 
 .dark .bg-malawiGold {
-  background-color: #fde68a;
+  background-color: #0f172a;
 }
 
 .dark .text-malawiGold {
@@ -122,13 +122,38 @@ body {
   background-color: #0f172a;
 }
 
+.dark .min-h-screen,
+.dark main {
+  background-color: #0f172a;
+}
+
+.dark h1,
+.dark .modern-heading {
+  color: #f8fafc;
+}
+
+.dark h2,
+.dark h3 {
+  color: #e2e8f0;
+}
+
+.dark .text-gray-950,
 .dark .text-gray-900,
 .dark .text-black,
 .dark .text-malawiBlack {
   color: #f8fafc;
 }
 
+.dark .text-slate-950,
+.dark .text-slate-900 {
+  color: #f8fafc;
+}
+
 .dark .text-gray-800 {
+  color: #e2e8f0;
+}
+
+.dark .text-slate-800 {
   color: #e2e8f0;
 }
 
@@ -138,9 +163,28 @@ body {
   color: #94a3b8;
 }
 
+.dark .text-slate-700,
+.dark .text-slate-600,
+.dark .text-slate-500 {
+  color: #94a3b8;
+}
+
 .dark .bg-gray-50,
 .dark .bg-gray-100 {
-  background-color: #111827;
+  background-color: #1e293b;
+}
+
+.dark .bg-yellow-50,
+.dark .bg-amber-50 {
+  background-color: rgba(120, 53, 15, 0.28);
+}
+
+.dark .text-yellow-700,
+.dark .text-yellow-800,
+.dark .text-amber-700,
+.dark .text-amber-800,
+.dark .text-amber-900 {
+  color: #fde68a;
 }
 
 .dark .bg-gray-200,
@@ -187,5 +231,62 @@ select {
 .dark input,
 .dark textarea,
 .dark select {
-  @apply text-white bg-slate-900;
+  @apply border-slate-600 bg-slate-800 text-gray-100 placeholder:text-gray-500;
+}
+
+.dark label {
+  @apply text-gray-300;
+}
+
+.dark table {
+  @apply text-gray-200;
+}
+
+.dark thead {
+  @apply bg-slate-800;
+}
+
+.dark th {
+  @apply text-gray-400;
+}
+
+.dark table th.text-gray-900,
+.dark table th.text-gray-800,
+.dark table th.text-gray-700,
+.dark table th.text-gray-600,
+.dark table th.text-gray-500,
+.dark table th.text-slate-900,
+.dark table th.text-slate-800,
+.dark table th.text-slate-700,
+.dark table th.text-slate-600,
+.dark table th.text-slate-500 {
+  @apply text-gray-400;
+}
+
+.dark td {
+  @apply text-gray-200;
+}
+
+.dark table td.text-gray-900,
+.dark table td.text-gray-800,
+.dark table td.text-gray-700,
+.dark table td.text-gray-600,
+.dark table td.text-slate-900,
+.dark table td.text-slate-800,
+.dark table td.text-slate-700,
+.dark table td.text-slate-600 {
+  @apply text-gray-200;
+}
+
+.dark table td.text-gray-500,
+.dark table td.text-slate-500 {
+  @apply text-gray-400;
+}
+
+.dark tbody tr {
+  @apply border-slate-700;
+}
+
+.dark tbody tr:hover {
+  @apply bg-slate-800;
 }

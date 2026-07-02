@@ -24,6 +24,11 @@ class ActivityManagementService
         return $this->repository->all((int) ($filters['per_page'] ?? 15), $filters);
     }
 
+    public function searchActivitySuggestions(string $term): array
+    {
+        return $this->repository->searchSuggestions($term);
+    }
+
     public function getActivity(int $id): Activity
     {
         return $this->repository->findById($id);

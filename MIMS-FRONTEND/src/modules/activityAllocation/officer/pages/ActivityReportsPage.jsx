@@ -93,34 +93,40 @@ export default function ActivityReportsPage() {
       <div className="max-w-7xl mx-auto space-y-6">
 
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div>
           <div>
             <h1 className="text-2xl font-bold text-gray-800">Activity Reports</h1>
-            <p className="text-sm text-gray-600">
-              {meta ? `Report for ${meta.label} · Generated ${new Date(meta.generated_at).toLocaleString()}` : 'Select a period and date to generate a report.'}
+            <p className="mt-1 text-sm text-gray-500">
+              {meta ? `Report for ${meta.label} - Generated ${new Date(meta.generated_at).toLocaleString()}` : 'Select a period and date to generate a report.'}
             </p>
           </div>
         </div>
 
         {/* Filters */}
-        <Card title="Report Period">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-            <Select
-              label="Period"
-              value={period}
-              onChange={handlePeriodChange}
-              options={periodOptions}
-            />
-            <Input
-              label="Reference Date"
-              type={dateInputType}
-              value={date}
-              min={period === 'yearly' ? '2000' : undefined}
-              max={period === 'yearly' ? String(new Date().getFullYear()) : undefined}
-              onChange={(e) => setDate(e.target.value)}
-              hint="For monthly: any day in that month. For yearly: any day in that year."
-            />
-            <div className="flex flex-wrap items-end gap-2">
+        <Card title="Report Period" className="p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start">
+            <div className="w-full md:w-56">
+              <Select
+                label="Period"
+                value={period}
+                onChange={handlePeriodChange}
+                options={periodOptions}
+                className="h-10"
+              />
+            </div>
+            <div className="w-full md:w-64">
+              <Input
+                label="Reference Date"
+                type={dateInputType}
+                value={date}
+                min={period === 'yearly' ? '2000' : undefined}
+                max={period === 'yearly' ? String(new Date().getFullYear()) : undefined}
+                onChange={(e) => setDate(e.target.value)}
+                hint="For monthly: any day in that month. For yearly: any day in that year."
+                className="h-10"
+              />
+            </div>
+            <div className="flex flex-col gap-2 md:ml-auto md:flex-row md:items-start md:pt-6">
               <Button onClick={load} loading={loading} className="w-full md:w-auto">
                 <MdRefresh /> Generate Report
               </Button>
