@@ -16,7 +16,7 @@ class UserController extends Controller
      */
     public function me(Request $request)
     {
-        return response()->json($request->user());
+        return response()->json($this->userPayload($request->user()));
     }
 
     /**
@@ -34,7 +34,7 @@ class UserController extends Controller
             ], 403);
         }
 
-        return response()->json($user);
+        return response()->json($this->userPayload($user));
     }
 
     /**
@@ -58,7 +58,7 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'Profile updated successfully',
-            'user' => $user,
+            'user' => $this->userPayload($user),
         ]);
     }
 
@@ -88,5 +88,15 @@ class UserController extends Controller
         return response()->json([
             'message' => 'Password changed successfully',
         ]);
+    }
+
+    private function userPayload(User $user): array
+    {
+        $user->loadMissing('role');
+        $payload = $user->toArray();
+        $payload['role_name'] = $user->effective_role_name;
+        $payload['actual_role_name'] = $user->role?->name ?? $user->getAttribute('role');
+
+        return $payload;
     }
 }

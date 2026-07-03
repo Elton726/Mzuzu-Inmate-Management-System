@@ -23,7 +23,11 @@ class RoleMiddleware
             return response()->json(['message' => 'Forbidden. Account is inactive.'], 403);
         }
 
-        if (!in_array($request->user()->role_name, $roles, true)) {
+        $hasAllowedRole = collect($roles)->contains(
+            fn (string $role): bool => $request->user()->hasRole($role)
+        );
+
+        if (!$hasAllowedRole) {
             return response()->json(['message' => 'Forbidden. You do not have access to this resource.'], 403);
         }
 

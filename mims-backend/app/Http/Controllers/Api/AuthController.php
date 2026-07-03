@@ -74,7 +74,7 @@ class AuthController extends Controller
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
-            'user' => $user,
+            'user' => $this->userPayload($user),
             'token' => $token,
         ]);
     }
@@ -109,6 +109,16 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        return response()->json($request->user());
+        return response()->json($this->userPayload($request->user()));
+    }
+
+    private function userPayload(User $user): array
+    {
+        $user->loadMissing('role');
+        $payload = $user->toArray();
+        $payload['role_name'] = $user->effective_role_name;
+        $payload['actual_role_name'] = $user->role?->name ?? $user->getAttribute('role');
+
+        return $payload;
     }
 }
