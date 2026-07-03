@@ -9,22 +9,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Truncate any existing case_number values that exceed the new max of 5 characters
-        DB::statement("UPDATE admissions SET case_number = SUBSTRING(case_number, 1, 5) WHERE LENGTH(case_number) > 5");
-
         Schema::table('admissions', function (Blueprint $table) {
-            // 1. Shrink case_number column to the new max of 5 characters
+            // Keep the original case number capacity used by the admissions form and seeders.
             if (DB::getDriverName() !== 'sqlite') {
-                $table->string('case_number', 5)->change();
+                $table->string('case_number', 50)->change();
             }
 
-            // 2. Add sentence_days alongside the existing sentence_months (left null per user request)
             if (!Schema::hasColumn('admissions', 'sentence_days')) {
                 $table->integer('sentence_days')->nullable()->after('sentence_months');
             }
         });
 
-        // 3. Unique case_number per inmate (not system-wide)
+        // Unique case_number per inmate (not system-wide)
         $driver = DB::getDriverName();
         try {
             if ($driver === 'mysql' || $driver === 'mariadb') {

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
+import { FiAlertTriangle } from 'react-icons/fi';
 import Card from '../../../../components/common/Card';
 import Input from '../../../../components/common/Input';
 import Select from '../../../../components/common/Select';
@@ -25,6 +26,8 @@ const sessionPeriodPresets = [
   { value: 'Evening', label: 'Evening', start: '18:00', end: '20:00' },
   { value: 'Night', label: 'Night', start: '20:00', end: '22:00' },
 ];
+
+const activeSessionStatuses = ['scheduled', 'in_progress'];
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -51,11 +54,16 @@ export default function OfficerSessionFormPage() {
   const [loading, setLoading] = useState(isEdit);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [activities, setActivities] = useState([]);
+  const [checkingExistingSession, setCheckingExistingSession] = useState(false);
+  const [duplicateSession, setDuplicateSession] = useState(null);
 
   const prefillActivityId = useMemo(() => {
     const qs = new URLSearchParams(location.search);
-    return qs.get('activity_id') || '';
-  }, [location.search]);
+    return qs.get('activity_id') || qs.get('activityId') || location.state?.activityId || '';
+  }, [location.search, location.state]);
+
+  const prefillActivityName = location.state?.activityName || '';
+  const isActivityLocked = !isEdit && !!prefillActivityId;
 
   const todayLocal = useMemo(() => {
     const now = new Date();
@@ -131,7 +139,7 @@ export default function OfficerSessionFormPage() {
   useEffect(() => {
     if (isEdit) return;
     if (!prefillActivityId) return;
-    form.setValue('activity_id', prefillActivityId);
+    form.setValue('activity_id', String(prefillActivityId), { shouldValidate: true });
   }, [form, isEdit, prefillActivityId]);
 
   const activityId = form.watch('activity_id');
@@ -189,11 +197,64 @@ export default function OfficerSessionFormPage() {
     [activities, activityId]
   );
 
+  const lockedActivityLabel = selectedActivity
+    ? `${selectedActivity.name} (${selectedActivity.activity_type})`
+    : prefillActivityName || 'Selected activity';
+  const lockedActivityName = selectedActivity?.name || prefillActivityName || 'this activity';
+
+  useEffect(() => {
+    if (isEdit || !prefillActivityId) {
+      setDuplicateSession(null);
+      return;
+    }
+
+    let ignore = false;
+
+    const checkExistingSession = async () => {
+      try {
+        setCheckingExistingSession(true);
+        setDuplicateSession(null);
+        const res = await officerSessionService.getSessions({
+          activity_id: prefillActivityId,
+          session_date: todayLocal,
+          per_page: 10,
+        });
+        if (ignore) return;
+
+        const sessions = res?.data?.data || [];
+        const activeSession = sessions.find((session) =>
+          activeSessionStatuses.includes(session.status)
+        );
+        setDuplicateSession(activeSession || null);
+
+        if (activeSession) {
+          toast.push({
+            title: 'Session already active',
+            message: `A session for ${activeSession.activity?.name || prefillActivityName || 'this activity'} is already active today.`,
+            variant: 'error',
+          });
+        }
+      } catch (err) {
+        if (!ignore) toast.fromError(err, { title: 'Session check' });
+      } finally {
+        if (!ignore) setCheckingExistingSession(false);
+      }
+    };
+
+    checkExistingSession();
+
+    return () => {
+      ignore = true;
+    };
+  }, [isEdit, prefillActivityId, prefillActivityName, todayLocal, toast]);
+
   const sessionTime = form.watch('session_time');
   const isInternal = selectedActivity?.activity_type === 'internal';
+  const isCustomPeriod = !isInternal && sessionTime === 'Custom';
   const derivedSessionPeriod = useMemo(() => {
     if (isInternal) return 'Daily';
     if (!sessionTime) return '';
+    if (sessionTime === 'Custom') return 'Custom';
     return sessionPeriodPresets.some((p) => p.value === sessionTime) ? sessionTime : 'Custom';
   }, [isInternal, sessionTime]);
 
@@ -202,25 +263,24 @@ export default function OfficerSessionFormPage() {
     if (isEdit) return;
     if (!selectedActivity) return;
 
-    const currentStart = form.getValues('start_time');
-    const currentEnd = form.getValues('end_time');
-
-    // Only set times if they haven't been set yet
-    if (!currentStart) {
-      const now = toTimeString(new Date());
-      form.setValue('start_time', now, { shouldDirty: true });
-
-      // Calculate duration: 2 hours for internal, 3 hours for external
-      const durationMinutes = selectedActivity.activity_type === 'internal' ? 120 : 180;
-      const endTime = addMinutesToTime(now, durationMinutes);
-      form.setValue('end_time', endTime, { shouldDirty: true });
-    }
-
     if (selectedActivity.activity_type === 'internal') {
       const currentDate = form.getValues('session_date');
       const currentTime = form.getValues('session_time');
       if (!currentDate) form.setValue('session_date', todayLocal);
       if (!currentTime) form.setValue('session_time', 'Daily');
+      if (!form.getValues('start_time')) {
+        const now = toTimeString(new Date());
+        form.setValue('start_time', now, { shouldDirty: true });
+        form.setValue('end_time', addMinutesToTime(now, 120), { shouldDirty: true });
+      }
+      return;
+    }
+
+    if (selectedActivity.activity_type === 'external') {
+      const currentTime = form.getValues('session_time');
+      if (!currentTime) {
+        applySessionPreset('Morning');
+      }
     }
   }, [form, isEdit, selectedActivity, todayLocal]);
 
@@ -234,9 +294,21 @@ export default function OfficerSessionFormPage() {
   };
 
   const onSubmit = async (data) => {
+    // Block session creation when no inmates are assigned to the activity
+    if (!isEdit && assignedInmates.length === 0 && activityId && !inmatesLoading) {
+      toast.push({
+        title: 'No inmates assigned',
+        message:
+          'This activity has no inmates assigned to it. Please assign inmates to the activity before creating a session.',
+        variant: 'error',
+      });
+      return;
+    }
+
     try {
+      const submittedActivityId = data.activity_id || prefillActivityId || form.getValues('activity_id');
       const payload = {
-        activity_id: Number(data.activity_id),
+        activity_id: Number(submittedActivityId),
         session_date: data.session_date || todayLocal,
         session_time: data.session_time,
         start_time: data.start_time || null,
@@ -281,13 +353,30 @@ export default function OfficerSessionFormPage() {
     }
   };
 
+  // A session can only be created when inmates are loaded and at least one is assigned
+  const canCreateSession = isEdit || !activityId || inmatesLoading || assignedInmates.length > 0;
+
   const activityOptions = useMemo(
-    () =>
-      activities.map((a) => ({
+    () => {
+      const options = activities.map((a) => ({
         value: a.id,
         label: `${a.name} (${a.activity_type})`,
-      })),
-    [activities]
+      }));
+
+      if (
+        prefillActivityId &&
+        prefillActivityName &&
+        !options.some((option) => String(option.value) === String(prefillActivityId))
+      ) {
+        options.unshift({
+          value: prefillActivityId,
+          label: prefillActivityName,
+        });
+      }
+
+      return options;
+    },
+    [activities, prefillActivityId, prefillActivityName]
   );
 
   const sessionPeriodOptions = useMemo(
@@ -321,17 +410,45 @@ export default function OfficerSessionFormPage() {
 
         {loading ? (
           <Spinner label="Loading session..." />
+        ) : checkingExistingSession ? (
+          <Spinner label="Checking today's active session..." />
+        ) : duplicateSession ? (
+          <Card title="Session already active">
+            <p className="text-gray-700">
+              A session for {duplicateSession.activity?.name || lockedActivityName} is already active today.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => navigate('/officer/activities')}>
+                Back to Activities
+              </Button>
+              <Button type="button" onClick={() => navigate(`/officer/activity-sessions/${duplicateSession.id}`)}>
+                View Session
+              </Button>
+            </div>
+          </Card>
         ) : (
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" aria-disabled={isEdit}>
-            <Card title="Session details">
+            <Card title={isActivityLocked ? null : 'Session details'}>
+              {isActivityLocked && (
+                <div className="mb-5 border-b border-gray-100 pb-4 dark:border-slate-700">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                    {lockedActivityLabel}
+                  </h2>
+                  <p className="mt-1 text-sm font-medium text-gray-500 dark:text-slate-400">
+                    Session details
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Select
-                  label="Activity"
-                  disabled={activitiesLoading || loading || isEdit}
-                  {...form.register('activity_id', { required: 'Activity is required' })}
-                  options={activityOptions}
-                  error={form.formState.errors.activity_id?.message}
-                />
+                {!isActivityLocked && (
+                  <Select
+                    label="Activity"
+                    disabled={activitiesLoading || loading || isEdit}
+                    {...form.register('activity_id', { required: 'Activity is required' })}
+                    options={activityOptions}
+                    error={form.formState.errors.activity_id?.message}
+                  />
+                )}
                 <Input
                   label="Session date"
                   type="date"
@@ -346,6 +463,8 @@ export default function OfficerSessionFormPage() {
                     disabled
                     value="Daily"
                   />
+                ) : isCustomPeriod ? (
+                  <div className="min-h-[74px]" aria-hidden="true" />
                 ) : (
                   <Select
                     label="Session period"
@@ -353,7 +472,7 @@ export default function OfficerSessionFormPage() {
                     onChange={(e) => {
                       const next = e.target.value;
                       if (next === 'Custom') {
-                        form.setValue('session_time', '', { shouldValidate: true, shouldDirty: true });
+                        form.setValue('session_time', 'Custom', { shouldValidate: true, shouldDirty: true });
                         return;
                       }
                       applySessionPreset(next);
@@ -367,6 +486,7 @@ export default function OfficerSessionFormPage() {
                   type="time"
                   {...form.register('start_time', { validate: validateStartTime })}
                   disabled={isEdit || (!isInternal && derivedSessionPeriod !== 'Custom')}
+                  hint={isCustomPeriod ? 'Select the exact start and end times manually.' : 'Filled from the selected period.'}
                   error={form.formState.errors.start_time?.message}
                 />
                 <Input
@@ -374,6 +494,7 @@ export default function OfficerSessionFormPage() {
                   type="time"
                   {...form.register('end_time', { validate: validateEndTime })}
                   disabled={isEdit || (!isInternal && derivedSessionPeriod !== 'Custom')}
+                  hint={isCustomPeriod ? 'Select the exact start and end times manually.' : 'Filled from the selected period.'}
                   error={form.formState.errors.end_time?.message}
                 />
                 {!isInternal && derivedSessionPeriod === 'Custom' && (
@@ -385,13 +506,12 @@ export default function OfficerSessionFormPage() {
                     error={form.formState.errors.session_time?.message}
                   />
                 )}
-                {isEdit && (
-                  <Input
-                    label="Status"
-                    disabled
-                    value="In Progress"
-                  />
-                )}
+                <Input
+                  label="Status"
+                  disabled
+                  value="In Progress"
+                  hint="New sessions always start in progress."
+                />
                 <div className="md:col-span-2">
                   <Textarea label="Notes" rows={4} {...form.register('notes')} disabled={isEdit} />
                 </div>
@@ -403,7 +523,16 @@ export default function OfficerSessionFormPage() {
                 {inmatesLoading ? (
                   <Spinner label="Loading assigned inmates..." />
                 ) : assignedInmates.length === 0 ? (
-                  <p className="text-sm text-gray-500 italic">No inmates are currently assigned to this activity.</p>
+                  <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-4">
+                    <FiAlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
+                    <div>
+                      <p className="text-sm font-semibold text-red-700">No inmates assigned to this activity</p>
+                      <p className="mt-1 text-sm text-red-600">
+                        A session cannot be created because there are no inmates assigned to this activity.
+                        Please go to the activity's allocation page and assign inmates before creating a session.
+                      </p>
+                    </div>
+                  </div>
                 ) : (
                   <div className="max-h-60 overflow-y-auto">
                     <table className="min-w-full text-sm">
@@ -431,7 +560,16 @@ export default function OfficerSessionFormPage() {
               <Button type="button" variant="outline" onClick={() => navigate('/officer/activity-sessions')}>
                 Cancel
               </Button>
-              <Button type="submit" loading={form.formState.isSubmitting}>
+              <Button
+                type="submit"
+                loading={form.formState.isSubmitting}
+                disabled={!canCreateSession}
+                title={
+                  !canCreateSession
+                    ? 'Cannot create a session: no inmates are assigned to this activity.'
+                    : undefined
+                }
+              >
                 {isEdit ? 'Save Changes' : 'Create Session'}
               </Button>
             </div>

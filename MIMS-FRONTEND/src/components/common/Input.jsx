@@ -7,7 +7,7 @@ const Input = React.forwardRef(
       <FormField label={label} error={error?.message || error} hint={hint}>
         <input
           ref={ref}
-          className={`w-full border rounded px-3 py-2 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-malawiGreen dark:text-white dark:bg-slate-800 ${className}`}
+          className={`w-full border rounded px-3 py-2 text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-malawiGreen dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder:text-gray-500 ${className}`}
           {...props}
         />
       </FormField>

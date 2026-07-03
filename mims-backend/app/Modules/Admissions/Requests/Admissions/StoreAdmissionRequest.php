@@ -23,10 +23,9 @@ class StoreAdmissionRequest extends FormRequest
             'case_number' => [
                 'required',
                 'string',
-                'max:5',
+                'max:50',
                 Rule::unique('admissions', 'case_number')
-                    ->where('inmate_id', $this->input('inmate_id'))
-                    ->where('is_current', false),
+                    ->where('inmate_id', $this->input('inmate_id')),
             ],
             'court_name' => ['required', 'string', 'max:100'],
             'offence_description' => ['required', 'string', 'max:3000'],
@@ -37,8 +36,8 @@ class StoreAdmissionRequest extends FormRequest
             'sentence_start_date' => ['nullable', 'date', 'required_if:inmate_type,convict'],
 
             'remand_next_court_date' => ['nullable', 'date', 'required_if:inmate_type,remandee,murder_remandee'],
-            'remand_next_court_time' => ['nullable', 'date_format:H:i'],
-            'remand_duration_days' => ['nullable', 'integer', 'min:1'],
+            'remand_next_court_time' => ['nullable', 'date_format:H:i', 'required_if:inmate_type,remandee,murder_remandee'],
+            'remand_duration_days' => ['nullable', 'integer', 'min:0'],
 
             'activity_id' => [
                 'nullable',
@@ -89,8 +88,8 @@ class StoreAdmissionRequest extends FormRequest
                 return;
             }
 
-            if ($nextCourtDate && $nextCourtDate === now()->toDateString() && !$this->filled('remand_next_court_time')) {
-                $validator->errors()->add('remand_next_court_time', 'Court time is required when the next court date is today.');
+            if (!$this->filled('remand_next_court_time')) {
+                $validator->errors()->add('remand_next_court_time', 'Court time is required for remandees.');
             }
         });
     }

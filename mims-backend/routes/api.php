@@ -122,6 +122,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/inmates/search', [InmateController::class, 'search'])
         ->middleware(['role:reception_officer,station_officer,visitation_officer,gatekeeper,officer_on_duty,admin', 'throttle:60,60,user']);
 
+    Route::get('/activities/search', [ActivityManagementController::class, 'search'])
+        ->middleware(['role:admin', 'throttle:60,60,user']);
+
     Route::middleware(['role:reception_officer,station_officer'])->group(function () {
         Route::get('/inmates', [InmateController::class, 'index'])->middleware('throttle:60,60,user');
         Route::post('/inmates/check-duplicate', [InmateController::class, 'checkDuplicate'])->middleware('throttle:30,60,user');

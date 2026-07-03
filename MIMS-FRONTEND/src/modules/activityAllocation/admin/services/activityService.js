@@ -1,6 +1,7 @@
 import apiClient from '../../../../services/apiClient';
 
 export const getActivities = (params) => apiClient.get('/admin/activities', { params });
+export const searchActivities = (q) => apiClient.get('/activities/search', { params: { q } });
 export const getActivity = (id) => apiClient.get(`/admin/activities/${id}`);
 export const getCategories = () => apiClient.get('/admin/activities/categories');
 export const getPredefined = () => apiClient.get('/admin/activities/predefined');

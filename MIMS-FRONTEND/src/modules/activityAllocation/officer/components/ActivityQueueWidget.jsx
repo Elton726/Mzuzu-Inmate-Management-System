@@ -6,12 +6,8 @@ export default function ActivityQueueWidget({
   subtitle,
   emptyText,
   activities,
-  workingAction,
   onOpenTodaySession,
   onOpenExternalOnceSession,
-  onOpenAllocation,
-  onOpenCreateSession,
-  onOpenAutoAssign,
 }) {
   return (
     <Card className="rounded-3xl border border-gray-200 bg-white shadow-lg">
@@ -28,12 +24,8 @@ export default function ActivityQueueWidget({
         ) : (
           <ActivityTable
             activities={activities}
-            workingAction={workingAction}
             onOpenTodaySession={onOpenTodaySession}
             onOpenExternalOnceSession={onOpenExternalOnceSession}
-            onOpenAllocation={onOpenAllocation}
-            onOpenCreateSession={onOpenCreateSession}
-            onOpenAutoAssign={onOpenAutoAssign}
           />
         )}
       </div>

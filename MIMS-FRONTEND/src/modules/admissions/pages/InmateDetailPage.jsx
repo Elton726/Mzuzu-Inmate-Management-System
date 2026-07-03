@@ -70,6 +70,53 @@ const isCourtOverdue = (dateValue) => {
   return startTarget < startToday;
 };
 
+const buildLocalDateTime = (dateValue, timeValue) => {
+  if (!dateValue || !timeValue) return null;
+  const datePart = String(dateValue).split(/[T ]/)[0];
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hours, minutes] = String(timeValue).split(':').map(Number);
+  if ([year, month, day, hours, minutes].some((part) => !Number.isFinite(part))) return null;
+  const date = new Date(year, month - 1, day, hours, minutes);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const formatRemainingMinutes = (minutesTotal) => {
+  const hours = Math.floor(minutesTotal / 60);
+  const minutes = minutesTotal % 60;
+  const parts = [];
+  if (hours > 0) parts.push(`${hours} hour${hours === 1 ? '' : 's'}`);
+  parts.push(`${minutes} minute${minutes === 1 ? '' : 's'}`);
+  return `${parts.join(' ')} remaining`;
+};
+
+const formatRemandDuration = (admission) => {
+  const duration = admission?.remand_duration_days ?? admission?.remandDurationDays;
+  const nextCourtDate = admission?.remand_next_court_date || admission?.remandNextCourtDate;
+  const nextCourtTime = admission?.remand_next_court_time || admission?.remandNextCourtTime;
+
+  if (Number(duration) > 0) return `${Number(duration)} day${Number(duration) === 1 ? '' : 's'}`;
+
+  if (nextCourtDate && isCourtDue(nextCourtDate) && !isCourtOverdue(nextCourtDate) && nextCourtTime) {
+    const courtDateTime = buildLocalDateTime(nextCourtDate, nextCourtTime);
+    if (courtDateTime) {
+      const minutesRemaining = Math.ceil((courtDateTime.getTime() - Date.now()) / 60000);
+      return minutesRemaining > 0 ? formatRemainingMinutes(minutesRemaining) : 'Court time has passed';
+    }
+  }
+
+  if (duration === 0 || duration === '0') return '0 days (same day)';
+  return '—';
+};
+
+const hasCourtDateTimeReached = (admission) => {
+  const courtDate = admission?.remand_next_court_date || admission?.remandNextCourtDate;
+  const courtTime = admission?.remand_next_court_time || admission?.remandNextCourtTime;
+  const courtDateTime = buildLocalDateTime(courtDate, courtTime);
+
+  if (courtDateTime) return Date.now() >= courtDateTime.getTime();
+  return isCourtOverdue(courtDate);
+};
+
 
 const formatLabel = (value) => {
   if (value === null || value === undefined || value === '') return '—';
@@ -163,9 +210,9 @@ export default function InmateDetailPage() {
     const due = isCourtDue(courtDate);
 
     if (due && !overdue) {
-      toast.warning(`⚖️ Court date today — ${inmate.first_name} ${inmate.last_name} must appear in court today (${String(courtDate).slice(0, 10)}). Please arrange transport.`);
+      toast.warning(`Court date today — ${inmate.first_name} ${inmate.last_name} must appear in court today (${String(courtDate).slice(0, 10)}). Please arrange transport.`);
     } else if (overdue) {
-      toast.error(`🚨 Court date overdue — ${inmate.first_name} ${inmate.last_name}'s court date was ${String(courtDate).slice(0, 10)} and has passed. Action required.`);
+      toast.error(`Court date overdue — ${inmate.first_name} ${inmate.last_name}'s court date was ${String(courtDate).slice(0, 10)} and has passed. Action required.`);
     }
   }, [inmate]);
 
@@ -298,13 +345,9 @@ export default function InmateDetailPage() {
                   {(admission?.inmate_type === 'remandee' || admission?.inmate_type === 'murder_remandee') && (
                     (() => {
                       const nextCourtDate = admission.remand_next_court_date || admission.remandNextCourtDate;
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      const courtDate = nextCourtDate ? new Date(nextCourtDate) : null;
-                      if (courtDate) {
-                        courtDate.setHours(0, 0, 0, 0);
-                      }
-                      const courtReached = courtDate ? today >= courtDate : false;
+                      const nextCourtTime = admission.remand_next_court_time || admission.remandNextCourtTime;
+                      const courtReached = hasCourtDateTimeReached(admission);
+                      const courtLabel = [nextCourtDate ? formatDate(nextCourtDate) : null, nextCourtTime].filter(Boolean).join(' ');
 
                       return courtReached ? (
                         <Link
@@ -317,7 +360,7 @@ export default function InmateDetailPage() {
                       ) : (
                         <button
                           disabled
-                          title={nextCourtDate ? `Next court date (${formatDate(nextCourtDate)}) has not been reached yet` : 'No court date specified'}
+                          title={courtLabel ? `Next court time (${courtLabel}) has not been reached yet` : 'No court date/time specified'}
                           className="inline-flex items-center gap-2 rounded bg-gray-200 border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-400 cursor-not-allowed opacity-60"
                         >
                           <MdAssignment className="h-4 w-4" />
@@ -461,16 +504,16 @@ export default function InmateDetailPage() {
                         label="Days remaining"
                         value={admission.remand_next_court_date != null && daysUntil(admission.remand_next_court_date) != null
                           ? isCourtOverdue(admission.remand_next_court_date)
-                            ? '🚨 Court overdue!'
+                            ? 'Court overdue!'
                             : daysUntil(admission.remand_next_court_date) === 0
-                              ? '⚖️ Court today!'
+                              ? 'Court today!'
                               : `${daysUntil(admission.remand_next_court_date)} day(s)`
                           : '—'}
                         highlight={!!admission.remand_next_court_date && isCourtDue(admission.remand_next_court_date)}
                       />
                       <DetailItem
                         label="Remand duration"
-                        value={admission.remand_duration_days ? `${admission.remand_duration_days} days` : '—'}
+                        value={formatRemandDuration(admission)}
                       />
                     </>
                   )}

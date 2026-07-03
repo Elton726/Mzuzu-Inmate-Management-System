@@ -5,7 +5,7 @@
  * - Tailwind CSS directives for base styles, components, and utilities
  * - Custom utility classes for Malawi-themed colors
  * - Component-specific styles for consistent UI elements
- * - Global body styling with a softened Malawi gold background
+ * - Global body styling with a neutral ash application background
  */
 
 /* Import Tailwind CSS layers */
@@ -22,6 +22,23 @@
  * - Gold (#FFD700) - Primary brand color and accents
  * - Green (#00843D) - Success states and positive actions
  */
+@layer base {
+  :root {
+    --primary-bg: 15 23 42;
+    --surface-bg: 30 41 59;
+    --surface-muted: 51 65 85;
+    --surface-border: 71 85 105;
+    --primary-accent: 5 150 105;
+    --primary-accent-hover: 4 120 87;
+    --text-main: 248 250 252;
+    --text-secondary: 203 213 225;
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+}
+
 @layer utilities {
   /* Gold color utilities */
   .bg-malawiGold {
@@ -51,6 +68,65 @@
   }
 }
 
+@keyframes routeFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes routeFadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes globalLoader {
+  0% {
+    transform: translateX(-110%);
+  }
+  55% {
+    transform: translateX(80%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+.route-transition {
+  min-height: calc(100vh - 64px);
+  will-change: opacity, transform;
+}
+
+.route-transition.route-enter {
+  animation: routeFadeIn 220ms ease-out both;
+}
+
+.route-transition.route-exit {
+  animation: routeFadeOut 140ms ease-in both;
+}
+
+.animate-global-loader {
+  animation: globalLoader 1.15s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-transition.route-enter,
+  .route-transition.route-exit,
+  .animate-global-loader {
+    animation: none;
+  }
+}
+
 /**
  * Modern Heading Component Style
  *
@@ -76,22 +152,26 @@
 /**
  * Global Body Styling
  *
- * Sets the default page background to a faded Malawi gold
+ * Sets the default page background to a neutral ash surface
  * Ensures consistent base styling across all pages
  */
 body {
-  background-color: #fef3c7;
+  background-color: #f8f9fa;
   @apply text-black font-sans;
-  /* For custom background, use .bg-malawiGold in JSX */
+}
+
+.min-h-screen.bg-malawiGold,
+.h-screen.bg-malawiGold {
+  background-color: #f8f9fa;
 }
 
 .dark body {
-  background-color: #1e293b;
-  color: #f8fafc;
+  background-color: rgb(var(--primary-bg));
+  color: rgb(var(--text-main));
 }
 
 .dark .bg-malawiGold {
-  background-color: #1e293b;
+  background-color: rgb(var(--primary-bg));
 }
 
 .dark .text-malawiGold {
@@ -107,21 +187,43 @@ body {
 }
 
 .dark .bg-malawiGreen {
-  background-color: #065f46;
+  background-color: rgb(var(--primary-accent));
 }
 
 .dark .border-malawiGreen {
-  border-color: #166534;
+  border-color: rgb(var(--primary-accent));
 }
 
 .dark .border-malawiGold {
-  border-color: #f59e0b;
+  border-color: rgb(var(--surface-border));
 }
 
-.dark .bg-white {
-  background-color: #1f2937;
+.dark .bg-white,
+.dark .modern-card {
+  background-color: rgb(var(--surface-bg));
 }
 
+.dark .\!bg-white {
+  background-color: rgb(var(--surface-bg)) !important;
+}
+
+.dark .min-h-screen,
+.dark .h-screen,
+.dark main {
+  background-color: rgb(var(--primary-bg));
+}
+
+.dark h1,
+.dark .modern-heading {
+  color: #f8fafc;
+}
+
+.dark h2,
+.dark h3 {
+  color: #e2e8f0;
+}
+
+.dark .text-gray-950,
 .dark .text-gray-900,
 .dark .text-gray-950,
 .dark .text-black,
@@ -129,8 +231,22 @@ body {
   color: #f8fafc;
 }
 
-.dark .text-gray-800 {
-  color: #f1f5f9;
+.dark .\!text-gray-950,
+.dark .\!text-black,
+.dark .\!text-gray-900,
+.dark .\!text-gray-800,
+.dark .\!text-gray-700 {
+  color: #f8fafc !important;
+}
+
+.dark .text-slate-950,
+.dark .text-slate-900 {
+  color: #f8fafc;
+}
+
+.dark .text-gray-800,
+.dark .text-slate-800 {
+  color: #f8fafc;
 }
 
 .dark .text-gray-700,
@@ -139,24 +255,178 @@ body {
 }
 
 .dark .text-gray-500 {
-  color: #aebcd0;
+  color: #94a3b8;
+}
+
+.dark .text-slate-700,
+.dark .text-slate-600 {
+  color: #cbd5e1;
+}
+
+.dark .text-slate-500 {
+  color: #94a3b8;
 }
 
 .dark .bg-gray-50,
-.dark .bg-gray-100 {
-  background-color: #111827;
+.dark .bg-gray-100,
+.dark .bg-slate-50,
+.dark .bg-slate-100,
+.dark .bg-slate-200 {
+  background-color: rgb(var(--surface-bg));
+}
+
+.dark .bg-blue-50,
+.dark .bg-blue-100,
+.dark .bg-yellow-50,
+.dark .bg-yellow-100,
+.dark .bg-amber-50,
+.dark .bg-amber-100,
+.dark .bg-orange-50,
+.dark .bg-orange-100 {
+  background-color: rgb(var(--surface-bg));
+}
+
+.dark .text-blue-500,
+.dark .text-blue-600,
+.dark .text-blue-700,
+.dark .text-blue-800,
+.dark .text-blue-900,
+.dark .text-yellow-700,
+.dark .text-yellow-800,
+.dark .text-yellow-900,
+.dark .text-amber-500,
+.dark .text-amber-600,
+.dark .text-amber-700,
+.dark .text-amber-800,
+.dark .text-amber-900,
+.dark .text-orange-600,
+.dark .text-orange-700,
+.dark .text-orange-800 {
+  color: rgb(var(--text-secondary));
+}
+
+.dark .border-blue-100,
+.dark .border-blue-200,
+.dark .border-yellow-100,
+.dark .border-yellow-200,
+.dark .border-amber-100,
+.dark .border-amber-200,
+.dark .border-orange-100,
+.dark .border-orange-200 {
+  border-color: rgb(var(--surface-border));
+}
+
+.dark .bg-blue-600,
+.dark .bg-blue-700,
+.dark .bg-yellow-400,
+.dark .bg-amber-400,
+.dark .bg-amber-500 {
+  background-color: rgb(var(--primary-accent));
+}
+
+.dark .hover\:bg-blue-700:hover,
+.dark .hover\:bg-blue-800:hover,
+.dark .hover\:bg-yellow-400:hover,
+.dark .hover\:bg-amber-500:hover {
+  background-color: rgb(var(--primary-accent-hover));
+}
+
+.dark .text-blue-300,
+.dark .text-yellow-300,
+.dark .text-amber-300 {
+  color: rgb(var(--text-secondary));
+}
+
+.dark .bg-emerald-50,
+.dark .bg-emerald-100,
+.dark .bg-green-50,
+.dark .bg-green-100 {
+  background-color: rgb(6 78 59 / 0.55);
+}
+
+.dark .text-emerald-600,
+.dark .text-emerald-700,
+.dark .text-emerald-800,
+.dark .text-green-600,
+.dark .text-green-700,
+.dark .text-green-800 {
+  color: #a7f3d0;
+}
+
+.dark .border-emerald-100,
+.dark .border-emerald-200,
+.dark .border-green-100,
+.dark .border-green-200 {
+  border-color: #047857;
+}
+
+.dark .bg-red-50,
+.dark .bg-red-100 {
+  background-color: rgb(127 29 29 / 0.55);
+}
+
+.dark .text-red-600,
+.dark .text-red-700,
+.dark .text-red-800,
+.dark .text-red-900 {
+  color: #fecaca;
+}
+
+.dark .border-red-100,
+.dark .border-red-200 {
+  border-color: #991b1b;
+}
+
+.dark .bg-violet-50,
+.dark .bg-violet-100,
+.dark .bg-purple-50,
+.dark .bg-purple-100 {
+  background-color: rgb(76 29 149 / 0.5);
+}
+
+.dark .text-violet-600,
+.dark .text-violet-700,
+.dark .text-purple-600,
+.dark .text-purple-700 {
+  color: #ddd6fe;
+}
+
+.dark .border-violet-100,
+.dark .border-violet-200,
+.dark .border-purple-100,
+.dark .border-purple-200 {
+  border-color: #7c3aed;
 }
 
 .dark .bg-gray-200,
-.dark .bg-gray-300 {
+.dark .bg-gray-300,
+.dark .bg-slate-300 {
   background-color: #1f2937;
 }
 
 .dark .border-gray-200,
 .dark .border-gray-300,
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-300,
 .dark .border-black,
 .dark .border-malawiBlack {
   border-color: #475569;
+}
+
+.dark .shadow,
+.dark .shadow-sm,
+.dark .shadow-md,
+.dark .shadow-lg {
+  --tw-shadow-color: rgb(0 0 0 / 0.35);
+  --tw-shadow: var(--tw-shadow-colored);
+}
+
+.dark .ring-gray-100,
+.dark .ring-gray-200,
+.dark .ring-slate-100,
+.dark .ring-slate-200 {
+  --tw-ring-color: rgb(var(--surface-border));
 }
 
 .dark .hover\:bg-white:hover,
@@ -182,6 +452,11 @@ body {
   background-color: #334155;
 }
 
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 input,
 textarea,
 select {
@@ -191,5 +466,72 @@ select {
 .dark input,
 .dark textarea,
 .dark select {
-  @apply text-white bg-slate-900;
+  @apply border-slate-600 bg-slate-800 text-gray-100 placeholder:text-gray-500;
+}
+
+.dark label {
+  @apply text-gray-300;
+}
+
+.dark table {
+  @apply text-gray-200;
+}
+
+.dark thead {
+  @apply bg-slate-800;
+}
+
+.dark th {
+  @apply text-gray-400;
+}
+
+.dark table th.text-gray-900,
+.dark table th.text-gray-800,
+.dark table th.text-gray-700,
+.dark table th.text-gray-600,
+.dark table th.text-gray-500,
+.dark table th.text-slate-900,
+.dark table th.text-slate-800,
+.dark table th.text-slate-700,
+.dark table th.text-slate-600,
+.dark table th.text-slate-500 {
+  @apply text-gray-400;
+}
+
+.dark td {
+  @apply text-gray-200;
+}
+
+.dark table td.text-gray-900,
+.dark table td.text-gray-800,
+.dark table td.text-gray-700,
+.dark table td.text-gray-600,
+.dark table td.text-slate-900,
+.dark table td.text-slate-800,
+.dark table td.text-slate-700,
+.dark table td.text-slate-600 {
+  @apply text-gray-200;
+}
+
+.dark table td.text-gray-500,
+.dark table td.text-slate-500 {
+  @apply text-gray-400;
+}
+
+.dark tbody tr {
+  @apply border-slate-700;
+}
+
+.dark tbody tr:hover {
+  @apply bg-slate-800;
+}
+
+.dark .dark\:bg-slate-900,
+.dark .dark\:bg-\[\#0f172a\] {
+  background-color: rgb(var(--primary-bg));
+}
+
+.dark .dark\:bg-slate-800,
+.dark .dark\:bg-slate-800\/95 {
+  background-color: rgb(var(--surface-bg));
 }

@@ -204,6 +204,7 @@ export default function OfficerExternalActivityAllocationPage() {
                   <th className="py-2 pr-4">Admission</th>
                   <th className="py-2 pr-4">Type</th>
                   <th className="py-2 pr-4">Case</th>
+                  <th className="py-2 pr-4">Remaining Years</th>
                   <th className="py-2 pr-4">Days Until Release</th>
                   <th className="py-2 pr-4">Release Date</th>
                 </tr>
@@ -211,7 +212,7 @@ export default function OfficerExternalActivityAllocationPage() {
               <tbody>
                 {eligibleInmates.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-6 text-gray-600">
+                    <td colSpan={9} className="py-6 text-gray-600">
                       No eligible inmates found for this external activity.
                     </td>
                   </tr>
@@ -230,6 +231,13 @@ export default function OfficerExternalActivityAllocationPage() {
                       <td className="py-2 pr-4">{item.admission_date}</td>
                       <td className="py-2 pr-4">{item.inmate_type}</td>
                       <td className="py-2 pr-4">{item.case_number}</td>
+                      <td className="py-2 pr-4">
+                        {item.remaining_years == null ? (
+                          <span className="text-gray-400">N/A</span>
+                        ) : (
+                          <span className="font-semibold text-gray-800">{item.remaining_years}</span>
+                        )}
+                      </td>
                       <td className="py-2 pr-4">
                         {item.days_until_release === null ? (
                           <span className="text-gray-400">N/A</span>

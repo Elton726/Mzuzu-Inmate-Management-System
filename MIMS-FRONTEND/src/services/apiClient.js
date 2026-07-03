@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { beginApiRequest, emitApiError, endApiRequest } from '../utils/apiLoadingEvents';
 
 const API_BASE_URL = import.meta.env?.VITE_API_URL || 'http://localhost:8000/api';
 
@@ -8,6 +9,7 @@ const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
+  beginApiRequest();
   const token = localStorage.getItem('authToken');
   if (token) {
     config.headers = config.headers || {};
@@ -15,6 +17,18 @@ apiClient.interceptors.request.use((config) => {
   }
   return config;
 });
+
+apiClient.interceptors.response.use(
+  (response) => {
+    endApiRequest();
+    return response;
+  },
+  (error) => {
+    endApiRequest();
+    emitApiError(error);
+    return Promise.reject(error);
+  }
+);
 
 export default apiClient;
 

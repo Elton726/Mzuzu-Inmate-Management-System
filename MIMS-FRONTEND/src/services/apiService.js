@@ -26,6 +26,8 @@
  * - Safe JSON parsing with fallbacks
  */
 
+import { beginApiRequest, emitApiError, endApiRequest } from '../utils/apiLoadingEvents';
+
 const API_BASE_URL = 'http://localhost:8000/api';
 export const SERVER_BASE_URL = 'http://localhost:8000';
 const REQUEST_TIMEOUT_MS = 10000;
@@ -160,16 +162,24 @@ class ApiService {
    * @returns {Promise<Object>} API response data
    */
   async request(rateLimitKey, path, options = {}) {
-    const response = await this.fetchWithTimeout(`${API_BASE_URL}${path}`, {
-      ...options,
-      headers: {
-        ...this.getHeaders(),
-        ...(options.headers || {})
-      }
-    });
+    beginApiRequest();
+    try {
+      const response = await this.fetchWithTimeout(`${API_BASE_URL}${path}`, {
+        ...options,
+        headers: {
+          ...this.getHeaders(),
+          ...(options.headers || {})
+        }
+      });
 
-    this.updateRateLimitFromResponse(rateLimitKey, response);
-    return this.handleResponse(response);
+      this.updateRateLimitFromResponse(rateLimitKey, response);
+      return await this.handleResponse(response);
+    } catch (error) {
+      emitApiError(error);
+      throw error;
+    } finally {
+      endApiRequest();
+    }
   }
 
   /**
@@ -191,18 +201,26 @@ class ApiService {
    * @returns {Promise<Object>} API response data
    */
   async requestForm(rateLimitKey, path, formData, options = {}) {
-    const response = await this.fetchWithTimeout(`${API_BASE_URL}${path}`, {
-      method: options.method || 'POST',
-      ...options,
-      body: formData,
-      headers: {
-        ...this.getFormHeaders(),
-        ...(options.headers || {})
-      }
-    });
+    beginApiRequest();
+    try {
+      const response = await this.fetchWithTimeout(`${API_BASE_URL}${path}`, {
+        method: options.method || 'POST',
+        ...options,
+        body: formData,
+        headers: {
+          ...this.getFormHeaders(),
+          ...(options.headers || {})
+        }
+      });
 
-    this.updateRateLimitFromResponse(rateLimitKey, response);
-    return this.handleResponse(response);
+      this.updateRateLimitFromResponse(rateLimitKey, response);
+      return await this.handleResponse(response);
+    } catch (error) {
+      emitApiError(error);
+      throw error;
+    } finally {
+      endApiRequest();
+    }
   }
 
   /**

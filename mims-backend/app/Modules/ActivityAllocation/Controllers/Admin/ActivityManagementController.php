@@ -21,6 +21,17 @@ class ActivityManagementController extends Controller
         return response()->json($this->activityService->listActivities($request->all()));
     }
 
+    public function search(Request $request)
+    {
+        $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        return response()->json(
+            $this->activityService->searchActivitySuggestions($validated['q'] ?? '')
+        );
+    }
+
     public function show(int $id)
     {
         return response()->json($this->activityService->getActivity($id));
@@ -108,4 +119,3 @@ class ActivityManagementController extends Controller
         return response()->json($this->activityService->getPredefinedActivities());
     }
 }
-

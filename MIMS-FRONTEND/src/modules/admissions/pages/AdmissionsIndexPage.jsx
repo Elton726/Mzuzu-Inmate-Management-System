@@ -46,6 +46,31 @@ const parseLocalDate = (dateStr) => {
   return new Date(dateStr);
 };
 
+const buildLocalDateTime = (dateValue, timeValue) => {
+  if (!dateValue || !timeValue) return null;
+  const datePart = String(dateValue).split(/[T ]/)[0];
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hours, minutes] = String(timeValue).split(':').map(Number);
+  if ([year, month, day, hours, minutes].some((part) => !Number.isFinite(part))) return null;
+  const date = new Date(year, month - 1, day, hours, minutes);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const hasCourtDateTimeReached = (admission) => {
+  const courtDate = admission?.remand_next_court_date || admission?.remandNextCourtDate;
+  const courtTime = admission?.remand_next_court_time || admission?.remandNextCourtTime;
+  const courtDateTime = buildLocalDateTime(courtDate, courtTime);
+
+  if (courtDateTime) return Date.now() >= courtDateTime.getTime();
+
+  const courtDay = parseLocalDate(courtDate);
+  if (!courtDay) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  courtDay.setHours(0, 0, 0, 0);
+  return courtDay < today;
+};
+
 const calculateDaysTillCourtDate = (dateStr) => {
   if (!dateStr) return null;
   const courtDate = parseLocalDate(dateStr);

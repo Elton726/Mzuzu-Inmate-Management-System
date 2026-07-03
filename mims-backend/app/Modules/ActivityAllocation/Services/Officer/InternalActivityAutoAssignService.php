@@ -7,6 +7,7 @@ use App\Modules\Admissions\Models\Admission;
 use App\Modules\Admissions\Models\InmateActivity;
 use App\Modules\ActivityAllocation\Models\ActivityAssignmentLog;
 use App\Modules\ActivityAllocation\Models\ActivityRotationQueue;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -292,9 +293,47 @@ class InternalActivityAutoAssignService
                         return false;
                     }
                 }
+
+                $minRemaining = (float) ($criteria['min_remaining_years'] ?? $criteria['min_sentence_years'] ?? 0);
+                $maxRemaining = (float) ($criteria['max_remaining_years'] ?? 0);
+
+                if ($minRemaining > 0 || $maxRemaining > 0) {
+                    $remainingYears = $this->remainingYears($admission);
+
+                    if ($remainingYears === null) {
+                        return false;
+                    }
+
+                    if ($remainingYears < $minRemaining) {
+                        return false;
+                    }
+
+                    if ($maxRemaining > 0 && $remainingYears > $maxRemaining) {
+                        return false;
+                    }
+                }
+
                 return true;
             })
             ->values();
+    }
+
+    private function remainingYears(Admission $admission): ?float
+    {
+        if ($admission->admission_date === null) {
+            return null;
+        }
+
+        $releaseDate = CarbonImmutable::parse($admission->admission_date)
+            ->addYears((int) ($admission->sentence_years ?? 0))
+            ->addMonths((int) ($admission->sentence_months ?? 0))
+            ->addDays((int) ($admission->sentence_days ?? 0))
+            ->startOfDay();
+
+        $today = CarbonImmutable::now()->startOfDay();
+        $remainingDays = max(0, (int) $today->diffInDays($releaseDate, false));
+
+        return round($remainingDays / 365.25, 2);
     }
 
     /**

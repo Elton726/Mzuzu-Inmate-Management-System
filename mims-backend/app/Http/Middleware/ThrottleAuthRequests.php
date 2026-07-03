@@ -17,12 +17,10 @@ class ThrottleAuthRequests
     }
 
     /**
-     * Handle an incoming request - specialized for login/password change with lockout
+     * Handle an incoming request - specialized for login/password change with lockout.
      *
-     * @param Request $request
-     * @param Closure $next
-     * @param string $limitName Configuration key from ratelimit.php
-     * @return SymfonyResponse
+     * Important: do NOT rate-limit successful attempts. We lock/rate-limit based on
+     * failed login responses (401/403) to avoid the "4th request works" issue.
      */
     public function handle(Request $request, Closure $next, string $limitName = 'auth_login'): SymfonyResponse
     {
@@ -38,7 +36,7 @@ class ThrottleAuthRequests
 
         $key = "auth_ip:{$request->ip()}";
 
-        // Check lockout first
+        // 1) If locked already, block immediately.
         if (config('ratelimit.lockout.enabled')) {
             $lockoutStatus = $this->rateLimitService->checkLockout(
                 $key,
@@ -48,36 +46,67 @@ class ThrottleAuthRequests
             );
 
             if ($lockoutStatus['locked']) {
-                return response()->json([
+                $response = response()->json([
                     'message' => 'Too many failed attempts. Your access has been temporarily locked.',
                     'retry_after' => $lockoutStatus['retry_after'] ?? null,
-                ], 429)
-                    ->header('Retry-After', $lockoutStatus['retry_after'] ?? 900);
+                ], 429);
+
+                $response->headers->set('Retry-After', (string) ($lockoutStatus['retry_after'] ?? 900));
+
+                return $response;
             }
         }
 
-        // Check standard rate limit
-        $limit = $this->rateLimitService->checkLimit(
-            $key,
-            $config['requests'],
-            $config['window']
-        );
-
-        if (!$limit['allowed']) {
-            return response()->json([
-                'message' => $config['message'],
-                'retry_after' => $limit['retry_after'],
-            ], 429)
-                ->header('Retry-After', $limit['retry_after']);
-        }
-
+        // 2) Let the request go through. We will only apply rate-limit headers/response
+        //    counters when we detect a failure response.
         $response = $next($request);
 
-        // Add rate limit headers
-        return $response
-            ->header('X-RateLimit-Limit', $config['requests'])
-            ->header('X-RateLimit-Remaining', $limit['remaining'])
-            ->header('X-RateLimit-Reset', $limit['reset_at'])
-            ->header('Retry-After', $limit['retry_after']);
+        // Determine if this was a login failure.
+        // - Login controller returns 401 for bad credentials
+        // - It returns 403 for inactive account
+        // - Password changes return 422 for an incorrect current password
+        $failureStatusCodes = $limitName === 'password_change' ? [401, 403, 422] : [401, 403];
+        $isFailure = in_array((int) $response->getStatusCode(), $failureStatusCodes, true);
+
+        // 3) Record failures & enforce throttling only after a failure.
+        if ($isFailure) {
+            // Record failure for lockout logic.
+            if (config('ratelimit.lockout.enabled')) {
+                $this->rateLimitService->recordFailure(
+                    $key,
+                    config('ratelimit.lockout.max_attempts'),
+                    config('ratelimit.lockout.lockout_minutes'),
+                    config('ratelimit.lockout.reset_minutes')
+                );
+            }
+
+            // Enforce standard rate limit based on failed attempts only.
+            $limit = $this->rateLimitService->checkLimit(
+                $key,
+                $config['requests'],
+                $config['window']
+            );
+
+            if (!$limit['allowed']) {
+                $response = response()->json([
+                    'message' => $config['message'],
+                    'retry_after' => $limit['retry_after'],
+                ], 429);
+
+                $response->headers->set('Retry-After', (string) $limit['retry_after']);
+
+                return $response;
+            }
+
+            $response->headers->set('X-RateLimit-Limit', (string) $config['requests']);
+            $response->headers->set('X-RateLimit-Remaining', (string) $limit['remaining']);
+            $response->headers->set('X-RateLimit-Reset', (string) $limit['reset_at']);
+            $response->headers->set('Retry-After', (string) $limit['retry_after']);
+
+            return $response;
+        }
+
+        // For non-failure responses, do not apply throttling effects.
+        return $response;
     }
 }

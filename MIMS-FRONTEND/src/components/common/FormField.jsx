@@ -4,10 +4,10 @@ import PropTypes from 'prop-types';
 export default function FormField({ label, error, children, hint }) {
   return (
     <div>
-      {label && <label className="block text-sm font-semibold text-gray-700 mb-1">{label}</label>}
+      {label && <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">{label}</label>}
       {children}
-      {hint && !error && <p className="text-sm text-gray-500 mt-1">{hint}</p>}
-      {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
+      {hint && !error && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{hint}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-300 mt-1">{error}</p>}
     </div>
   );
 }

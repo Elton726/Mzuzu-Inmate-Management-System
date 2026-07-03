@@ -714,7 +714,7 @@ export default function VisitationHomePage() {
                       {row.notes && <p className="mt-1 text-sm text-red-700">{row.notes}</p>}
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline" onClick={() => setCheckInItems((current) => current.map((itemRow, itemIndex) => itemIndex === index ? { ...itemRow, status: 'approved', notes: '' } : itemRow))}>Approve</Button>
+
                       <Button variant="danger" onClick={() => openCheckInFlag(index)}>Flag</Button>
                     </div>
                   </div>
@@ -841,7 +841,7 @@ export default function VisitationHomePage() {
             {pdfInfo ? (
               <div className="rounded-lg border border-green-200 bg-green-50 p-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="font-semibold text-green-900 text-sm">✅ Request sent to station officer for approval.</p>
+                  <p className="font-semibold text-green-900 text-sm">Request sent to station officer for approval.</p>
                   <p className="text-xs text-green-700 mt-0.5">PDF generated successfully.</p>
                 </div>
                 <Button onClick={() => downloadPdf(pdfInfo.download_url, `charity-booking-${pdfInfo.data.id}.pdf`)}><FiDownload /> Download PDF</Button>
@@ -998,7 +998,7 @@ function ActiveSession({ session, item, setItem, onCheckIn, onCheckOut, onAddIte
                 <StatusBadge status={row.status} />
               </div>
               <div className="flex gap-2">
-                {row.status !== 'approved' && <Button variant="outline" onClick={() => onItemStatus(row, 'approved')}>Approve</Button>}
+
                 <Button variant="danger" onClick={() => onFlagItem(row)}>Flag</Button>
               </div>
             </div>

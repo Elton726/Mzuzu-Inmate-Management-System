@@ -16,13 +16,24 @@ import {
   MdCheckCircle,
   MdExitToApp,
   MdEditCalendar,
+  MdMenu,
+  MdClose,
   MdLogout,
   MdBarChart,
   MdGavel,
   MdSettings
 } from 'react-icons/md';
-import { ROLES, getRoleName } from '../utils/helpers';
+import { useSidebarContext } from '../contexts/SidebarContext';
+import { ROLES, getRoleDisplayName, getRoleName } from '../utils/helpers';
 import logo from '/cuffs.png';
+
+const roleTone = {
+  admin: 'bg-red-950/40 text-red-400 border-red-900/50',
+  reception_officer: 'bg-green-950/40 text-green-400 border-green-900/50',
+  station_officer: 'bg-blue-950/40 text-blue-400 border-blue-900/50',
+  officer_on_duty: 'bg-amber-950/40 text-amber-400 border-amber-900/50',
+  gatekeeper: 'bg-purple-950/40 text-purple-400 border-purple-900/50',
+};
 
 const avatarTone = {
   admin: 'bg-malawiRed text-white',
@@ -45,6 +56,7 @@ const getInitials = (user) => {
 };
 
 export default function Sidebar() {
+  const { isSidebarCollapsed: isCollapsed, setIsSidebarCollapsed: setIsCollapsed, toggleSidebar } = useSidebarContext();
   const { user, isAdmin, logout, loading } = useAuth();
   const navigate = useNavigate();
   const role = getRoleName(user);
@@ -63,13 +75,13 @@ export default function Sidebar() {
   // Show loading skeleton while auth is initializing
   if (loading) {
     return (
-      <aside className="h-screen w-64 bg-white text-gray-700 border-r border-gray-200 shadow-lg fixed top-0 left-0 z-50 flex flex-col transition-colors duration-300 dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700">
-        <div className="flex items-center justify-center h-20 border-b border-gray-200 px-4 dark:border-slate-700">
-          <div className="animate-pulse bg-gray-200 h-10 w-10 rounded-full dark:bg-slate-700"></div>
+      <aside className={`box-border h-screen border-r-0 bg-white text-gray-700 dark:border-r-[3px] dark:border-slate-700 dark:bg-slate-900 dark:text-gray-300 fixed top-0 left-0 z-50 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
+        <div className="flex h-16 items-center justify-center px-4">
+          <div className="h-10 w-10 animate-pulse rounded-full bg-gray-200 dark:bg-slate-800"></div>
         </div>
         <div className="flex-1 mt-8 px-4 space-y-4">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="animate-pulse bg-gray-100 h-10 rounded-lg dark:bg-slate-800"></div>
+            <div key={i} className="h-10 animate-pulse rounded-lg bg-gray-100 dark:bg-slate-800"></div>
           ))}
         </div>
       </aside>
@@ -230,6 +242,12 @@ export default function Sidebar() {
               show: role === ROLES.GATEKEEPER || role === ROLES.STATION_OFFICER
             },
             {
+              to: '/visitation/rules',
+              icon: MdSettings,
+              title: 'Visit Rules',
+              show: role === ROLES.STATION_OFFICER
+            },
+            {
               to: '/visitation/flag-reviews',
               icon: MdGavel,
               title: 'Flag Reviews',
@@ -266,12 +284,6 @@ export default function Sidebar() {
           show: isAdmin
         },
         {
-          to: '/admin/visitation-rules',
-          icon: MdSettings,
-          title: 'Visitation Rules',
-          show: isAdmin
-        },
-        {
           to: '/admin/sentence-adjustment-types',
           icon: MdGavel,
           title: 'Adjustment Types',
@@ -302,28 +314,47 @@ export default function Sidebar() {
 
   return (
     <>
-    <aside className="h-screen w-64 bg-white text-gray-700 border-r border-gray-200 shadow-2xl fixed top-0 left-0 z-50 flex flex-col overflow-hidden transition-colors duration-300 ease-in-out dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700">
+    <aside className={`box-border h-screen border-r-0 bg-white text-gray-700 dark:border-r-[3px] dark:border-slate-700 dark:bg-slate-900 dark:text-gray-300 fixed top-0 left-0 z-50 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'}`}>
       {/* Header with cuffs logo */}
-      <div className="flex items-center h-20 border-b border-gray-200 px-4 justify-between gap-3 flex-shrink-0 dark:border-slate-700">
+      <div className={`flex flex-shrink-0 px-4 ${isCollapsed ? 'flex-col items-center pt-4 pb-2 gap-3' : 'h-16 items-center justify-between gap-3'}`}>
         <div className="flex items-center gap-3 min-w-0">
           <img
             src={logo}
             alt="Cuffs logo"
             className="h-10 w-10 rounded-full border border-malawiRed flex-shrink-0"
           />
-          <span className="text-gray-950 text-base font-bold tracking-wide truncate dark:text-white">
-            MIMS
-          </span>
+          {!isCollapsed && (
+            <div className="flex min-w-0 flex-col justify-center">
+              <span className="font-['Outfit',sans-serif] text-[15px] font-black tracking-tight text-gray-900 dark:text-white leading-tight">
+                Mzuzu Inmate
+              </span>
+              <span className="font-['Outfit',sans-serif] text-[11px] font-bold uppercase tracking-widest text-malawiGreen dark:text-emerald-400 mt-0.5">
+                Management System
+              </span>
+            </div>
+          )}
         </div>
+
+        {/* Toggle Collapse Button */}
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          className="hidden md:flex items-center justify-center p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200 dark:text-zinc-400 dark:hover:bg-slate-800 dark:hover:text-white"
+          title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+        >
+          {isCollapsed ? <MdMenu className="text-xl" /> : <MdClose className="text-xl" />}
+        </button>
       </div>
 
       {/* Main navigation menu */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 space-y-6 scrollbar-thin">
         {filteredSections.map(section => (
           <div key={section.id} className="space-y-1.5">
-            <h3 className="px-3 text-[10px] font-bold text-gray-500 tracking-widest uppercase mb-1 dark:text-slate-400">
-              {section.title}
-            </h3>
+            {!isCollapsed && (
+              <h3 className="px-3 text-[10px] font-bold text-zinc-500 tracking-widest uppercase mb-1">
+                {section.title}
+              </h3>
+            )}
             <ul className="space-y-1">
               {section.items.map(item => {
                 const Icon = item.icon;
@@ -333,16 +364,25 @@ export default function Sidebar() {
                       to={item.to}
                       end={item.end}
                       className={({ isActive }) =>
-                        `flex items-center rounded-lg px-3 py-2.5 gap-3 transition-all duration-200 ${
+                        `flex items-center rounded-lg px-3 py-2.5 transition-all duration-200 ${
+                          isCollapsed ? 'justify-center' : 'gap-3'
+                        } ${
                           isActive
-                            ? 'bg-malawiGreen/15 text-gray-950 font-semibold border-l-4 border-malawiGreen shadow-inner dark:bg-malawiGreen/25 dark:text-white'
-                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
+                            ? 'bg-malawiGreen/15 text-malawiGreen font-semibold border-l-4 border-malawiGreen dark:bg-malawiGreen/25 dark:text-white'
+                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-950 dark:text-zinc-400 dark:hover:bg-slate-800/80 dark:hover:text-white'
                         }`
                       }
                     >
                       <Icon className="text-xl flex-shrink-0 transition-colors" />
-                      <span className="truncate text-sm">{item.title}</span>
+                      {!isCollapsed && <span className="truncate text-sm">{item.title}</span>}
                     </NavLink>
+
+                    {/* Collapsed Tooltip */}
+                    {isCollapsed && (
+                      <div className="absolute left-full ml-4 px-2.5 py-1.5 bg-white text-xs font-semibold text-gray-900 rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-x-2 group-hover:translate-x-0 pointer-events-none whitespace-nowrap z-50 shadow-xl border border-gray-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                        {item.title}
+                      </div>
+                    )}
                   </li>
                 );
               })}
@@ -353,11 +393,11 @@ export default function Sidebar() {
 
       {/* Profile Footer Section */}
       {user && (
-        <div className="border-t border-gray-200 p-4 bg-gray-50 flex-shrink-0 dark:border-slate-700 dark:bg-slate-950/40">
-          <div className="flex items-center justify-between gap-3">
+        <div className="flex-shrink-0 p-4">
+          <div className={`flex items-center ${isCollapsed ? 'justify-center flex-col' : 'justify-between'} gap-3`}>
             <NavLink
               to="/profile"
-              className="flex items-center gap-3 min-w-0 flex-1"
+              className={`flex items-center gap-3 min-w-0 ${isCollapsed ? 'justify-center' : 'flex-1'}`}
               title="Open profile"
             >
               {/* Avatar circle */}
@@ -366,22 +406,38 @@ export default function Sidebar() {
               </div>
 
               {/* Text Info */}
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-gray-950 truncate dark:text-white">
-                  {user.name || 'Unnamed Officer'}
+              {!isCollapsed && (
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-gray-950 truncate dark:text-white">
+                    {user.name || 'Unnamed Officer'}
+                  </div>
+                  <div className={`mt-0.5 inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold uppercase border ${roleTone[role] || 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}>
+                    {getRoleDisplayName(user) || 'Staff'}
+                  </div>
                 </div>
-              </div>
+              )}
             </NavLink>
 
             {/* Logout Button */}
-            <button
-              type="button"
-              onClick={handleLogoutClick}
-              className="p-2 text-gray-500 hover:text-red-600 transition-colors duration-200 rounded-lg hover:bg-gray-100 flex-shrink-0 dark:text-slate-300 dark:hover:text-red-400 dark:hover:bg-slate-800"
-              title="Logout"
-            >
-              <MdLogout className="text-xl" />
-            </button>
+            {!isCollapsed ? (
+              <button
+                type="button"
+                onClick={handleLogoutClick}
+                className="p-2 text-gray-500 hover:text-red-500 transition-colors duration-200 rounded-lg hover:bg-gray-100 flex-shrink-0 dark:text-zinc-400 dark:hover:bg-slate-800"
+                title="Logout"
+              >
+                <MdLogout className="text-xl" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleLogoutClick}
+                className="w-10 h-10 mt-1 flex items-center justify-center text-gray-500 hover:text-red-500 transition-colors duration-200 rounded-lg hover:bg-gray-100 flex-shrink-0 dark:text-zinc-400 dark:hover:bg-slate-800"
+                title="Logout"
+              >
+                <MdLogout className="text-xl" />
+              </button>
+            )}
           </div>
         </div>
       )}

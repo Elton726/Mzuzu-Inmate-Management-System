@@ -5,8 +5,6 @@ const isoDate = z
   .min(1, 'Date is required')
   .refine((val) => !Number.isNaN(Date.parse(val)), 'Invalid date');
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
-
 export const inmateSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
@@ -39,7 +37,7 @@ export const admissionSchema = z
     admissionDate: isoDate,
     admissionType: z.enum(['first_time', 'repeat']),
     inmateType: z.enum(['convict', 'remandee', 'murder_remandee']),
-    caseNumber: z.string().min(1, 'Case number is required').max(5, 'Case number must be at most 5 characters'),
+    caseNumber: z.string().min(1, 'Case number is required').max(50, 'Case number must be at most 50 characters'),
     courtName: z.string().min(1, 'Court name is required').max(100, 'Court name must be at most 100 characters'),
     offenceDescription: z.string().min(1, 'Offence description is required').max(3000, 'Offence description must be at most 3000 characters'),
 
@@ -92,8 +90,8 @@ export const admissionSchema = z
           ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Next court date cannot be before admission date', path: ['remandNextCourtDate'] });
         }
 
-        if (data.remandNextCourtDate === todayIso() && !data.remandNextCourtTime) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Court time is required when the next court date is today', path: ['remandNextCourtTime'] });
+        if (!data.remandNextCourtTime) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Court time is required for remandees', path: ['remandNextCourtTime'] });
         }
       }
     }

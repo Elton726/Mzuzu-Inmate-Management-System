@@ -209,7 +209,7 @@ export default function AdmissionsDashboardPage() {
     dueAdmissions.forEach(({ admissionId, inmateName, courtIso, isToday }) => {
       addNotification({
         id: `court-due-${admissionId}-${courtIso}`,
-        title: isToday ? '⚖️ Court date today' : '🚨 Court date overdue',
+        title: isToday ? 'Court date today' : 'Court date overdue',
         message: isToday
           ? `${inmateName} must appear in court today (${courtIso}). Please arrange transport.`
           : `${inmateName}'s court date was ${courtIso} and has passed. Action required.`,
@@ -619,9 +619,9 @@ export default function AdmissionsDashboardPage() {
                                   : 'bg-gray-100 border-gray-200 text-gray-700'
                             }`}>
                               {inmate.isOverdue
-                                ? '🚨 Court overdue!'
+                                ? 'Court overdue!'
                                 : inmate.daysRemaining === 0
-                                  ? '⚖️ Court today!'
+                                  ? 'Court today!'
                                   : `${inmate.daysRemaining} day(s) left`}
                             </span>
                           )}

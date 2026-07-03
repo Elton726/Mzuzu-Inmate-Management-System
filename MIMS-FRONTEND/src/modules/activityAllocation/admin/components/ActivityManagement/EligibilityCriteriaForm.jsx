@@ -12,12 +12,20 @@ const SKILL_OPTIONS = [
   { value: 'maintenance', label: 'Maintenance' },
 ];
 
-export default function EligibilityCriteriaForm({ value, onChange }) {
+export default function EligibilityCriteriaForm({ value, onChange, errors = {} }) {
   const criteria = value || {};
   const selectedSkills = Array.isArray(criteria.skills_required) ? criteria.skills_required : [];
+  const minRemaining = criteria.min_remaining_years ?? criteria.min_sentence_years ?? '';
+  const maxRemaining = criteria.max_remaining_years ?? '';
+  const hasRangeError = minRemaining !== '' && maxRemaining !== '' && Number(maxRemaining) > 0 && Number(maxRemaining) < Number(minRemaining);
 
   const update = (patch) => {
-    onChange?.({ allowed_inmate_types: ['convict'], ...criteria, ...patch });
+    const next = { allowed_inmate_types: ['convict'], ...criteria, ...patch };
+    Object.keys(next).forEach((key) => {
+      if (next[key] === undefined) delete next[key];
+    });
+    delete next.min_sentence_years;
+    onChange?.(next);
   };
 
   return (
@@ -31,17 +39,47 @@ export default function EligibilityCriteriaForm({ value, onChange }) {
           </p>
         </div>
 
-        <Input
-          type="number"
-          min={0}
-          label="Minimum Sentence (Years)"
-          hint="Example: 0 means no minimum."
-          value={criteria.min_sentence_years ?? ''}
-          onChange={(e) => {
-            const next = e.target.value;
-            update({ min_sentence_years: next === '' ? undefined : Number(next) });
-          }}
-        />
+        <div className="md:col-span-2 rounded-lg border border-gray-200 bg-white p-4">
+          <div className="mb-3">
+            <h3 className="text-sm font-semibold text-gray-800">Remaining Sentence Range</h3>
+            <p className="mt-1 text-xs text-gray-500">
+              Filter inmates based on how many years they have left to serve. Leave at 0 for no limit.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Input
+              type="number"
+              min={0}
+              step="0.1"
+              label="Min. Remaining (Years)"
+              value={minRemaining}
+              onChange={(e) => {
+                const next = e.target.value;
+                update({ min_remaining_years: next === '' ? undefined : Number(next) });
+              }}
+              error={errors.min_remaining_years}
+            />
+            <Input
+              type="number"
+              min={0}
+              step="0.1"
+              label="Max. Remaining (Years)"
+              value={maxRemaining}
+              onChange={(e) => {
+                const next = e.target.value;
+                update({ max_remaining_years: next === '' ? undefined : Number(next) });
+              }}
+              error={errors.max_remaining_years}
+            />
+          </div>
+
+          {hasRangeError && (
+            <p className="mt-2 text-sm font-medium text-red-600">
+              Maximum must be greater than or equal to Minimum.
+            </p>
+          )}
+        </div>
 
         <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-700">

@@ -23,11 +23,12 @@
  * - Admin: /admin/*
  */
 
-import React, { useCallback, useEffect, useRef } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { SidebarProvider, useSidebarContext } from './contexts/SidebarContext';
 import { useAuth } from './contexts/useAuth';
 import { ROLES } from './utils/helpers';
 import LoginPage from './modules/auth/pages/LoginPage';
@@ -40,7 +41,6 @@ import DutyRosterPage from './modules/activityAllocation/admin/pages/DutyRosterP
 import ActivityListPage from './modules/activityAllocation/admin/pages/ActivityListPage';
 import ActivityFormPage from './modules/activityAllocation/admin/pages/ActivityFormPage';
 import OfficerAvailableActivitiesPage from './modules/activityAllocation/officer/pages/OfficerAvailableActivitiesPage';
-import OfficerExternalActivityAllocationPage from './modules/activityAllocation/officer/pages/OfficerExternalActivityAllocationPage';
 import OfficerSessionsPage from './modules/activityAllocation/officer/pages/OfficerSessionsPage';
 import OfficerSessionFormPage from './modules/activityAllocation/officer/pages/OfficerSessionFormPage';
 import OfficerSessionDetailPage from './modules/activityAllocation/officer/pages/OfficerSessionDetailPage';
@@ -71,6 +71,8 @@ import VisitationAlertsPage from './modules/visitation/pages/VisitationAlertsPag
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import { Navigation } from './components/Navigation';
+import { Breadcrumb } from './components/Breadcrumb';
+import GlobalLoadingIndicator from './components/GlobalLoadingIndicator';
 import { ToastProvider } from './contexts/ToastContext';
 import { ToastContainer } from 'react-toastify';
 
@@ -85,7 +87,12 @@ import { ToastContainer } from 'react-toastify';
 const AppContent = () => {
   const { isAuthenticated, loading, logout } = useAuth();
   const navigate = useNavigate();
+  const { isSidebarCollapsed, setIsSidebarCollapsed } = useSidebarContext();
+  const location = useLocation();
+  const [displayLocation, setDisplayLocation] = useState(location);
+  const [transitionStage, setTransitionStage] = useState('route-enter');
   const inactivityTimerRef = useRef(null);
+  const transitionTimerRef = useRef(null);
 
   const handleIdleLogout = useCallback(async () => {
     await logout();
@@ -118,6 +125,19 @@ const AppContent = () => {
     };
   }, [handleIdleLogout, isAuthenticated]);
 
+  useEffect(() => {
+    if (location.key === displayLocation.key) return undefined;
+
+    setTransitionStage('route-exit');
+    window.clearTimeout(transitionTimerRef.current);
+    transitionTimerRef.current = window.setTimeout(() => {
+      setDisplayLocation(location);
+      setTransitionStage('route-enter');
+    }, 140);
+
+    return () => window.clearTimeout(transitionTimerRef.current);
+  }, [displayLocation.key, location]);
+
   // Show loading spinner during authentication verification
   if (loading) {
     return (
@@ -130,7 +150,9 @@ const AppContent = () => {
     );
   }
 
-  const contentMarginClass = isAuthenticated ? 'ml-64' : 'ml-0';
+  const contentMarginClass = isAuthenticated
+    ? isSidebarCollapsed ? 'ml-20' : 'ml-64'
+    : 'ml-0';
 
   return (
     <div className="flex">
@@ -138,16 +160,18 @@ const AppContent = () => {
       {isAuthenticated && <Sidebar />}
 
       {/* Main content area - adjusts margin based on sidebar state */}
-      <div className={`${contentMarginClass} flex-1 min-w-0 transition-all duration-300`}>
+      <div className={`${contentMarginClass} min-h-screen flex-1 min-w-0 bg-slate-50 transition-all duration-300 dark:bg-slate-900`}>
 
         {/* Top Navigation Bar - shows for authenticated users */}
         {isAuthenticated && <Navigation />}
+        <GlobalLoadingIndicator />
 
 
 
 
         {/* Application Routes */}
-        <Routes>
+        <div className={`route-transition ${transitionStage}`}>
+        <Routes location={displayLocation} key={`${displayLocation.pathname}${displayLocation.search}`}>
           {/* Public route - accessible without authentication */}
           <Route path="/login" element={<LoginPage />} />
 
@@ -429,14 +453,6 @@ const AppContent = () => {
             }
           />
           <Route
-            path="/officer/activities/:activityId/allocations"
-            element={
-              <ProtectedRoute allowedRoles={['officer_on_duty']}>
-                <OfficerExternalActivityAllocationPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/officer/internal-activities/:activityId/auto-assign"
             element={
               <ProtectedRoute allowedRoles={['officer_on_duty']}>
@@ -489,6 +505,7 @@ const AppContent = () => {
           {/* Catch-all route - redirects to home for authenticated users, login for others */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </div>
       </div>
     </div>
   );
@@ -542,7 +559,9 @@ function App() {
           <ToastProvider>
             <ToastContainer position="top-right" autoClose={7000} />
             <AuthProvider>
-              <AppContent />
+              <SidebarProvider>
+                <AppContent />
+              </SidebarProvider>
             </AuthProvider>
           </ToastProvider>
         </NotificationProvider>
